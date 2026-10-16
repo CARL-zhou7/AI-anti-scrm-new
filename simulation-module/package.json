@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tts:check": "node dev/mock/tts/check.mjs"
   },
   "dependencies": {
     "vue": "3.5.13"

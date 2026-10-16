@@ -50,9 +50,10 @@ onBeforeUnmount(() => clearInterval(statusTimer))
 
 const ttsLabel = computed(() => {
   const s = ttsStatus.value
-  if (!s || !s.provider) return '尚未合成语音'
-  if (s.provider === 'edge') return '真实语音（Edge 中文神经语音）'
-  return s.degraded ? `提示音（真实语音不可用：${s.lastError}）` : '提示音'
+  if (!s) return '尚未合成语音'
+  if (!s.provider) return s.lastError ? `合成失败：${s.lastError}` : '尚未合成语音'
+  if (s.provider === 'tone') return s.degraded ? `提示音（真实语音不可用：${s.errors.join('；') || s.lastError}）` : '提示音'
+  return s.degraded ? `${s.label}（前面的来源不可用：${s.errors.join('；')}）` : s.label
 })
 
 // “人物动画失效”故障注入：直接让人物动画不运行，检验 ANIMATION_FAILED 上报
@@ -98,8 +99,10 @@ watch(
       </label>
       <label>语音来源
         <select v-model="mockOptions.tts">
-          <option value="auto">自动（真实语音，失败用提示音）</option>
-          <option value="edge">仅真实语音（失败按 TTS 故障中断）</option>
+          <option value="auto">自动（Azure → Edge → Windows 语音 → 提示音）</option>
+          <option value="azure">仅 Azure 语音服务（需配置密钥）</option>
+          <option value="edge">仅 Edge 朗读服务</option>
+          <option value="sapi">仅 Windows 系统语音</option>
           <option value="tone">仅提示音</option>
         </select>
       </label>

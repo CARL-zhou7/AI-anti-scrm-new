@@ -23,8 +23,16 @@ function isFemale(gender) {
   return /女|female|F/i.test(gender || '')
 }
 
+function withGender(v) {
+  return { ...v, gender: /Xiao/.test(v.voice) ? 'female' : 'male' }
+}
+
 /** 按画像推导默认声音（管理员新增的人物也能得到合适音色）。 */
 export function voiceForProfile(profile) {
+  return withGender(baseVoice(profile))
+}
+
+function baseVoice(profile) {
   if (PRESET[profile.name]) return { ...PRESET[profile.name] }
   const age = Number(profile.age) || 30
   if (isFemale(profile.gender)) {
