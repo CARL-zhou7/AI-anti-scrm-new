@@ -1,0 +1,43 @@
+spring:
+  config:
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:./backend/.env[.properties]
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/anti_scam?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true}
+    username: ${DB_USERNAME:anti_scam_app}
+    password: ${DB_PASSWORD:${MYSQL_APP_PASSWORD:}}
+    hikari:
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+  flyway:
+    enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        connection.isolation: 2
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+server:
+  servlet:
+    session:
+      tracking-modes: cookie
+      cookie:
+        name: JSESSIONID
+        path: /anti.scam/v1
+        http-only: true
+        same-site: lax
+        secure: ${app.security.session-cookie-secure}
+  error:
+    include-message: never
+    include-stacktrace: never
+app:
+  security:
+    session-cookie-secure: true
+  admin:
+    username: ${ADMIN_USERNAME:}
+    password: ${ADMIN_PASSWORD:}

@@ -1,0 +1,31 @@
+{
+  "name": "anti-scam-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "validate:api": "node ../tools/validate-openapi.mjs"
+  },
+  "dependencies": {
+    "pinia": "3.0.3",
+    "vue": "3.5.44",
+    "vue-router": "4.5.1"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "12.0.0",
+    "@vitejs/plugin-vue": "5.2.4",
+    "@vue/test-utils": "2.4.6",
+    "jsdom": "26.1.0",
+    "typescript": "5.9.3",
+    "vite": "6.4.4",
+    "vitest": "5.0.5",
+    "vue-tsc": "3.1.1"
+  }
+}
