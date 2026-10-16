@@ -1,0 +1,21 @@
+{
+  "name": "anti-scam-simulation-module",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI情景演绎模块（FR-SIM-01~07）：开场、人物待机/说话动画、角色语音、逐轮解说与风险、计时与终态。src/ 为并入主工程的模块代码，dev/ 为本地联调用的模拟后端与演示入口。",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "vue": "3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "5.2.1",
+    "jsdom": "25.0.1",
+    "vite": "6.0.7",
+    "vitest": "2.1.8"
+  }
+}

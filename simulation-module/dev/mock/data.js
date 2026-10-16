@@ -1,0 +1,246 @@
+// 本地模拟数据：PRD §11.3 初始人物卡、三个固定场景，以及每个场景一段固定剧本（代替真实 Agent 输出）。
+
+export const SCENARIOS = [
+  {
+    id: '1',
+    code: 'TASK_REBATE',
+    name: '刷单返利诈骗',
+    description: '以完成任务获得返利为由，诱导受害者垫付资金并不断追加投入。',
+    focus: '青年群体',
+  },
+  {
+    id: '2',
+    code: 'FAKE_INVESTMENT',
+    name: '虚假投资诈骗',
+    description: '以高收益投资为诱饵，先让受害者小额获利，再以提现、解冻等名义索要额外费用。',
+    focus: '中年群体',
+  },
+  {
+    id: '3',
+    code: 'IMPERSONATION_LOAN',
+    name: '冒充亲友借款诈骗',
+    description: '冒充亲友身份，以急事为由要求受害者向陌生账户转账借款。',
+    focus: '老年群体',
+  },
+]
+
+const avatar = (key) => ({ key, url: `/anti.scam/v1/avatars/${key}` })
+
+export const SCAMMERS = [
+  {
+    id: '11',
+    avatar: avatar('avatar_chen_qiming'),
+    name: '陈启明',
+    age: 35,
+    gender: '男',
+    identity: '诈骗团伙话务人员',
+    description: '耐心、善于观察反应，通过持续交流建立信任',
+    contextTime: '工作日晚上',
+    contextPlace: '安静的工作室',
+    currentState: '正准备与目标对象进行线上交流',
+    fraudExperience: 'HIGH',
+    speechSkill: 'HIGH',
+    manipulationSkill: 'HIGH',
+    behaviorTraits: '受质疑时调整表达和推进节奏',
+  },
+  {
+    id: '12',
+    avatar: avatar('avatar_liang_yue'),
+    name: '梁悦',
+    age: 28,
+    gender: '女',
+    identity: '诈骗团伙话务人员',
+    description: '表达直接，倾向利用紧迫感和情感关系推动对方行动',
+    contextTime: '工作日晚上',
+    contextPlace: '独立房间',
+    currentState: '正通过线上消息联系目标对象',
+    fraudExperience: 'MEDIUM',
+    speechSkill: 'MEDIUM',
+    manipulationSkill: 'MEDIUM',
+    behaviorTraits: '面对连续核实时容易急于推进',
+  },
+]
+
+export const VICTIMS = [
+  {
+    id: '21',
+    avatar: avatar('avatar_lin_xiao'),
+    name: '林晓',
+    age: 22,
+    gender: '女',
+    identity: '正在求职的应届毕业生',
+    description: '希望增加收入，了解部分反诈常识，但容易被即时收益吸引',
+    contextTime: '工作日晚上',
+    contextPlace: '租住的房间',
+    currentState: '正使用手机浏览信息和处理消息',
+    antiFraudAwareness: 'MEDIUM',
+    riskTendency: 'HIGH',
+    personalityTraits: '好奇、愿意尝试，犹豫时可能咨询朋友',
+  },
+  {
+    id: '22',
+    avatar: avatar('avatar_zhao_cheng'),
+    name: '赵诚',
+    age: 41,
+    gender: '男',
+    identity: '小型商店经营者',
+    description: '对自己的社会经验较有信心，忙碌时容易省略核实',
+    contextTime: '工作日晚上',
+    contextPlace: '家中书桌旁',
+    currentState: '正整理账目，并查看手机消息',
+    antiFraudAwareness: 'LOW',
+    riskTendency: 'MEDIUM',
+    personalityTraits: '果断、自信，对熟悉口吻容易放松警惕',
+  },
+  {
+    id: '23',
+    avatar: avatar('avatar_zhou_guilan'),
+    name: '周桂兰',
+    age: 66,
+    gender: '女',
+    identity: '退休会计',
+    description: '重视家庭、做事谨慎，通常会主动核实，但亲友情境可能带来压力',
+    contextTime: '工作日晚上',
+    contextPlace: '家中客厅',
+    currentState: '晚饭后休息，正查看手机消息',
+    antiFraudAwareness: 'HIGH',
+    riskTendency: 'LOW',
+    personalityTraits: '谨慎、有耐心，关心亲人',
+  },
+]
+
+// 每轮：骗子发言、受害者回应、解说；最后一轮带正式结局
+export const SCRIPTS = {
+  TASK_REBATE: [
+    {
+      scammer: '你好，我是某电商平台的店铺运营。现在招兼职刷单，动动手指就能赚佣金，一单返利百分之十，有兴趣了解一下吗？',
+      victim: '兼职？我最近正好在找工作，具体要做什么？',
+      analysis: {
+        fraudStage: '建立联系',
+        speechAnalysis: '以“轻松赚钱”吸引正在求职的对象，降低心理防备。',
+        methodAnalysis: '冒充平台运营人员，用高额返利作为诱饵。',
+        victimPsychology: '求职意愿强，对额外收入感兴趣，开始主动询问。',
+        riskScore: 50,
+        riskReason: '受害者表现出兴趣并主动询问细节，尚未承诺或付款。',
+      },
+    },
+    {
+      scammer: '很简单，你先垫付一单九十八元，完成后连本带利返你一百零七块八，第一单我手把手教你。',
+      victim: '要先垫钱啊……我听说先垫付的都是刷单诈骗，我得先问问我朋友。',
+      analysis: {
+        fraudStage: '诱导垫付',
+        speechAnalysis: '用小额、高返利让对方觉得风险低、回报快。',
+        methodAnalysis: '先要求垫付资金，是刷单返利诈骗的典型手法。',
+        victimPsychology: '想起反诈常识，产生怀疑并准备向朋友核实。',
+        riskScore: 25,
+        riskReason: '面对垫付要求保持警惕，暂停配合并计划核实。',
+      },
+    },
+    {
+      scammer: '名额有限，今天不做就没有了。很多人都赚到了，你看这是他们的收益截图。',
+      victim: '我朋友说这就是诈骗。我不做了，也不会给你转钱，别再联系我了。',
+      analysis: {
+        fraudStage: '制造紧迫',
+        speechAnalysis: '用“名额有限”和他人收益截图制造紧迫感与从众心理。',
+        methodAnalysis: '展示伪造的收益证明，催促对方立即行动。',
+        victimPsychology: '经朋友提醒确认是诈骗，明确拒绝并终止联系。',
+        riskScore: 0,
+        riskReason: '受害者明确拒绝转账并停止配合，没有实际受骗行为。',
+      },
+      outcome: {
+        code: 'NOT_DEFRAUDED',
+        displayText: '未受骗结束',
+        reason: '受害者核实后明确拒绝转账并终止联系，未发生实际受骗行为。',
+        limitReason: null,
+      },
+    },
+  ],
+  FAKE_INVESTMENT: [
+    {
+      scammer: '王老师带的投资群这周收益都在百分之三十以上，我给你开个体验账户，先投一点试试？',
+      victim: '这么高？那我先投一千块试试看。',
+      analysis: {
+        fraudStage: '诱导投资',
+        speechAnalysis: '以“老师带单”和远超正常水平的收益吸引对方。',
+        methodAnalysis: '通过体验账户降低首次投入门槛。',
+        victimPsychology: '被高收益吸引，自信能控制风险，愿意小额尝试。',
+        riskScore: 75,
+        riskReason: '受害者已承诺投入资金，尚未完成有效核实。',
+      },
+    },
+    {
+      scammer: '一千块已经到账了，你看后台显示已经赚了三百多。现在追加五万可以升级VIP通道。',
+      victim: '我刚才已经转了一千……先等等，我想先把这笔钱提现出来看看。',
+      analysis: {
+        fraudStage: '诱导加码',
+        speechAnalysis: '展示虚假盈利，引导对方追加大额投入。',
+        methodAnalysis: '后台数字由诈骗方控制，盈利无法真实提现。',
+        victimPsychology: '已实际转出一千元，对追加投入开始犹豫，尝试提现验证。',
+        riskScore: 25,
+        riskReason: '已转出首笔投资款，目前暂停追加并尝试通过提现进行核实。',
+      },
+    },
+    {
+      scammer: '提现需要先交百分之二十的解冻保证金，交了马上就能到账。',
+      victim: '提现还要先交钱？这肯定是骗局。我不会再转了，我现在就去报警。',
+      analysis: {
+        fraudStage: '索要费用',
+        speechAnalysis: '以“解冻保证金”为由继续索取资金。',
+        methodAnalysis: '提现前收费是虚假投资诈骗的关键环节。',
+        victimPsychology: '识破提现收费圈套，明确停止配合并准备报警。',
+        riskScore: 0,
+        riskReason: '已转出首笔款项，但明确停止配合并报警；首笔转账事实仍然保留。',
+      },
+      outcome: {
+        code: 'LOSS_STOPPED',
+        displayText: '受骗后止损',
+        reason: '受害者已投入首笔资金，在支付所谓解冻费用前明确停止并报警，关键目标未达成。',
+        limitReason: null,
+      },
+    },
+  ],
+  IMPERSONATION_LOAN: [
+    {
+      scammer: '妈，我是小军，手机掉水里了，这是我的新号。我这边出了点急事，你先别告诉爸。',
+      victim: '小军？你声音怎么有点不一样，出什么事了？',
+      analysis: {
+        fraudStage: '冒充身份',
+        speechAnalysis: '以“手机掉水里”解释陌生号码，并要求保密以阻断核实。',
+        methodAnalysis: '冒充亲属，利用亲情降低警惕。',
+        victimPsychology: '关心亲人，但对声音产生疑问。',
+        riskScore: 25,
+        riskReason: '受害者仍在接触但对身份存疑，尚未建立信任。',
+      },
+    },
+    {
+      scammer: '我同学住院急需两万押金，我的卡被冻结了，你先转给他，我明天就还你。',
+      victim: '要转给别人？你先别急，我给你原来的号码打个电话确认一下。',
+      analysis: {
+        fraudStage: '情感施压',
+        speechAnalysis: '编造紧急情况，要求向第三方账户转账。',
+        methodAnalysis: '收款人不是本人，是冒充亲友借款的典型特征。',
+        victimPsychology: '虽然着急，但坚持通过原号码独立核实。',
+        riskScore: 25,
+        riskReason: '面对转账要求，受害者暂停配合并通过独立渠道核实。',
+      },
+    },
+    {
+      scammer: '原来的号码打不通的！医院催得紧，再不交押金就来不及了！',
+      victim: '我刚给你爸打了电话，小军就在家里吃饭。你是骗子，我不会转钱的。',
+      analysis: {
+        fraudStage: '阻断核实',
+        speechAnalysis: '声称原号码无法接通，并再次催促，阻止对方核实。',
+        methodAnalysis: '持续制造时间压力。',
+        victimPsychology: '完成独立核实后识破冒充，明确拒绝。',
+        riskScore: 0,
+        riskReason: '完成独立核实后明确拒绝并终止互动，没有实际转账。',
+      },
+      outcome: {
+        code: 'NOT_DEFRAUDED',
+        displayText: '未受骗结束',
+        reason: '受害者通过独立渠道核实身份后识破冒充，拒绝转账，未发生实际受骗行为。',
+        limitReason: null,
+      },
+    },
+  ],
+}
