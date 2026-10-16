@@ -36,6 +36,10 @@ server:
     include-message: never
     include-stacktrace: never
 app:
+  content:
+    avatar-store: ${AVATAR_STORE:var}
+    startup-check:
+      enabled: true
   security:
     session-cookie-secure: true
   admin:

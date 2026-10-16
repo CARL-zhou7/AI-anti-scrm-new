@@ -4,6 +4,7 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import HomeView from '../views/HomeView.vue'
 import PlaceholderView from '../views/PlaceholderView.vue'
+import ConfigurationView from '../views/ConfigurationView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -12,7 +13,7 @@ const router = createRouter({
     { path: '/login', component: LoginView, meta: { title: '登录', public: true } },
     { path: '/register', component: RegisterView, meta: { title: '注册', public: true } },
     { path: '/home', component: HomeView, meta: { title: '首页', role: 'USER' } },
-    { path: '/configuration', component: PlaceholderView, props: { title: '场景画像配置' }, meta: { title: '开始体验', role: 'USER' } },
+    { path: '/configuration', component: ConfigurationView, meta: { title: '开始体验', role: 'USER' } },
     { path: '/history', component: PlaceholderView, props: { title: '个人历史' }, meta: { title: '个人历史', role: 'USER' } },
     { path: '/admin', component: PlaceholderView, props: { title: '管理后台' }, meta: { title: '管理后台', role: 'ADMIN' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },

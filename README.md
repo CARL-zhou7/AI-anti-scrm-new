@@ -1,6 +1,6 @@
-# AI反诈情景推演平台 · 第一阶段
+# AI反诈情景推演平台 · 第一、二阶段
 
-已实现登录注册与首页的前后端代码，对应 `coding plan/2026-10-17-phase1-auth-and-home.md` 和四份设计文档。接口以根目录 `openapi.yaml` 为准。
+已实现登录注册、首页和场景画像配置的前后端代码。接口以根目录 `openapi.yaml` 为准。
 
 设计文档集中在 `docs/`：
 
@@ -8,6 +8,7 @@
 - [系统架构设计文档 V1.0](docs/系统架构设计文档_V1.0.md)
 - [数据库设计文档 V1.0](<docs/数据库设计文档 V1.0.md>)
 - [接口文档 V1.0](docs/接口文档_V1.0.md)
+- [第二阶段场景画像配置开发计划](<coding plan/2026-10-17-phase2-scenario-profile-configuration.md>)
 
 ## 已实现范围
 
@@ -20,21 +21,66 @@
 | GET | `/auth/me` | 从 Session 获取当前账号 |
 | GET | `/home` | 服务端项目介绍、资讯状态和两个导航入口，仅 USER |
 | GET | `/news` | 固定空数组，仅 USER |
+| GET | `/scenarios` | 固定三场景，仅 USER |
+| GET | `/scammer-profiles` | 可用骗子画像，游标分页，仅 USER |
+| GET | `/scammer-profiles/{id}` | 可用骗子完整详情，仅 USER |
+| GET | `/victim-profiles` | 可用受害者画像，游标分页，仅 USER |
+| GET | `/victim-profiles/{id}` | 可用受害者完整详情，仅 USER |
+| GET | `/avatars/{key}` | 可用画像引用的受控头像，仅 USER |
 
-前端支持注册、登录、角色分流、刷新恢复登录态、退出、加载失败重试和移动端布局。`/configuration`、`/history`、`/admin` 为明确标注的后续阶段说明页，不调用未实现模块的接口。首页资讯为空，不使用虚构新闻。
+前端支持注册、登录、角色分流、刷新恢复登录态、退出、加载失败重试和移动端布局。`/configuration` 支持三场景、双方画像的自由选择、完整详情和确认、加载更多；所有内容来自服务端。头像加载失败会阻止开始，点击开始时重新请求双方详情，被停用项清除并要求重选。校验成功仅提示「开始演绎将在下一阶段开放」，不会发送 POST 或创建演绎。选中项只保存在页面内存中。`/history`、`/admin` 仍为后续阶段说明页。首页资讯为空。
 
-未实现演绎、配置业务、历史记录、报告、后台管理接口、真实资讯、短信/邮箱验证、密码找回和角色切换。数据库只创建 `sys_user`；Flyway 自身另有迁移记录表。
+未实现开始演绎、单场活动限制、历史记录、报告、后台管理接口、真实资讯、短信/邮箱验证、密码找回和角色切换。数据库现有 4 张业务表：`sys_user`、`fraud_scenario`、`scammer_profile`、`victim_profile`，外加 `flyway_schema_history`。没有后续模块的占位表或接口。
+
+## 第二阶段运行与验收
+
+配置页支持再次点击已选场景/画像取消该项、点击顶部「重新选择」清空全部选择（不重新请求数据）、通过浏览器刷新重新获取内容并清空选择；正常页面不再显示「重新加载」按钮，加载失败时保留重试入口。选择场景后，在受害者卡片右侧标注「推荐」：刷单返利对应未满35岁，虚假投资对应35—59岁，冒充亲友借款对应60岁及以上。这是用户确认的展示推荐规则，不自动选择、不限制组合、不改变人物属性；取消场景后移除推荐标签。
+
+启动方式与第一阶段相同。首次启动将自动执行新增的 V2 建表与 V3 初始化；V1 未修改，V3 仅插入三场景、两骗子和三受害者，不会在后续启动时覆盖文案。先备份目标库，再按下方本地启动说明运行后端与前端，普通用户登录后点击首页「开始体验」。
+
+头像文件位于 `backend/var/avatars/`，是按 PRD 特征绘制的五张虚构人物静态插画，需人工确认视觉效果。`tools/generate-avatars.py` 使用 Pillow 生成初始 PNG；相同输入得到相同哈希，已有文件不覆盖。数据库保存 `avatars/<SHA-256>.png`，接口返回纯 SHA-256 键及 `/anti.scam/v1/avatars/<SHA-256>`，符合 OpenAPI 的不透明键约束；不返回磁盘路径或带扩展名的 URL。换图应新增文件并通过新的迁移/后续管理模块更新引用，不修改已执行的 V3 或覆盖旧图。
+
+`app.content.avatar-store`（环境变量 `AVATAR_STORE`）指定包含 `avatars` 子目录的存储根，默认 `var`；仓库根目录启动时若没有 `var` 则使用 `backend/var`。部署 jar 时需一同部署头像目录，并推荐将 `AVATAR_STORE` 设为绝对路径。`app.content.startup-check.enabled` 默认 true，启动时校验三场景齐全、双方至少一项可用画像、全部可用头像的格式/解码/哈希；校验失败阻止启动。头像只能由 USER 读取，且必须仍被可用画像引用；历史快照的头像授权将在历史模块实现。
+
+列表默认 limit=20，范围 1—100，enabled 仅接受字面量 true。游标使用 HMAC 签名并绑定账号、接口及固定筛选/排序；当前单实例进程重启后旧游标失效，重新加载页面即可。多实例部署前需改为共享持久签名密钥。场景、详情与头像接口拒绝任何查询参数，列表拒绝未知/重复参数并返回对应字段错误。格式正确但超出当前 Java Long 标识范围的详情 ID 返回统一 404，格式错误返回 400。响应不泄露启停状态、版本或数据库时间字段。
+
+简要验证命令：
+
+```powershell
+cd backend
+.\mvnw.cmd package       # 单元/HTTP 冒烟测试并打包；不运行 Docker IT
+cd ../frontend
+npm.cmd test
+npm.cmd run build
+cd ..
+node tools/validate-openapi.mjs
+pwsh -NoProfile -File tools/smoke-content.ps1
+```
+
+最后一条需本地 MySQL 8.0.45 和 Java 21，可通过 `-MySqlBin`、`-Java` 指定路径。脚本只创建 `.tools/content-smoke-<随机值>` 下的隔离实例，使用端口 13308/18081，不连接现有业务库；结束时停止自己启动的进程，日志及隔离数据保留在该目录。端口须空闲。人工测试完成前不执行 git commit 或 push。
+
+2026-10-16 实际验收记录：
+
+- 后端 `package` 成功，10 项测试通过（其中新增 3 项覆盖游标签名/作用域、参数和头像），使用本机已有 Maven 3.9.11 与项目缓存；沙箱内编译器资源关闭失败后，在沙箱外成功完成。
+- 前端 9 项测试通过（新增 5 项），`vue-tsc` 和 Vite 生产构建通过。
+- OpenAPI 静态校验通过：第一阶段 7 项 + 第二阶段 6 项操作。
+- `tools/smoke-content.ps1` 在隔离 MySQL 8.0.45 上通过：V1→V3 迁移及 Hibernate validate、三场景五画像、六接口、分页、头像与缓存头、USER/ADMIN/匿名隔离、禁止写入、停用隐藏/统一404、仅四张业务表。未使用 Testcontainers，也未运行全量 `verify`。
+- 浏览器人工点击、移动端视觉及头像美术验收未执行；单场活动限制、正式开始演绎和后台修改影响的完整验收留到后续模块。
+- 配置交互调整后，前端 11 项测试及生产构建通过，新增简单检查覆盖单项取消、全部重选、重新加载和推荐年龄边界。
 
 ## 项目结构与锁定版本
 
 ```text
-backend/                  Spring Boot，auth/home/common 按职责分包
+backend/                  Spring Boot，auth/home/content/common 按职责分包
   .mvn/                   Maven Wrapper 和 HTTPS Central 配置
   docker-compose.yml      MySQL 开发实例，仅绑定本机
   src/main/resources/db/migration/V1__create_sys_user.sql
+  src/main/resources/db/migration/V2__create_content_tables.sql
+  src/main/resources/db/migration/V3__seed_content_data.sql
+  var/avatars/            五张内容寻址 PNG 头像
 frontend/                 Vue 3 + TypeScript + Router + Pinia + fetch
   src/api/                契约类型、HTTP、CSRF 和接口调用
-  src/views/              登录、注册、首页和后续模块说明页
+  src/views/              登录、注册、首页、场景画像配置和后续模块说明页
 tools/validate-openapi.mjs OpenAPI 静态校验
 ```
 

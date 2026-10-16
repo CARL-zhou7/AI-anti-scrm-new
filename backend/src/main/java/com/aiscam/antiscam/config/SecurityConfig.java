@@ -67,12 +67,19 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .securityContext(c -> c.securityContextRepository(context))
                 .authorizeHttpRequests(a -> a
+                        .requestMatchers(req -> req.getRequestURI().contains("..")
+                                || req.getRequestURI().contains("\\") || req.getRequestURI().indexOf('\0') >= 0).denyAll()
                         .requestMatchers("/anti.scam/v1/auth/csrf", "/anti.scam/v1/auth/login").permitAll()
                         .requestMatchers("/anti.scam/v1/auth/register").access((authentication, request) ->
                                 new org.springframework.security.authorization.AuthorizationDecision(
                                         authentication.get().getAuthorities().stream()
                                                 .noneMatch(role -> role.getAuthority().equals("ROLE_ADMIN"))))
                         .requestMatchers("/anti.scam/v1/home", "/anti.scam/v1/news").hasRole("USER")
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/anti.scam/v1/scenarios",
+                                "/anti.scam/v1/scammer-profiles/**", "/anti.scam/v1/victim-profiles/**",
+                                "/anti.scam/v1/avatars/**").hasRole("USER")
+                        .requestMatchers("/anti.scam/v1/scenarios", "/anti.scam/v1/scammer-profiles/**",
+                                "/anti.scam/v1/victim-profiles/**", "/anti.scam/v1/avatars/**").denyAll()
                         .requestMatchers("/anti.scam/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e
