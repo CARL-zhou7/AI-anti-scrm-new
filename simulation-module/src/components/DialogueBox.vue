@@ -25,7 +25,12 @@ const tagText = computed(() => {
 </script>
 
 <template>
-  <section class="sim-dialogue" :ref="(el) => boxRef?.(el)" aria-live="polite">
+  <section
+    class="sim-dialogue"
+    :class="message && (speaking || !waiting) ? `sim-dialogue--${message.speaker}` : null"
+    :ref="(el) => boxRef?.(el)"
+    aria-live="polite"
+  >
     <span v-if="tagText" class="sim-dialogue__tag" :class="message ? `sim-dialogue__tag--${message.speaker}` : 'sim-dialogue__tag--system'">
       {{ tagText }}
     </span>

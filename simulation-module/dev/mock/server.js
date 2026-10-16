@@ -1,17 +1,22 @@
 // 本地模拟后端（Vite 插件）：按接口文档实现演绎相关接口与 SSE，用固定剧本代替 Agent 与 TTS，
 // 便于前端在后端完成前联调动画、语音、回执与终态。仅用于开发，不并入主工程。
 //
-// 调试开关：POST /__mock/config { speed: 'normal'|'fast', fail: null|'audio'|'tts'|'avatar'|'animation', limitSeconds }
+// 调试开关：POST /__mock/config { speed: 'normal'|'fast', fail: null|'audio'|'tts'|'avatar'|'animation', limitSeconds, tts: 'auto'|'edge'|'tone' }
+// 语音：tts=auto 优先使用真实中文神经语音（需联网），不可用时退回提示音；GET /__mock/status 查看当前语音来源。
 
-import { AVATARS } from './avatars.js'
+import { readFileSync, existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { SCENARIOS, SCAMMERS, VICTIMS, SCRIPTS } from './data.js'
-import { synthesizeSpeechWav } from './wav.js'
+import { createTtsService } from './tts/index.js'
+import { assignVoices, withSpeed } from './tts/voiceProfiles.js'
 
 const PREFIX = '/anti.scam/v1'
+const AVATAR_DIR = fileURLToPath(new URL('../../assets/avatars/', import.meta.url))
 const CSRF_TOKEN = 'mock-csrf-token'
 const READING_MS = 5000
 
-const mock = { speed: 'normal', fail: null, limitSeconds: 600 }
+const mock = { speed: 'normal', fail: null, limitSeconds: 600, tts: 'auto' }
+const tts = createTtsService(() => mock)
 const sessions = new Map()
 const samples = new Map()
 let nextSessionId = 501
@@ -196,19 +201,30 @@ function generateMessage(s, speaker) {
     round.messages.push(msg)
     round.phase = speaker === 'SCAMMER' ? 'SCAMMER_GENERATING' : 'VICTIM_GENERATING'
     s.version++
-    // 文本已保存，模拟 TTS 合成
-    later(s, 300, () => {
+    // 文本已保存，合成该段语音；就绪后才发布 message.saved
+    synthesize(s, msg).then((audio) => {
       if (s.status !== 'RUNNING') return
-      if (mock.fail === 'tts' && round.roundNo === 2 && speaker === 'VICTIM') {
+      if (!audio || (mock.fail === 'tts' && round.roundNo === 2 && speaker === 'VICTIM')) {
         return interrupt(s, 'TTS_FAILED', '角色语音生成失败，本次演绎已中断。')
       }
-      msg.audio = synthesizeSpeechWav(msg.content, { speaker, msPerChar: pace().msPerChar, seed: Number(msg.id) })
+      msg.audio = audio
       msg.presentationStatus = 'PRESENTING'
       round.phase = speaker === 'SCAMMER' ? 'SCAMMER_PRESENTING' : 'VICTIM_PRESENTING'
       s.version++
       publish(s, 'message.saved', liveMessage(s, msg))
     })
   })
+}
+
+async function synthesize(s, msg) {
+  const { scammer, victim } = s.configuration
+  const voices = assignVoices(scammer, victim)
+  const profile = withSpeed(voices[msg.speaker], mock.speed === 'fast' ? 20 : 0)
+  try {
+    return await tts.synthesize(msg.content, { speaker: msg.speaker, profile, seed: Number(msg.id), msPerChar: pace().msPerChar })
+  } catch {
+    return null
+  }
 }
 
 function generateAnalysis(s) {
@@ -281,6 +297,7 @@ async function handle(req, res) {
     Object.assign(mock, await readBody(req))
     return ok(res, mock)
   }
+  if (path === '/__mock/status' && method === 'GET') return ok(res, { mock, tts: tts.status })
   if (!path.startsWith(PREFIX)) return false
   const p = path.slice(PREFIX.length)
   const isWrite = method === 'POST' || method === 'PUT'
@@ -289,17 +306,17 @@ async function handle(req, res) {
   let m
   if (p === '/auth/csrf') return ok(res, { token: CSRF_TOKEN, headerName: 'X-CSRF-TOKEN' })
   if (p === '/auth/me') return ok(res, { id: '101', username: 'demo_user', role: 'USER' })
-  if (p === '/scenarios') return ok(res, { items: SCENARIOS })
+  if (p === '/scenarios') return ok(res, SCENARIOS)
   if (p === '/scammer-profiles') return ok(res, { items: SCAMMERS, nextCursor: null, hasMore: false })
   if (p === '/victim-profiles') return ok(res, { items: VICTIMS, nextCursor: null, hasMore: false })
 
   if ((m = p.match(/^\/avatars\/([A-Za-z0-9_-]+)$/))) {
-    const svg = AVATARS[m[1]]
+    const file = `${AVATAR_DIR}${m[1]}.png`
     const brokenVictim = mock.fail === 'avatar' && VICTIMS.some((v) => v.avatar.key === m[1])
-    if (!svg || brokenVictim) return fail(res, 404, 'NOT_FOUND', '资源不存在或不可访问')
-    res.setHeader('Content-Type', 'image/svg+xml')
+    if (!existsSync(file) || brokenVictim) return fail(res, 404, 'NOT_FOUND', '资源不存在或不可访问')
+    res.setHeader('Content-Type', 'image/png')
     res.setHeader('Cache-Control', 'private, no-store')
-    return res.end(svg)
+    return res.end(readFileSync(file))
   }
 
   if (p === '/timing/samples' && method === 'GET') {
@@ -460,10 +477,11 @@ async function handle(req, res) {
       if (mock.fail === 'audio' && msg.roundNo === 2 && msg.speaker === 'VICTIM') return fail(res, 404, 'NOT_FOUND', '资源不存在或不可访问')
       if (s.status !== 'RUNNING' || msg.presentationStatus !== 'PRESENTING' || !msg.audio) return fail(res, 410, 'AUDIO_EXPIRED', '该消息语音已不可访问')
       res.statusCode = 200
-      res.setHeader('Content-Type', 'audio/wav')
+      res.setHeader('Content-Type', msg.audio.contentType)
       res.setHeader('Cache-Control', 'private, no-store')
-      res.setHeader('Content-Length', msg.audio.length)
-      return res.end(msg.audio)
+      res.setHeader('X-Content-Type-Options', 'nosniff')
+      res.setHeader('Content-Length', msg.audio.audio.length)
+      return res.end(msg.audio.audio)
     }
   }
 

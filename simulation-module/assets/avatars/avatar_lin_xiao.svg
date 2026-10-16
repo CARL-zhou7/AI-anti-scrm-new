@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500">
+  <defs>
+    <linearGradient id="lx-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde8d3"/><stop offset="1" stop-color="#f7c79c"/>
+    </linearGradient>
+    <radialGradient id="lx-skin" cx="0.45" cy="0.38" r="0.75">
+      <stop offset="0" stop-color="#fde3cf"/><stop offset="1" stop-color="#f3c9a8"/>
+    </radialGradient>
+    <linearGradient id="lx-cloth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7db6de"/><stop offset="1" stop-color="#4e93c4"/>
+    </linearGradient>
+    <linearGradient id="lx-hair" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#4c332c"/><stop offset="1" stop-color="#231816"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" fill="url(#lx-bg)"/>
+  <circle cx="200" cy="220" r="170" fill="#ffffff" opacity="0.28"/>
+  <path d="M262 140 C320 128 338 190 318 252 C306 290 296 320 300 352 C276 330 270 290 280 250 C288 214 282 178 262 160 Z" fill="url(#lx-hair)"/>
+  <path d="M170 300 L170 362 Q200 384 230 362 L230 300 Z" fill="#d9a080"/>
+  <ellipse cx="200" cy="318" rx="44" ry="16" fill="#000000" opacity="0.08"/>
+  <path d="M30 500 C40 412 96 372 172 360 Q200 378 228 360 C304 372 360 412 370 500 Z" fill="url(#lx-cloth)"/>
+  <path d="M164 362 Q200 392 236 362" stroke="#ffffff" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.9"/><path d="M120 440 l18 -8 l6 14 l-18 8 Z" fill="#ffd166"/>
+  
+    <ellipse cx="118" cy="232" rx="13" ry="20" fill="#f3c9a8"/>
+    <ellipse cx="282" cy="232" rx="13" ry="20" fill="#f3c9a8"/>
+    <ellipse cx="120" cy="234" rx="6" ry="10" fill="#d9a080" opacity="0.5"/>
+    <ellipse cx="280" cy="234" rx="6" ry="10" fill="#d9a080" opacity="0.5"/>
+    <path d="M200 134 C250 134 278 172 278 224 C278 274 250 318 200 324 C150 318 122 274 122 224 C122 172 150 134 200 134 Z" fill="url(#lx-skin)"/>
+    <ellipse cx="156" cy="268" rx="17" ry="9" fill="#f08c86" opacity="0.35"/><ellipse cx="244" cy="268" rx="17" ry="9" fill="#f08c86" opacity="0.35"/>
+    <path d="M182 210 Q165 202 148 212" stroke="#2b2026" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+    <path d="M218 210 Q235 202 252 212" stroke="#2b2026" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+    <g>
+    <path d="M150 236 Q165 223 180 236 Q165 245 150 236 Z" fill="#ffffff"/>
+    <clipPath id="clip-165-236"><path d="M150 236 Q165 223 180 236 Q165 245 150 236 Z"/></clipPath>
+    <g clip-path="url(#clip-165-236)">
+      <circle cx="165" cy="237" r="8.5" fill="#402b22"/>
+      <circle cx="165" cy="237" r="4.2" fill="#1b1416"/>
+      <circle cx="168" cy="234" r="2.4" fill="#ffffff"/>
+    </g>
+    <path d="M149 236.5 Q165 222 181 235" stroke="#2b2026" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+    <path d="M178 234 l6 -4 M175 231 l5 -5" stroke="#2b2026" stroke-width="2" stroke-linecap="round"/>
+  </g>
+    <g>
+    <path d="M220 236 Q235 223 250 236 Q235 245 220 236 Z" fill="#ffffff"/>
+    <clipPath id="clip-235-236"><path d="M220 236 Q235 223 250 236 Q235 245 220 236 Z"/></clipPath>
+    <g clip-path="url(#clip-235-236)">
+      <circle cx="235" cy="237" r="8.5" fill="#402b22"/>
+      <circle cx="235" cy="237" r="4.2" fill="#1b1416"/>
+      <circle cx="238" cy="234" r="2.4" fill="#ffffff"/>
+    </g>
+    <path d="M219 236.5 Q235 222 251 235" stroke="#2b2026" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+    <path d="M248 234 l6 -4 M245 231 l5 -5" stroke="#2b2026" stroke-width="2" stroke-linecap="round"/>
+  </g>
+    <path d="M201 246 Q196 268 204 274 Q200 277 194 274" stroke="#d9a080" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M178 286 Q200 312 222 286 Z" fill="#a8414a"/><path d="M184 288 Q200 296 216 288" fill="#ffffff"/>
+    
+  <path d="M118 228 C110 156 150 112 204 112 C258 112 292 152 284 224 C276 196 266 176 250 164 C236 180 214 188 196 184 C176 190 160 182 150 170 C134 186 124 204 118 228 Z" fill="url(#lx-hair)"/><circle cx="270" cy="150" r="10" fill="#e8596b"/>
+  
+</svg>

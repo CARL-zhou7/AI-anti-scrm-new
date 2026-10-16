@@ -10,6 +10,26 @@ export const simulationApi = {
     return request('GET', '/auth/me').then((r) => r.data)
   },
 
+  /** API-08 固定三场景（数组） */
+  listScenarios() {
+    return request('GET', '/scenarios').then((r) => r.data)
+  },
+
+  /** API-09 / API-11 可用画像：按游标读完全部页 */
+  async listProfiles(kind) {
+    const path = kind === 'scammer' ? '/scammer-profiles' : '/victim-profiles'
+    const items = []
+    let cursor = ''
+    for (let page = 0; page < 50; page++) {
+      const query = cursor ? `?limit=100&cursor=${enc(cursor)}` : '?limit=100'
+      const { data } = await request('GET', path + query)
+      items.push(...data.items)
+      if (!data.hasMore || !data.nextCursor) break
+      cursor = data.nextCursor
+    }
+    return items
+  },
+
   /** API-42 点击计时采样 */
   getTimingSample() {
     return request('GET', '/timing/samples').then((r) => r.data)

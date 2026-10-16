@@ -19,7 +19,7 @@ const tier = computed(() => (props.score === null ? null : RISK_TIERS[props.scor
     <div class="sim-risk__head">
       <span v-if="score === null" class="sim-risk__score sim-risk__score--empty">尚未评分</span>
       <template v-else>
-        <span class="sim-risk__score">{{ score }}</span>
+        <span class="sim-risk__score sim-num">{{ score }}</span>
         <span class="sim-risk__label">{{ tier?.label }}</span>
       </template>
     </div>

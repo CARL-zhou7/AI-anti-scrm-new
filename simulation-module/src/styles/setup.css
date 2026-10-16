@@ -1,0 +1,310 @@
+/* 场景画像配置页样式（与演绎页共用 .sim-root 的颜色与字体变量） */
+
+.sim-root.sim-setup {
+  display: block;
+  padding: 36px 40px 48px;
+}
+.sim-setup__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto 28px;
+}
+.sim-setup__eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  color: var(--sim-text-faint);
+}
+.sim-setup__title {
+  margin: 6px 0 8px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.sim-setup__lead {
+  margin: 0;
+  max-width: 640px;
+  color: var(--sim-text-dim);
+  font-size: 15px;
+}
+.sim-setup__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 28px;
+  max-width: 1280px;
+  margin: 0 auto;
+  align-items: start;
+}
+.sim-setup__section + .sim-setup__section {
+  margin-top: 28px;
+}
+.sim-setup__h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.sim-setup__h2 small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--sim-text-faint);
+}
+.sim-setup__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+}
+.sim-setup__grid--scenario {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* 选择卡 */
+.sim-pick {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1.5px solid var(--sim-line);
+  background: var(--sim-surface);
+  color: var(--sim-text);
+  text-align: left;
+  box-shadow: var(--sim-shadow);
+  transition:
+    border-color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+.sim-pick:hover {
+  border-color: var(--sim-line-strong);
+  transform: translateY(-1px);
+}
+.sim-pick:focus-visible {
+  outline: 2px solid var(--sim-scammer);
+  outline-offset: 2px;
+}
+.sim-pick.is-selected {
+  border-color: var(--pick-color, var(--sim-text));
+  box-shadow: 0 0 0 3px var(--pick-ring, rgba(28, 35, 51, 0.08)), var(--sim-shadow);
+}
+.sim-pick.is-selected::after {
+  content: '已选';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--pick-color, var(--sim-text));
+  color: #fff;
+  font-size: 12px;
+}
+.sim-pick__name {
+  font-size: 17px;
+  font-weight: 700;
+}
+.sim-pick__desc {
+  color: var(--sim-text-dim);
+  font-size: 13px;
+}
+.sim-pick__meta {
+  font-size: 13px;
+  color: var(--sim-text-dim);
+}
+
+.sim-pick--scenario {
+  --pick-color: var(--pick-accent);
+  --pick-ring: color-mix(in srgb, var(--pick-accent) 18%, transparent);
+  padding-top: 20px;
+  overflow: hidden;
+}
+.sim-pick--scenario::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background: var(--pick-accent);
+}
+.sim-pick__tag {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: #f1f3f8;
+  color: var(--sim-text-dim);
+  font-size: 12px;
+}
+
+.sim-pick--person {
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.sim-pick--scammer {
+  --pick-color: var(--sim-scammer);
+  --pick-ring: rgba(89, 72, 212, 0.14);
+}
+.sim-pick--victim {
+  --pick-color: var(--sim-victim);
+  --pick-ring: rgba(210, 122, 34, 0.16);
+}
+.sim-pick__avatar {
+  width: 96px;
+  height: 120px;
+  border-radius: 48px 48px 12px 12px;
+  object-fit: cover;
+  background: #eef0f5;
+}
+.sim-pick__info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.sim-pick__levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 2px;
+}
+.sim-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--sim-text-dim);
+}
+.sim-level b {
+  font-weight: 600;
+  color: var(--sim-text);
+}
+.sim-level__dots {
+  display: inline-flex;
+  gap: 2px;
+}
+.sim-level__dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e3e6ef;
+}
+.sim-level__dots i.is-on {
+  background: var(--pick-color);
+}
+.sim-pick__trait,
+.sim-pick__context {
+  font-size: 12px;
+  color: var(--sim-text-dim);
+}
+.sim-pick__context {
+  color: var(--sim-text-faint);
+}
+
+/* 右侧配置摘要 */
+.sim-setup__summary {
+  position: sticky;
+  top: 20px;
+}
+.sim-summary__cast {
+  display: grid;
+  grid-template-columns: 1fr 52px 1fr;
+  align-items: center;
+  margin: 6px 0 14px;
+}
+.sim-summary__person {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.sim-summary__person img,
+.sim-summary__empty {
+  width: 72px;
+  height: 90px;
+  border-radius: 36px 36px 10px 10px;
+  object-fit: cover;
+  border: 3px solid #fff;
+  box-shadow: 0 6px 16px rgba(28, 35, 51, 0.12);
+}
+.sim-summary__empty {
+  display: grid;
+  place-items: center;
+  background: #f1f3f8;
+  color: var(--sim-text-faint);
+  font-size: 22px;
+}
+.sim-summary__person.is-scammer span:last-child {
+  color: var(--sim-scammer);
+}
+.sim-summary__person.is-victim span:last-child {
+  color: var(--sim-victim);
+}
+.sim-summary__link {
+  height: 2px;
+  background: repeating-linear-gradient(90deg, rgba(28, 35, 51, 0.25) 0 5px, transparent 5px 10px);
+}
+.sim-summary__scenario {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f6f7fb;
+  font-size: 13px;
+  color: var(--sim-text-dim);
+}
+.sim-summary__scenario b {
+  color: var(--sim-text);
+}
+.sim-summary__rules {
+  margin: 0 0 16px;
+  padding-left: 18px;
+  color: var(--sim-text-dim);
+  font-size: 12px;
+  display: grid;
+  gap: 4px;
+}
+.sim-summary__start {
+  width: 100%;
+  justify-content: center;
+  padding: 11px 16px;
+  font-size: 16px;
+}
+.sim-summary__hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--sim-text-faint);
+  text-align: center;
+}
+.sim-summary__error {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fdf1f1;
+  color: #b4363b;
+  font-size: 13px;
+}
+.sim-link-btn {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sim-scammer);
+  text-decoration: underline;
+}
+
+@media (max-width: 1100px) {
+  .sim-setup__body {
+    grid-template-columns: 1fr;
+  }
+  .sim-setup__summary {
+    position: static;
+  }
+  .sim-setup__grid--scenario {
+    grid-template-columns: 1fr;
+  }
+}

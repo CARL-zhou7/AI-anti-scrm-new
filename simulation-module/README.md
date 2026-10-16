@@ -7,6 +7,7 @@
 
 | 需求 | 实现 |
 |---|---|
+| FR-CFG-01～04 配置（可选） | `SimulationSetupPage`：三场景、双方人物完整详情（基础信息、行为参数、时间地点状态）、本次配置摘要与开始入口；所选人物停用时提示重选 |
 | FR-SIM-01 开场 | 场景名称/简介、双方人物入场动画；风险显示“尚未评分”；完成后提交 API-17 回执 |
 | FR-SIM-02 顺序呈现 | 只呈现服务端已保存且 `PRESENTING` 的消息，骗子→受害者，用户只观看 |
 | FR-SIM-03 基础动画 | 静态立绘 + 通用待机（呼吸）/ 说话（起伏、光晕、声波）动画；当前发言角色高亮，对方变暗；适用于任意上传头像 |
@@ -16,6 +17,8 @@
 | 媒体故障 | 头像/文字/动画/语音加载/播放失败分别上报 `AVATAR_LOAD_FAILED`、`TEXT_RENDER_FAILED`、`ANIMATION_FAILED`、`AUDIO_LOAD_FAILED`、`AUDIO_PLAYBACK_FAILED`，不降级为纯文字继续 |
 | 退出 | “退出演绎”二次确认后 API-20；页面内导航离开自动退出；关闭/刷新用 keepalive 尽力通知，刷新后的页面补发 `REFRESH` 并显示中断，不续演 |
 | 计时 | 配置页预取 API-42 样本，点击“开始”时记录单调时钟，按冻结协议提交 `StartRequest.timing` |
+
+舞台顶部的“警示灯带”随已呈现的风险档位变色（未评分为灰色），不看右侧面板也能感知风险变化。
 
 说话动画在浏览器支持 Web Audio 时随语音音量变化（静音用 GainNode 实现，静音时动画仍跟随语音节奏）；不支持时退回固定节奏动画。
 
@@ -30,7 +33,8 @@ simulation-module/
 │   ├── composables/             useSimulation（演绎页）、useSimulationStarter（配置页开始按钮）
 │   ├── components/              SimulationPage 及其子组件
 │   └── styles/simulation.css    全部样式（类名、keyframes 均以 sim- 为前缀）
-├── dev/                         仅本地联调：模拟后端（Vite 插件）、示意头像、演示外壳
+├── assets/avatars/              五位初始人物头像（PRD §11.3 描述）：SVG 源文件 + 800×1000 PNG，供初始化数据/管理员上传
+├── dev/                         仅本地联调：模拟后端（Vite 插件）、联调 TTS、演示外壳
 └── tests/                       单元测试（vitest）
 ```
 
@@ -70,7 +74,8 @@ simulation-module/
    }
    ```
 
-   按钮可用状态绑定 `starter.canStart`。开始成功后会在 sessionStorage 标记“本标签页发起”，演绎页据此区分正常进入、刷新与其他标签页打开。
+   按钮可用状态绑定 `starter.canStart`。如果主工程还没有配置页，可以直接使用模块自带的 `SimulationSetupPage`
+   （`@started="(id) => router.push({ name: 'simulation', params: { id } })"`），它已经包含上面的开始逻辑。开始成功后会在 sessionStorage 标记“本标签页发起”，演绎页据此区分正常进入、刷新与其他标签页打开。
 
 4. 若主工程已有 CSRF / 登录态管理，在应用启动时注入：
 
@@ -96,6 +101,23 @@ npm run dev      # http://127.0.0.1:5173 ，自带模拟后端（固定剧本 + 
 npm test         # 单元测试
 ```
 
+### 角色语音
+
+模拟后端的语音来源（右下角“联调选项”可切换，也可用 `?tts=` 参数）：
+
+| 模式 | 说明 |
+|---|---|
+| `auto`（默认） | 调用 Microsoft Edge 朗读服务的中文神经语音，返回 MP3；需要本机能访问互联网。不可用时退回本地提示音，右下角会显示原因 |
+| `edge` | 只用真实语音，失败时按 `TTS_FAILED` 中断，用来验证中断流程 |
+| `tone` | 只用本地提示音（离线时使用） |
+
+双方音色按人物分配（`dev/mock/tts/voiceProfiles.js`）：陈启明 云扬（沉稳男声）、梁悦 晓伊、林晓 晓晓、赵诚 云健、周桂兰 晓晓（放慢语速、降低音高）；管理员新增的人物按性别和年龄自动分配，双方撞音色时自动调整音高。
+如果需要走代理，设置环境变量 `HTTPS_PROXY` 后再 `npm run dev`。
+
+Edge 朗读服务不是官方商用接口，只用于开发与演示。正式环境的语音由后端负责：后端在保存消息后调用选定的云端 TTS（架构文档 §3.2，供应商待定），把 MP3 通过 API-21 提供给前端；音色分配可沿用 `voiceProfiles.js` 的规则。前端代码不需要任何改动。
+
+### 联调参数
+
 演示页可通过 URL 参数控制模拟后端：`?speed=fast`（加快节奏）、`?fail=audio|tts|avatar|animation`（故障注入）、`?limit=30`（缩短时长上限）。
 模拟后端只用于前端联调，返回字段与接口文档一致，但不代表真实后端行为；音频用 WAV 代替 MP3。
 
@@ -106,7 +128,7 @@ npm test         # 单元测试
 - **V-03 / TBD-07**：真实 Chrome/Edge 目标版本下的 MP3 播放、自动播放策略、后台标签页、静音切换仍需实测。浏览器阻止有声自动播放时，本模块会切换为静音继续，并明确提示用户可重新开启声音；这一处理需要和产品确认。
 - **TBD-01a / V-02**：计时样本有效期、可接受误差由后端锁定；前端在样本剩余不足 5 秒时拒绝使用并重新采样。
 - **TBD-05**：刷新/关闭识别目前是 keepalive 退出通知 + 刷新后补发 `REFRESH`；失联判定由服务端负责。
-- **素材**：五张初始头像需按 PRD §11.3 描述制作（`dev/mock/avatars.js` 只是示意简笔画）；场景背景目前是 CSS 绘制，可替换为插画素材。
+- **素材**：`assets/avatars/` 已按 PRD §11.3 描述绘制五张初始头像（修改 `characters.js` 后执行 `node assets/avatars/render.mjs` 重新生成 PNG）；如有正式美术稿可直接替换同名 PNG。场景背景目前是 CSS 绘制。
 
 ## 与“《拣爱》式 2D 动画”讨论的关系
 

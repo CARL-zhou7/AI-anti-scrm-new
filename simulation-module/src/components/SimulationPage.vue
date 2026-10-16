@@ -9,7 +9,7 @@ import DialogueBox from './DialogueBox.vue'
 import CommentaryPanel from './CommentaryPanel.vue'
 import ResultOverlay from './ResultOverlay.vue'
 import { useSimulation } from '../composables/useSimulation.js'
-import { MAX_ROUNDS, SCENARIO_THEMES, SIMULATION_LIMIT_SECONDS, SimulationStatus } from '../core/constants.js'
+import { MAX_ROUNDS, RISK_TIERS, SCENARIO_THEMES, SIMULATION_LIMIT_SECONDS, SimulationStatus } from '../core/constants.js'
 
 const props = defineProps({
   id: { type: [String, Number], required: true },
@@ -66,6 +66,13 @@ const overlay = computed(() => {
   return null
 })
 
+// 警示灯带：跟随已呈现的最新风险档位；未评分时为中性灰
+const alert = computed(() => {
+  const score = sim.latestAnalysis.value?.riskScore ?? null
+  if (score === null) return { score: null, label: '风险：尚未评分', color: null }
+  return { score, label: `风险 ${score} · ${RISK_TIERS[score].label}`, color: `var(--sim-risk-${score})` }
+})
+
 async function confirmExit() {
   await sim.exit('NAVIGATION')
   confirmingExit.value = false
@@ -90,6 +97,7 @@ async function confirmExit() {
           <div class="sim-timebar__fill" :style="{ width: timePercent + '%' }"></div>
         </div>
         <div class="sim-topbar__title">
+          <span class="sim-topbar__eyebrow">AI 情景演绎</span>
           <span class="sim-topbar__scenario">{{ config.scenario.name }}</span>
           <span class="sim-chip" :class="{ 'sim-chip--live': running && !ui.deadlineReached }">{{ sim.phaseLabel.value }}</span>
           <span v-if="ui.connection === 'reconnecting'" class="sim-chip sim-chip--warn">连接恢复中</span>
@@ -97,11 +105,11 @@ async function confirmExit() {
         <div class="sim-topbar__spacer"></div>
         <div class="sim-topbar__stat">
           <span class="sim-topbar__stat-label">轮次</span>
-          <span class="sim-topbar__stat-value">{{ state.currentRoundNo || 0 }} / {{ MAX_ROUNDS }}</span>
+          <span class="sim-topbar__stat-value sim-num">{{ state.currentRoundNo || 0 }} / {{ MAX_ROUNDS }}</span>
         </div>
         <div class="sim-topbar__stat">
           <span class="sim-topbar__stat-label">剩余时间</span>
-          <span class="sim-topbar__stat-value" :class="{ 'is-low': ui.remainingMs !== null && ui.remainingMs < 60000 }">{{ remainingText }}</span>
+          <span class="sim-topbar__stat-value sim-num" :class="{ 'is-low': ui.remainingMs !== null && ui.remainingMs < 60000 }">{{ remainingText }}</span>
         </div>
         <button
           class="sim-btn sim-btn--sound"
@@ -110,7 +118,12 @@ async function confirmExit() {
           :title="ui.muted ? '开启声音' : '关闭声音'"
           @click="sim.toggleMute()"
         >
-          {{ ui.muted ? '声音：关' : '声音：开' }}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H3v6h3l5 4z" />
+            <template v-if="ui.muted"><path d="m17 9 5 6M22 9l-5 6" /></template>
+            <template v-else><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" /></template>
+          </svg>
+          {{ ui.muted ? '声音已关' : '声音已开' }}
         </button>
         <button v-if="running" class="sim-btn sim-btn--danger" type="button" :disabled="ui.exiting" @click="confirmingExit = true">退出演绎</button>
       </header>
@@ -119,6 +132,14 @@ async function confirmExit() {
         <div v-if="ui.notice" class="sim-notice" role="status">{{ ui.notice }}</div>
 
         <section class="sim-stage" aria-label="情景演绎舞台">
+          <div
+            class="sim-alert"
+            :class="{ 'is-pending': alert.score === null, 'is-hot': alert.score !== null && alert.score >= 75 }"
+            :style="alert.color ? { '--sim-alert': alert.color } : null"
+            role="status"
+          >
+            <span class="sim-alert__label">{{ alert.label }}</span>
+          </div>
           <div class="sim-stage__scenes">
             <CharacterFigure
               side="scammer"
@@ -151,7 +172,7 @@ async function confirmExit() {
                 <h2 class="sim-opening__title">{{ config.scenario.name }}</h2>
                 <p class="sim-opening__desc">{{ config.scenario.description }}</p>
                 <div class="sim-opening__focus">
-                  {{ config.scammer.name }}（骗子） 与 {{ config.victim.name }}（受害者）
+                  <b class="is-scammer">骗子 {{ config.scammer.name }}</b> 正在联系 <b class="is-victim">受害者 {{ config.victim.name }}</b>
                   <template v-if="ui.opening === 'pending'"> · 准备中…</template>
                 </div>
               </div>

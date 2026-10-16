@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" width="400" height="500">
+  <defs>
+    <linearGradient id="zc-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbe3cc"/><stop offset="1" stop-color="#eab98c"/>
+    </linearGradient>
+    <radialGradient id="zc-skin" cx="0.45" cy="0.38" r="0.75">
+      <stop offset="0" stop-color="#f0c9a6"/><stop offset="1" stop-color="#dfac83"/>
+    </radialGradient>
+    <linearGradient id="zc-cloth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6f9a7b"/><stop offset="1" stop-color="#4f7a5c"/>
+    </linearGradient>
+    <linearGradient id="zc-hair" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#4a3d34"/><stop offset="1" stop-color="#231c18"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="500" fill="url(#zc-bg)"/>
+  <circle cx="200" cy="220" r="170" fill="#ffffff" opacity="0.28"/>
+  
+  <path d="M170 300 L170 362 Q200 384 230 362 L230 300 Z" fill="#bd8460"/>
+  <ellipse cx="200" cy="318" rx="44" ry="16" fill="#000000" opacity="0.08"/>
+  <path d="M30 500 C40 412 96 372 172 360 Q200 378 228 360 C304 372 360 412 370 500 Z" fill="url(#zc-cloth)"/>
+  <g opacity="0.35" stroke="#21392a" stroke-width="3"><path d="M60 430 H340 M48 470 H352 M110 380 V500 M160 372 V500 M240 372 V500 M290 380 V500"/></g><path d="M162 360 L200 404 L238 360 L230 352 L200 384 L170 352 Z" fill="#f2efe4"/><path d="M200 384 V500" stroke="#2f4a37" stroke-width="2"/>
+  
+    <ellipse cx="118" cy="232" rx="13" ry="20" fill="#dfac83"/>
+    <ellipse cx="282" cy="232" rx="13" ry="20" fill="#dfac83"/>
+    <ellipse cx="120" cy="234" rx="6" ry="10" fill="#bd8460" opacity="0.5"/>
+    <ellipse cx="280" cy="234" rx="6" ry="10" fill="#bd8460" opacity="0.5"/>
+    <path d="M200 128 C260 128 288 168 288 224 C288 284 254 332 200 336 C146 332 112 284 112 224 C112 168 140 128 200 128 Z" fill="url(#zc-skin)"/>
+    
+    <path d="M182 213 Q165 205 148 215" stroke="#2b2026" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+    <path d="M218 213 Q235 205 252 215" stroke="#2b2026" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+    <g>
+    <path d="M150 236 Q165 224 180 236 Q165 245 150 236 Z" fill="#ffffff"/>
+    <clipPath id="clip-165-236"><path d="M150 236 Q165 224 180 236 Q165 245 150 236 Z"/></clipPath>
+    <g clip-path="url(#clip-165-236)">
+      <circle cx="165" cy="237" r="8.5" fill="#4a3128"/>
+      <circle cx="165" cy="237" r="4.2" fill="#1b1416"/>
+      <circle cx="168" cy="234" r="2.4" fill="#ffffff"/>
+    </g>
+    <path d="M149 236.5 Q165 223 181 235" stroke="#2b2026" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+    
+  </g>
+    <g>
+    <path d="M220 236 Q235 224 250 236 Q235 245 220 236 Z" fill="#ffffff"/>
+    <clipPath id="clip-235-236"><path d="M220 236 Q235 224 250 236 Q235 245 220 236 Z"/></clipPath>
+    <g clip-path="url(#clip-235-236)">
+      <circle cx="235" cy="237" r="8.5" fill="#4a3128"/>
+      <circle cx="235" cy="237" r="4.2" fill="#1b1416"/>
+      <circle cx="238" cy="234" r="2.4" fill="#ffffff"/>
+    </g>
+    <path d="M219 236.5 Q235 223 251 235" stroke="#2b2026" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+    
+  </g>
+    <path d="M201 246 Q196 268 204 274 Q200 277 194 274" stroke="#bd8460" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M174 290 Q200 308 226 290" stroke="#8c4a40" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path d="M140 290 C150 322 176 336 200 337 C224 336 250 322 260 290" stroke="#8a6650" stroke-width="2" fill="none" stroke-dasharray="1 5" stroke-linecap="round" opacity="0.6"/>
+  <path d="M112 210 C108 146 146 106 204 106 C260 106 294 146 290 210 C284 186 274 168 260 160 C230 150 176 148 142 160 C128 172 118 190 112 210 Z" fill="url(#zc-hair)"/>
+  
+</svg>

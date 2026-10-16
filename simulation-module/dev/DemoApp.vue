@@ -1,14 +1,14 @@
 <script setup>
 // 本地联调外壳（不并入主工程）：用 hash 路由模拟“配置页 → 演绎页 → 复盘页/历史页”的跳转，
-// 配置页只是为了能点“开始演绎”，真实配置页由配置模块实现。
-import { onMounted, onBeforeUnmount, reactive, ref, watch, computed } from 'vue'
-import { SimulationPage, useSimulationStarter } from '../src/index.js'
+// 右下角“联调选项”控制模拟后端（节奏、故障注入、时长上限、语音来源）。
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { SimulationPage, SimulationSetupPage } from '../src/index.js'
 
 const route = ref(parse())
 function parse() {
   const h = location.hash.replace(/^#/, '') || '/'
   const m = h.match(/^\/(sim|report|history)\/(\d+)$/)
-  return m ? { name: m[1], id: m[2] } : { name: 'config' }
+  return m ? { name: m[1], id: m[2] } : { name: 'setup' }
 }
 function go(hash) {
   location.hash = hash
@@ -17,13 +17,17 @@ const onHash = () => (route.value = parse())
 onMounted(() => window.addEventListener('hashchange', onHash))
 onBeforeUnmount(() => window.removeEventListener('hashchange', onHash))
 
-// 调试选项通过 URL 查询参数传入，例如 ?speed=fast&fail=audio&limit=40
+// 调试选项也可通过 URL 查询参数传入，例如 ?speed=fast&fail=audio&limit=40&tts=tone
 const params = new URLSearchParams(location.search)
 const mockOptions = reactive({
   speed: params.get('speed') || 'normal',
   fail: params.get('fail') || '',
   limitSeconds: Number(params.get('limit') || 600),
+  tts: params.get('tts') || 'auto',
 })
+const panelOpen = ref(false)
+const ttsStatus = ref(null)
+
 async function applyMock() {
   await fetch('/__mock/config', {
     method: 'POST',
@@ -31,34 +35,46 @@ async function applyMock() {
     body: JSON.stringify({ ...mockOptions, fail: mockOptions.fail || null }),
   })
 }
+async function refreshStatus() {
+  try {
+    const body = await fetch('/__mock/status').then((r) => r.json())
+    ttsStatus.value = body.data.tts
+  } catch {
+    ttsStatus.value = null
+  }
+}
 watch(mockOptions, applyMock, { deep: true })
 onMounted(applyMock)
-// “人物动画失效”故障注入：直接让人物动画不运行，检验 ANIMATION_FAILED 上报
-const breakAnimation = computed(() => mockOptions.fail === 'animation')
-const breakStyle = document.createElement('style')
-breakStyle.textContent = '.sim-figure__body { animation: none !important; }'
-watch(breakAnimation, (on) => (on ? document.head.appendChild(breakStyle) : breakStyle.remove()), { immediate: true })
+const statusTimer = setInterval(refreshStatus, 3000)
+onBeforeUnmount(() => clearInterval(statusTimer))
 
-const lists = reactive({ scenarios: [], scammers: [], victims: [] })
-const pick = reactive({ scenarioId: '1', scammerProfileId: '11', victimProfileId: '21' })
-onMounted(async () => {
-  const get = (p) => fetch('/anti.scam/v1' + p).then((r) => r.json()).then((b) => b.data.items)
-  ;[lists.scenarios, lists.scammers, lists.victims] = await Promise.all([get('/scenarios'), get('/scammer-profiles'), get('/victim-profiles')])
+const ttsLabel = computed(() => {
+  const s = ttsStatus.value
+  if (!s || !s.provider) return '尚未合成语音'
+  if (s.provider === 'edge') return '真实语音（Edge 中文神经语音）'
+  return s.degraded ? `提示音（真实语音不可用：${s.lastError}）` : '提示音'
 })
 
-const starter = useSimulationStarter()
-const startMessage = ref('')
-async function onStart() {
-  const result = await starter.start({ ...pick })
-  if (result.ok) return go(`/sim/${result.sessionId}`)
-  startMessage.value = result.message
-  if (result.activeSessionId) startMessage.value += `（进行中的演绎：${result.activeSessionId}）`
-}
+// “人物动画失效”故障注入：直接让人物动画不运行，检验 ANIMATION_FAILED 上报
+const breakStyle = document.createElement('style')
+breakStyle.textContent = '.sim-figure__body { animation: none !important; }'
+watch(
+  () => mockOptions.fail === 'animation',
+  (on) => (on ? document.head.appendChild(breakStyle) : breakStyle.remove()),
+  { immediate: true },
+)
 </script>
 
 <template>
+  <SimulationSetupPage
+    v-if="route.name === 'setup'"
+    @started="(id) => go(`/sim/${id}`)"
+    @active="(id) => go(`/sim/${id}`)"
+    @home="go('/')"
+  />
+
   <SimulationPage
-    v-if="route.name === 'sim'"
+    v-else-if="route.name === 'sim'"
     :key="route.id"
     :id="route.id"
     :timing="mockOptions.speed === 'fast' ? { openingMs: 1600 } : null"
@@ -66,103 +82,84 @@ async function onStart() {
     @history="(id) => go(`/history/${id}`)"
     @restart="go('/')"
     @home="go('/')"
-    @unauthenticated="startMessage = '请重新登录'"
   />
 
-  <div v-else-if="route.name === 'report' || route.name === 'history'" class="demo-shell">
+  <div v-else class="demo-placeholder">
     <h1>{{ route.name === 'report' ? '复盘页' : '历史详情页' }}（演绎 {{ route.id }}）</h1>
-    <p>此页面由{{ route.name === 'report' ? '分析复盘' : '历史记录' }}模块实现，这里只是联调占位。</p>
+    <p>这个页面由{{ route.name === 'report' ? '分析复盘' : '历史记录' }}模块实现，这里只是联调占位。</p>
     <button type="button" @click="go('/')">回到配置页</button>
   </div>
 
-  <div v-else class="demo-shell">
-    <h1>AI情景演绎 · 本地联调</h1>
-    <p class="demo-hint">真实配置页由“场景画像配置”模块实现；这里只提供选择与“开始演绎”按钮，用来驱动演绎模块与模拟后端。</p>
-
-    <section>
-      <h2>场景</h2>
-      <label v-for="s in lists.scenarios" :key="s.id" class="demo-option">
-        <input v-model="pick.scenarioId" type="radio" :value="s.id" /> {{ s.name }} <small>{{ s.focus }}</small>
-      </label>
-    </section>
-    <section>
-      <h2>骗子画像</h2>
-      <label v-for="p in lists.scammers" :key="p.id" class="demo-option">
-        <input v-model="pick.scammerProfileId" type="radio" :value="p.id" /> <img :src="p.avatar.url" alt="" /> {{ p.name }}
-      </label>
-    </section>
-    <section>
-      <h2>受害者画像</h2>
-      <label v-for="p in lists.victims" :key="p.id" class="demo-option">
-        <input v-model="pick.victimProfileId" type="radio" :value="p.id" /> <img :src="p.avatar.url" alt="" /> {{ p.name }}
-      </label>
-    </section>
-    <section>
-      <h2>模拟后端选项</h2>
-      <label class="demo-option">节奏
+  <div class="demo-dev" :class="{ 'is-open': panelOpen }">
+    <button class="demo-dev__toggle" type="button" @click="panelOpen = !panelOpen">联调选项 {{ panelOpen ? '▾' : '▴' }}</button>
+    <div v-if="panelOpen" class="demo-dev__body">
+      <label>节奏
         <select v-model="mockOptions.speed"><option value="normal">正常</option><option value="fast">快速</option></select>
       </label>
-      <label class="demo-option">故障注入
+      <label>语音来源
+        <select v-model="mockOptions.tts">
+          <option value="auto">自动（真实语音，失败用提示音）</option>
+          <option value="edge">仅真实语音（失败按 TTS 故障中断）</option>
+          <option value="tone">仅提示音</option>
+        </select>
+      </label>
+      <label>故障注入
         <select v-model="mockOptions.fail">
           <option value="">无</option>
-          <option value="audio">第2轮受害者语音加载失败</option>
-          <option value="tts">第2轮受害者 TTS 失败（服务端）</option>
+          <option value="audio">第 2 轮受害者语音加载失败</option>
+          <option value="tts">第 2 轮受害者 TTS 失败（服务端）</option>
           <option value="avatar">受害者头像加载失败</option>
           <option value="animation">人物动画失效</option>
         </select>
       </label>
-      <label class="demo-option">时长上限（秒）<input v-model.number="mockOptions.limitSeconds" type="number" min="10" max="600" /></label>
-    </section>
-
-    <button type="button" class="demo-start" :disabled="!starter.canStart.value" @click="onStart">
-      {{ starter.phase.value === 'starting' ? '正在开始…' : starter.phase.value === 'preparing' ? '准备中…' : '开始演绎' }}
-    </button>
-    <p v-if="startMessage || starter.errorMessage.value" class="demo-error">{{ startMessage || starter.errorMessage.value }}</p>
+      <label>时长上限（秒）<input v-model.number="mockOptions.limitSeconds" type="number" min="10" max="600" /></label>
+    </div>
+    <div class="demo-dev__status">语音：{{ ttsLabel }}</div>
   </div>
 </template>
 
 <style>
-.demo-shell {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 32px 24px;
-  color: #e9ebf3;
+.demo-placeholder {
+  max-width: 640px;
+  margin: 80px auto;
+  padding: 0 24px;
+  color: #1c2333;
   font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
 }
-.demo-shell h2 {
-  font-size: 15px;
-  margin: 22px 0 8px;
-  color: #a9aec0;
+.demo-dev {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 100;
+  width: 300px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #e3e6ef;
+  box-shadow: 0 8px 24px rgba(28, 35, 51, 0.12);
+  font: 12px/1.5 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  color: #5e6678;
 }
-.demo-hint {
-  color: #a9aec0;
-}
-.demo-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 14px 4px 0;
-}
-.demo-option img {
-  width: 28px;
-  height: 34px;
-  border-radius: 6px;
-  object-fit: cover;
-}
-.demo-start {
-  margin-top: 28px;
-  padding: 10px 28px;
-  border-radius: 10px;
+.demo-dev__toggle {
   border: 0;
-  background: #e8a33d;
-  font-size: 16px;
+  background: none;
+  padding: 0;
+  font: inherit;
   font-weight: 600;
+  color: #1c2333;
   cursor: pointer;
 }
-.demo-start[disabled] {
-  opacity: 0.5;
+.demo-dev__body {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
 }
-.demo-error {
-  color: #ff9a8a;
+.demo-dev__body label {
+  display: grid;
+  gap: 2px;
+}
+.demo-dev__status {
+  margin-top: 4px;
+  word-break: break-all;
 }
 </style>
