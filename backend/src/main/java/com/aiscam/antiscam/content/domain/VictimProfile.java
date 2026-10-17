@@ -59,4 +59,29 @@ public class VictimProfile {
     public Level getRiskTendency() { return riskTendency; }
     public String getPersonalityTraits() { return personalityTraits; }
     public Byte getEnabled() { return enabled; }
+
+    public VictimProfile(VictimProfileValues values) {
+        apply(values);
+        enabled = 1;
+    }
+
+    public void apply(VictimProfileValues values) {
+        name = values.name();
+        age = values.age();
+        gender = values.gender();
+        identity = values.identity();
+        description = values.description();
+        contextTime = values.contextTime();
+        contextPlace = values.contextPlace();
+        currentState = values.currentState();
+        antiFraudAwareness = values.antiFraudAwareness();
+        riskTendency = values.riskTendency();
+        personalityTraits = values.personalityTraits();
+        avatarKey = values.avatarKey();
+    }
+    public void setEnabled(boolean value) { enabled = (byte) (value ? 1 : 0); }
+    public boolean isEnabled() { return enabled == 1; }
+    public int getRowVersion() { return rowVersion; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
 }

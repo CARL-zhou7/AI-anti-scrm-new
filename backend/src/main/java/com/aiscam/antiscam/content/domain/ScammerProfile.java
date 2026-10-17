@@ -63,4 +63,30 @@ public class ScammerProfile {
     public Level getManipulationSkill() { return manipulationSkill; }
     public String getBehaviorTraits() { return behaviorTraits; }
     public Byte getEnabled() { return enabled; }
+
+    public ScammerProfile(ScammerProfileValues values) {
+        apply(values);
+        enabled = 1;
+    }
+
+    public void apply(ScammerProfileValues values) {
+        name = values.name();
+        age = values.age();
+        gender = values.gender();
+        identity = values.identity();
+        description = values.description();
+        contextTime = values.contextTime();
+        contextPlace = values.contextPlace();
+        currentState = values.currentState();
+        fraudExperience = values.fraudExperience();
+        speechSkill = values.speechSkill();
+        manipulationSkill = values.manipulationSkill();
+        behaviorTraits = values.behaviorTraits();
+        avatarKey = values.avatarKey();
+    }
+    public void setEnabled(boolean value) { enabled = (byte) (value ? 1 : 0); }
+    public boolean isEnabled() { return enabled == 1; }
+    public int getRowVersion() { return rowVersion; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
 }

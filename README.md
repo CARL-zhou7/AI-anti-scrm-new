@@ -1,6 +1,6 @@
-# AI反诈情景推演平台 · 第一、二阶段
+# AI反诈情景推演平台 · 第一至三阶段
 
-已实现登录注册、首页和场景画像配置的前后端代码。接口以根目录 `openapi.yaml` 为准。
+已实现登录注册、首页、场景画像配置与管理后台的前后端代码。接口以根目录 `openapi.yaml` 为准。
 
 设计文档集中在 `docs/`：
 
@@ -9,6 +9,7 @@
 - [数据库设计文档 V1.0](<docs/数据库设计文档 V1.0.md>)
 - [接口文档 V1.0](docs/接口文档_V1.0.md)
 - [第二阶段场景画像配置开发计划](<coding plan/2026-10-17-phase2-scenario-profile-configuration.md>)
+- [第三阶段管理后台开发计划](<coding plan/2026-10-17-phase3-admin-console.md>)
 
 ## 已实现范围
 
@@ -28,9 +29,9 @@
 | GET | `/victim-profiles/{id}` | 可用受害者完整详情，仅 USER |
 | GET | `/avatars/{key}` | 可用画像引用的受控头像，仅 USER |
 
-前端支持注册、登录、角色分流、刷新恢复登录态、退出、加载失败重试和移动端布局。`/configuration` 支持三场景、双方画像的自由选择、完整详情和确认、加载更多；所有内容来自服务端。头像加载失败会阻止开始，点击开始时重新请求双方详情，被停用项清除并要求重选。校验成功仅提示「开始演绎将在下一阶段开放」，不会发送 POST 或创建演绎。选中项只保存在页面内存中。`/history`、`/admin` 仍为后续阶段说明页。首页资讯为空。
+前端支持注册、登录、角色分流、刷新恢复登录态、退出、加载失败重试和移动端布局。`/configuration` 支持三场景、双方画像的自由选择、完整详情和确认、加载更多；所有内容来自服务端。头像加载失败会阻止开始，点击开始时重新请求双方详情，被停用项清除并要求重选。校验成功仅提示「开始演绎将在下一阶段开放」，不会发送 POST 或创建演绎。选中项只保存在页面内存中。`/history` 仍为后续阶段说明页，`/admin` 已接入管理后台。首页资讯为空。
 
-未实现开始演绎、单场活动限制、历史记录、报告、后台管理接口、真实资讯、短信/邮箱验证、密码找回和角色切换。数据库现有 4 张业务表：`sys_user`、`fraud_scenario`、`scammer_profile`、`victim_profile`，外加 `flyway_schema_history`。没有后续模块的占位表或接口。
+未实现开始演绎、单场活动限制、历史记录、报告、真实资讯、短信/邮箱验证、密码找回和角色切换。数据库现有 4 张业务表：`sys_user`、`fraud_scenario`、`scammer_profile`、`victim_profile`，外加 `flyway_schema_history`。没有后续模块的占位表或接口。
 
 ## 第二阶段运行与验收
 
@@ -40,7 +41,7 @@
 
 头像文件位于 `backend/var/avatars/`，是按 PRD 特征绘制的五张虚构人物静态插画，需人工确认视觉效果。`tools/generate-avatars.py` 使用 Pillow 生成初始 PNG；相同输入得到相同哈希，已有文件不覆盖。数据库保存 `avatars/<SHA-256>.png`，接口返回纯 SHA-256 键及 `/anti.scam/v1/avatars/<SHA-256>`，符合 OpenAPI 的不透明键约束；不返回磁盘路径或带扩展名的 URL。换图应新增文件并通过新的迁移/后续管理模块更新引用，不修改已执行的 V3 或覆盖旧图。
 
-`app.content.avatar-store`（环境变量 `AVATAR_STORE`）指定包含 `avatars` 子目录的存储根，默认 `var`；仓库根目录启动时若没有 `var` 则使用 `backend/var`。部署 jar 时需一同部署头像目录，并推荐将 `AVATAR_STORE` 设为绝对路径。`app.content.startup-check.enabled` 默认 true，启动时校验三场景齐全、双方至少一项可用画像、全部可用头像的格式/解码/哈希；校验失败阻止启动。头像只能由 USER 读取，且必须仍被可用画像引用；历史快照的头像授权将在历史模块实现。
+`app.content.avatar-store`（环境变量 `AVATAR_STORE`）指定包含 `avatars` 子目录的存储根，默认 `var`；仓库根目录启动时若没有 `var` 则使用 `backend/var`。部署 jar 时需一同部署头像目录，并推荐将 `AVATAR_STORE` 设为绝对路径。`app.content.startup-check.enabled` 默认 true，启动时校验三场景齐全、双方至少一项可用画像、全部可用头像的格式/解码/哈希；校验失败阻止启动。用户头像接口只能由 USER 读取，且必须仍被可用画像引用；历史快照的头像授权将在历史模块实现。
 
 列表默认 limit=20，范围 1—100，enabled 仅接受字面量 true。游标使用 HMAC 签名并绑定账号、接口及固定筛选/排序；当前单实例进程重启后旧游标失效，重新加载页面即可。多实例部署前需改为共享持久签名密钥。场景、详情与头像接口拒绝任何查询参数，列表拒绝未知/重复参数并返回对应字段错误。格式正确但超出当前 Java Long 标识范围的详情 ID 返回统一 404，格式错误返回 400。响应不泄露启停状态、版本或数据库时间字段。
 
@@ -68,10 +69,59 @@ pwsh -NoProfile -File tools/smoke-content.ps1
 - 浏览器人工点击、移动端视觉及头像美术验收未执行；单场活动限制、正式开始演绎和后台修改影响的完整验收留到后续模块。
 - 配置交互调整后，前端 11 项测试及生产构建通过，新增简单检查覆盖单项取消、全部重选、重新加载和推荐年龄边界。
 
+## 第三阶段：管理后台
+
+按 [第三阶段开发计划](<coding plan/2026-10-17-phase3-admin-console.md>) 实现 18 项 ADMIN 接口（含后续新增的双方画像删除接口），沿用当前四张业务表，没有新增或修改迁移脚本。启动方式不变，使用预开通管理员登录后进入 `/admin`。
+
+| 页面 | 功能 |
+|---|---|
+| `/admin/scenarios` | 修改三个固定场景的名称和简介 |
+| `/admin/scammers` | 分页查看、新增、编辑、启用和停用骗子画像 |
+| `/admin/victims` | 分页查看、新增、编辑、启用和停用受害者画像 |
+
+统一接口前缀 `/anti.scam/v1`。写请求需要会话和 CSRF，普通用户禁止访问后台接口，管理员禁止访问用户内容接口。后台不提供用户演绎与报告查看；演绎、复盘、历史仍未实现。
+
+| 方法 | 地址 | 用途 |
+|---|---|---|
+| GET | `/admin/scenarios` | 场景列表 |
+| PUT | `/admin/scenarios/{id}` | 编辑场景 |
+| GET | `/admin/scammer-profiles` | 列表骗子画像 |
+| POST | `/admin/scammer-profiles` | 新增骗子画像 |
+| GET | `/admin/scammer-profiles/{id}` | 详情骗子画像 |
+| PUT | `/admin/scammer-profiles/{id}` | 编辑骗子画像 |
+| POST | `/admin/scammer-profiles/{id}/disable` | 停用骗子画像 |
+| POST | `/admin/scammer-profiles/{id}/enable` | 启用骗子画像 |
+| GET | `/admin/victim-profiles` | 列表受害者画像 |
+| POST | `/admin/victim-profiles` | 新增受害者画像 |
+| GET | `/admin/victim-profiles/{id}` | 详情受害者画像 |
+| PUT | `/admin/victim-profiles/{id}` | 编辑受害者画像 |
+| POST | `/admin/victim-profiles/{id}/disable` | 停用受害者画像 |
+| POST | `/admin/victim-profiles/{id}/enable` | 启用受害者画像 |
+| DELETE | `/admin/scammer-profiles/{id}` | 删除骗子画像 |
+| DELETE | `/admin/victim-profiles/{id}` | 删除受害者画像 |
+| POST | `/admin/avatars` | 上传头像 |
+| GET | `/admin/avatars/{key}` | 后台预览头像 |
+
+保存使用版本号，版本冲突时保留输入并提供手动重新读取，不自动覆盖或重试写入。重复启用/停用不增加版本；每类至少保留一个启用画像，并通过数据库行锁保护并发停用。删除需确认并提交当前版本，最后一个可用画像不能删除；删除永久移除画像记录，头像文件保留以免影响共享引用。编辑表单在原卡片位置展开。头像选择统一使用「上传头像」，选图后可确认上传或取消恢复原头像。管理员可查看停用画像，普通用户只能看到启用画像；编辑不会改变启停状态。
+
+头像必须先上传并成功预览才能保存画像，支持真实可解码的静态 JPG/PNG，最多 5 MiB。上传按 SHA-256 寻址，不覆盖已有文件；管理员可预览未引用的图片，用户仅能读取启用画像引用的图片。为避免图片解码耗尽内存，当前最多接受 1600 万像素，超出返回 INVALID_IMAGE。长文本按开发计划暂限 16000 个 Unicode 码点（TBD-09 待正式确认）。存储根仍使用 `AVATAR_STORE`，后台预览读取同一目录；`spring.servlet.multipart.max-file-size=5MB`、`max-request-size=6MB` 为文件和 multipart 请求上限。头像文件需与数据库一同备份；未引用文件的自动清理未纳入本阶段。
+
+2026-10-17 验证结果：后端 12 项测试与打包通过，前端 14 项测试与生产构建通过；OpenAPI 静态校验通过（7 + 6 + 16 项操作），隔离 MySQL 管理后台冒烟通过。
+
+简单验证：后端 `package`、前端 `npm test` / `npm run build`、`node tools/validate-openapi.mjs`。真实数据库冒烟使用：
+
+```powershell
+pwsh -NoProfile -File tools/smoke-admin.ps1
+```
+
+脚本需要 PowerShell 7.5+、MySQL 8.0.45 和 Java 21，使用独立端口 13309/18082，在 `.tools/admin-smoke-<随机值>` 内创建数据库和头像存储；不连接现有业务库，结束后关闭自己的进程并保留日志。覆盖角色隔离、CSRF、版本冲突、并发停用、双方画像写入和用户可见性、头像上传边界。未执行压力测试、全量 Testcontainers 或浏览器人工验收。本阶段代码保留在工作区，待人工验收后再提交 GitHub。
+
+人工检查建议：管理员登录 → 修改场景 → 新增双方画像并上传头像 → 编辑/启停 → 双窗口产生版本冲突并重新读取 → 普通用户确认配置页内容和推荐展示。
+
 ## 项目结构与锁定版本
 
 ```text
-backend/                  Spring Boot，auth/home/content/common 按职责分包
+backend/                  Spring Boot，auth/home/content/admin/common 按职责分包
   .mvn/                   Maven Wrapper 和 HTTPS Central 配置
   docker-compose.yml      MySQL 开发实例，仅绑定本机
   src/main/resources/db/migration/V1__create_sys_user.sql
@@ -191,7 +241,7 @@ $env:ADMIN_USERNAME = Read-Host '管理员用户名'
 $env:ADMIN_PASSWORD = Read-Host '管理员密码（6—24字符）' -MaskInput
 ```
 
-两项均未设置时不创建管理员；配置有效且该名字不存在时创建 ADMIN。重复启动不改写已有管理员密码或角色；如果该名字已被 USER 占用，拒绝启动并提示更换配置，避免静默提权。初次创建后可移除这两个环境变量。管理员共用登录页，进入 `/admin` 说明页；访问用户首页和资讯接口均为 403。
+两项均未设置时不创建管理员；配置有效且该名字不存在时创建 ADMIN。重复启动不改写已有管理员密码或角色；如果该名字已被 USER 占用，拒绝启动并提示更换配置，避免静默提权。初次创建后可移除这两个环境变量。管理员共用登录页，进入 `/admin` 管理后台；访问用户首页和资讯接口均为 403。
 
 ### 后续新增或修改管理员
 

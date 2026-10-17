@@ -1,0 +1,92 @@
+import { afterEach, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { adminApi } from '../api/admin'
+import { ApiError, http } from '../api/http'
+import { csrf } from '../api/csrf'
+import AdminScenariosView from '../views/AdminScenariosView.vue'
+import AvatarUploader from '../components/AvatarUploader.vue'
+
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
+
+it('keeps unsaved scenario text on conflict until explicit reload', async () => {
+  const row = { id: '1', code: 'TASK_REBATE' as const, name: '原名称', description: '简介', focus: '青年', version: 0, createdAt: '2026-10-17T00:00:00.000Z', updatedAt: '2026-10-17T00:00:00.000Z' }
+  const list = vi.spyOn(adminApi, 'listScenarios').mockResolvedValue([row])
+  const save = vi.spyOn(adminApi, 'updateScenario').mockRejectedValue(new ApiError(409, 'VERSION_CONFLICT', '冲突', [], 1))
+  const wrapper = mount(AdminScenariosView, { global: { stubs: { RouterLink: true } } })
+  await flushPromises()
+  await wrapper.get('[data-testid=scenario-edit]').trigger('click')
+  await wrapper.get('#scenario-name').setValue('未保存名称')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(save).toHaveBeenCalledExactlyOnceWith('1', { name: '未保存名称', description: '简介', version: 0 })
+  expect(wrapper.get<HTMLInputElement>('#scenario-name').element.value).toBe('未保存名称')
+  expect(wrapper.get('[data-testid=scenario-save]').attributes('disabled')).toBeDefined()
+  list.mockResolvedValue([{ ...row, name: '最新名称', version: 1 }])
+  await wrapper.get('[data-testid=version-conflict-reload]').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('最新名称')
+  expect(save).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
+})
+
+it('requires upload and successful server preview before avatar is ready', async () => {
+  vi.stubGlobal('URL', { createObjectURL: () => 'blob:preview', revokeObjectURL: vi.fn() })
+  vi.spyOn(adminApi, 'uploadAvatar').mockResolvedValue({ key: 'hash', previewUrl: '/admin/avatar/hash', mediaType: 'image/png', sizeBytes: 3 })
+  const wrapper = mount(AvatarUploader, { props: { avatarKey: '', previewUrl: '', disabled: false } })
+  const input = wrapper.get('input')
+  Object.defineProperty(input.element, 'files', { value: [new File(['png'], 'avatar.png', { type: 'image/png' })] })
+  await input.trigger('change')
+  await wrapper.get('img').trigger('load')
+  expect(wrapper.emitted('ready')?.at(-1)).toEqual([false])
+  await wrapper.get('[data-testid=avatar-upload]').trigger('click')
+  await flushPromises()
+  expect(wrapper.emitted('uploaded')).toHaveLength(1)
+  await wrapper.setProps({ avatarKey: 'hash', previewUrl: '/admin/avatar/hash' })
+  await wrapper.get('img').trigger('load')
+  expect(wrapper.emitted('ready')?.at(-1)).toEqual([true])
+  await wrapper.get('img').trigger('error')
+  expect(wrapper.emitted('ready')?.at(-1)).toEqual([false])
+  wrapper.unmount()
+})
+
+it('sends CSRF on PUT and multipart without replaying a failed write', async () => {
+  vi.spyOn(csrf, 'ensure').mockResolvedValue('csrf-token')
+  const refresh = vi.spyOn(csrf, 'refresh').mockResolvedValue('new-token')
+  const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ code: 'OK', data: {} }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ code: 'CSRF_INVALID', message: '重试', data: {} }), { status: 403 }))
+  vi.stubGlobal('fetch', fetchMock)
+  await http.put('/admin/scenarios/1', { version: 0 })
+  expect(fetchMock.mock.calls[0]![1]).toMatchObject({ method: 'PUT', headers: { 'X-CSRF-TOKEN': 'csrf-token', 'Content-Type': 'application/json' } })
+  const body = new FormData()
+  body.append('file', new File(['png'], 'avatar.png'))
+  await expect(http.postForm('/admin/avatars', body)).rejects.toMatchObject({ code: 'CSRF_INVALID' })
+  expect(fetchMock.mock.calls[1]![1]).toMatchObject({ method: 'POST', body, headers: { 'X-CSRF-TOKEN': 'csrf-token' } })
+  expect(fetchMock.mock.calls[1]![1].headers).not.toHaveProperty('Content-Type')
+  expect(refresh).toHaveBeenCalledTimes(1)
+  expect(fetchMock).toHaveBeenCalledTimes(2)
+})
+
+it('opens file selection from upload and cancels the pending preview without uploading', async () => {
+  const revoke = vi.fn()
+  vi.stubGlobal('URL', { createObjectURL: () => 'blob:pending', revokeObjectURL: revoke })
+  const upload = vi.spyOn(adminApi, 'uploadAvatar')
+  const wrapper = mount(AvatarUploader, { props: { avatarKey: 'original', previewUrl: '/original.png', disabled: false } })
+  const input = wrapper.get<HTMLInputElement>('input')
+  const pick = vi.spyOn(input.element, 'click').mockImplementation(() => {})
+  expect(input.attributes('hidden')).toBeDefined()
+  await wrapper.get('[data-testid=avatar-upload]').trigger('click')
+  expect(pick).toHaveBeenCalledTimes(1)
+  Object.defineProperty(input.element, 'files', { value: [new File(['png'], 'new.png', { type: 'image/png' })] })
+  await input.trigger('change')
+  expect(wrapper.get('img').attributes('src')).toBe('blob:pending')
+  expect(wrapper.get('[data-testid=avatar-upload]').text()).toBe('确认上传')
+  await wrapper.get('[data-testid=avatar-cancel]').trigger('click')
+  expect(wrapper.get('img').attributes('src')).toBe('/original.png')
+  await wrapper.get('img').trigger('load')
+  expect(wrapper.emitted('ready')?.at(-1)).toEqual([true])
+  expect(wrapper.get('[data-testid=avatar-upload]').text()).toBe('上传头像')
+  expect(revoke).toHaveBeenCalledWith('blob:pending')
+  expect(upload).not.toHaveBeenCalled()
+  expect(wrapper.emitted('uploaded')).toBeUndefined()
+  wrapper.unmount()
+})

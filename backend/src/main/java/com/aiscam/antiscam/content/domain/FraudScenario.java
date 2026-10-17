@@ -28,4 +28,9 @@ public class FraudScenario {
     public ScenarioCode getScenarioCode() { return scenarioCode; }
     public String getName() { return name; }
     public String getDescription() { return description; }
+
+    public void rename(String name, String description) { this.name = name; this.description = description; }
+    public int getRowVersion() { return rowVersion; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
 }

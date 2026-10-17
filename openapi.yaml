@@ -6274,6 +6274,100 @@ paths:
               avatarKey: avatar_example_01
       x-csrf-required: true
   /admin/scammer-profiles/{id}:
+    delete:
+      tags: [管理]
+      summary: 删除骗子画像
+      operationId: adminDeleteScammer
+      description: 管理员确认后永久删除画像记录，保留头像文件。检查版本并串行保护同类最后一个可用画像；不存在返回404。
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      x-access-roles: [ADMIN]
+      x-csrf-required: true
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: 已删除
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [code, message, data, requestId]
+                properties:
+                  code:
+                    type: string
+                    enum: [OK]
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required: [deleted]
+                    properties:
+                      deleted:
+                        type: boolean
+                        enum: [true]
+        '400':
+          description: VALIDATION_FAILED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: VERSION_CONFLICT / LAST_ENABLED_PROFILE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: SERVICE_UNAVAILABLE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       tags:
       - 管理
@@ -7593,6 +7687,100 @@ paths:
               avatarKey: avatar_example_01
       x-csrf-required: true
   /admin/victim-profiles/{id}:
+    delete:
+      tags: [管理]
+      summary: 删除受害者画像
+      operationId: adminDeleteVictim
+      description: 管理员确认后永久删除画像记录，保留头像文件。检查版本并串行保护同类最后一个可用画像；不存在返回404。
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      x-access-roles: [ADMIN]
+      x-csrf-required: true
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionRequest'
+      responses:
+        '200':
+          description: 已删除
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [code, message, data, requestId]
+                properties:
+                  code:
+                    type: string
+                    enum: [OK]
+                  message:
+                    type: string
+                  requestId:
+                    type: string
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required: [deleted]
+                    properties:
+                      deleted:
+                        type: boolean
+                        enum: [true]
+        '400':
+          description: VALIDATION_FAILED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: VERSION_CONFLICT / LAST_ENABLED_PROFILE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: SERVICE_UNAVAILABLE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       tags:
       - 管理

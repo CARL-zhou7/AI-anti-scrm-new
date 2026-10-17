@@ -52,3 +52,19 @@ export type Profile = ScammerProfilePayload | VictimProfilePayload
 export interface ProfilePage<T> { items: T[]; nextCursor: string | null; hasMore: boolean }
 export type ScammerPagePayload = ProfilePage<ScammerProfilePayload>
 export type VictimPagePayload = ProfilePage<VictimProfilePayload>
+
+export interface ContentVersion { version: number; createdAt: string; updatedAt: string }
+export interface AdminScenario extends Scenario, ContentVersion {}
+export interface AdminScammerProfile extends ScammerProfilePayload, ContentVersion { enabled: boolean }
+export interface AdminVictimProfile extends VictimProfilePayload, ContentVersion { enabled: boolean }
+export type AdminProfile = AdminScammerProfile | AdminVictimProfile
+export type ProfileKind = 'scammer' | 'victim'
+export type ScammerWrite = Omit<ScammerProfilePayload, 'id' | 'avatar'> & { avatarKey: string }
+export type VictimWrite = Omit<VictimProfilePayload, 'id' | 'avatar'> & { avatarKey: string }
+export interface AvatarUpload { key: string; previewUrl: string; mediaType: string; sizeBytes: number }
+export interface ProfileFormValues {
+  name: string; age: number | ''; gender: string; identity: string; description: string
+  contextTime: string; contextPlace: string; currentState: string; avatarKey: string
+  fraudExperience: Level; speechSkill: Level; manipulationSkill: Level; behaviorTraits: string
+  antiFraudAwareness: Level; riskTendency: Level; personalityTraits: string
+}

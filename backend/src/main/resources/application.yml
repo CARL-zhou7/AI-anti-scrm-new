@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   config:
     import:
       - optional:file:./.env[.properties]
@@ -23,6 +27,8 @@ spring:
     deserialization:
       fail-on-unknown-properties: true
 server:
+  tomcat:
+    max-swallow-size: -1
   servlet:
     session:
       tracking-modes: cookie

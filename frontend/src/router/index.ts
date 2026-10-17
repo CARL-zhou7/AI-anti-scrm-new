@@ -5,6 +5,10 @@ import RegisterView from '../views/RegisterView.vue'
 import HomeView from '../views/HomeView.vue'
 import PlaceholderView from '../views/PlaceholderView.vue'
 import ConfigurationView from '../views/ConfigurationView.vue'
+import AdminHomeView from '../views/AdminHomeView.vue'
+import AdminScenariosView from '../views/AdminScenariosView.vue'
+import AdminScammersView from '../views/AdminScammersView.vue'
+import AdminVictimsView from '../views/AdminVictimsView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -15,7 +19,10 @@ const router = createRouter({
     { path: '/home', component: HomeView, meta: { title: '首页', role: 'USER' } },
     { path: '/configuration', component: ConfigurationView, meta: { title: '开始体验', role: 'USER' } },
     { path: '/history', component: PlaceholderView, props: { title: '个人历史' }, meta: { title: '个人历史', role: 'USER' } },
-    { path: '/admin', component: PlaceholderView, props: { title: '管理后台' }, meta: { title: '管理后台', role: 'ADMIN' } },
+    { path: '/admin', component: AdminHomeView, meta: { title: '管理后台', role: 'ADMIN' } },
+    { path: '/admin/scenarios', component: AdminScenariosView, meta: { title: '场景管理', role: 'ADMIN' } },
+    { path: '/admin/scammers', component: AdminScammersView, meta: { title: '骗子画像管理', role: 'ADMIN' } },
+    { path: '/admin/victims', component: AdminVictimsView, meta: { title: '受害者画像管理', role: 'ADMIN' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),

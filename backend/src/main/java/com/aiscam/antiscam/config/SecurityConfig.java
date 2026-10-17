@@ -81,6 +81,8 @@ public class SecurityConfig {
                         .requestMatchers("/anti.scam/v1/scenarios", "/anti.scam/v1/scammer-profiles/**",
                                 "/anti.scam/v1/victim-profiles/**", "/anti.scam/v1/avatars/**").denyAll()
                         .requestMatchers("/anti.scam/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/anti.scam/v1/simulations/**", "/anti.scam/v1/history/**",
+                                "/anti.scam/v1/timing/**").hasRole("USER")
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) -> writeError(mapper, req, res, 401,

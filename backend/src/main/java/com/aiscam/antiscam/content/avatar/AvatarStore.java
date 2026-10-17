@@ -5,6 +5,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.LinkOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -44,6 +46,50 @@ public class AvatarStore {
             throw ApiException.notFound();
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    public String storedKey(String publicKey) {
+        AvatarKey.validatePublicKey(publicKey);
+        if (!publicKey.matches("[0-9a-f]{64}")) throw ApiException.notFound();
+        for (String extension : new String[]{"png", "jpg"}) {
+            String key = "avatars/" + publicKey + "." + extension;
+            try { load(key); return key; }
+            catch (ApiException e) { if (e.status != 404) throw e; }
+        }
+        throw ApiException.notFound();
+    }
+
+    public synchronized String store(byte[] bytes) {
+        String extension = AvatarImage.extension(bytes);
+        Path temporary = null;
+        try {
+            String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+            String key = "avatars/" + hash + "." + extension;
+            Files.createDirectories(directory);
+            Path root = directory.toRealPath();
+            Path folder = root.resolve("avatars");
+            Files.createDirectories(folder);
+            folder = folder.toRealPath();
+            if (!folder.startsWith(root)) throw new IOException();
+            Path target = folder.resolve(hash + "." + extension);
+            if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
+                if (!Arrays.equals(load(key).bytes(), bytes)) throw new IOException();
+                return key;
+            }
+            temporary = Files.createTempFile(folder, ".upload-", ".tmp");
+            Files.write(temporary, bytes);
+            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE);
+            load(key);
+            return key;
+        } catch (IOException e) {
+            throw new ApiException(503, "SERVICE_UNAVAILABLE", "头像暂时无法保存，请稍后重试");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        } finally {
+            if (temporary != null) {
+                try { Files.deleteIfExists(temporary); } catch (IOException ignored) { /* No published avatar is deleted. */ }
+            }
         }
     }
 }
