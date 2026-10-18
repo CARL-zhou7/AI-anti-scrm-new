@@ -13,4 +13,7 @@ public interface FraudScenarioRepository extends Repository<FraudScenario, Long>
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from FraudScenario s where s.id = :id")
     Optional<FraudScenario> lockById(@Param("id") long id);
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select s from FraudScenario s where s.id = :id")
+    Optional<FraudScenario> shareLockById(@Param("id") long id);
 }

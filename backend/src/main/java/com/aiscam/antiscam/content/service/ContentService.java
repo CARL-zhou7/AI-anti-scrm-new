@@ -21,14 +21,17 @@ public class ContentService {
     private final VictimProfileRepository victims;
     private final ContentCursor cursors;
     private final AvatarStore avatars;
+    private final SnapshotAvatarReferences snapshotAvatars;
 
     public ContentService(FraudScenarioRepository scenarios, ScammerProfileRepository scammers,
-            VictimProfileRepository victims, ContentCursor cursors, AvatarStore avatars) {
+            VictimProfileRepository victims, ContentCursor cursors, AvatarStore avatars,
+            SnapshotAvatarReferences snapshotAvatars) {
         this.scenarios = scenarios;
         this.scammers = scammers;
         this.victims = victims;
         this.cursors = cursors;
         this.avatars = avatars;
+        this.snapshotAvatars = snapshotAvatars;
     }
 
     public List<ScenarioView> listScenarios() {
@@ -67,12 +70,15 @@ public class ContentService {
         return VictimView.from(victims.findByIdAndEnabled(PageQuery.id(id), (byte) 1).orElseThrow(ApiException::notFound));
     }
 
-    public AvatarResource avatar(String key) {
+    public AvatarResource avatar(String key, long userId) {
         AvatarKey.validatePublicKey(key);
         for (String extension : List.of("png", "jpg")) {
             String storedKey = "avatars/" + key + "." + extension;
             if (scammers.existsByAvatarKeyAndEnabled(storedKey, (byte) 1)
-                    || victims.existsByAvatarKeyAndEnabled(storedKey, (byte) 1)) return avatars.load(storedKey);
+                    || scammers.existsBySpeakingAvatarKeyAndEnabled(storedKey, (byte) 1)
+                    || victims.existsByAvatarKeyAndEnabled(storedKey, (byte) 1)
+                    || victims.existsBySpeakingAvatarKeyAndEnabled(storedKey, (byte) 1)
+                    || snapshotAvatars.referencedByUser(userId, storedKey)) return avatars.load(storedKey);
         }
         throw ApiException.notFound();
     }
@@ -82,7 +88,17 @@ public class ContentService {
         var s = scammers.findByEnabled((byte) 1);
         var v = victims.findByEnabled((byte) 1);
         if (s.isEmpty() || v.isEmpty()) throw ApiException.dataInconsistent("双方各须至少一个可用画像");
-        s.forEach(p -> avatars.load(p.getAvatarKey()));
-        v.forEach(p -> avatars.load(p.getAvatarKey()));
+        s.forEach(p -> checkFrames(p.getName(), p.getAvatarKey(), p.getSpeakingAvatarKey()));
+        v.forEach(p -> checkFrames(p.getName(), p.getAvatarKey(), p.getSpeakingAvatarKey()));
+    }
+
+    private void checkFrames(String name, String closed, String speaking) {
+        if (!avatars.dimensions(closed).equals(avatars.dimensions(speaking))) {
+            throw ApiException.dataInconsistent("画像立绘尺寸不一致");
+        }
+        if (closed.equals(speaking)) {
+            org.slf4j.LoggerFactory.getLogger(ContentService.class)
+                    .warn("Profile '{}' has no open-mouth portrait yet; an administrator should upload one", name);
+        }
     }
 }

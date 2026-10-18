@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: AI反诈情景推演平台接口文档
-  version: 1.0.0
-  description: 42项正式HTTP操作、9类SSE事件。设计契约，不代表已有服务实现或验证通过。点击计时协议已冻结（API-42 + StartRequest.timing）；V-02/V-03运行参数仍待实测。
+  version: 1.1.0
+  description: 44项正式HTTP操作、11类SSE事件（V1.1：设置暂停/继续、分句语音时间、动作说明、张嘴立绘；移除画像永久删除）。点击计时协议已冻结（API-42 + StartRequest.timing）；V-02/V-03运行参数仍待实测。
 servers:
 - url: /anti.scam/v1
   description: 前后端同源HTTPS；部署域名另行配置
@@ -1237,6 +1237,9 @@ paths:
                     avatar:
                       key: avatar_example_01
                       url: /anti.scam/v1/avatars/avatar_example_01
+                    speakingAvatar:
+                      key: avatar_example_02
+                      url: /anti.scam/v1/avatars/avatar_example_02
                     name: 示例骗子甲
                     age: 30
                     gender: 男
@@ -1423,6 +1426,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/avatars/avatar_example_02
                   name: 示例骗子甲
                   age: 30
                   gender: 男
@@ -1602,6 +1608,9 @@ paths:
                     avatar:
                       key: avatar_example_01
                       url: /anti.scam/v1/avatars/avatar_example_01
+                    speakingAvatar:
+                      key: avatar_example_02
+                      url: /anti.scam/v1/avatars/avatar_example_02
                     name: 示例受害者乙
                     age: 30
                     gender: 女
@@ -1787,6 +1796,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/avatars/avatar_example_02
                   name: 示例受害者乙
                   age: 30
                   gender: 女
@@ -2104,7 +2116,8 @@ paths:
       - 演绎
       summary: 开始演绎
       operationId: startSimulation
-      description: '先按本人+startRequestId核对原请求，同键同含义返回原场200（即使已终态），不同配置409；再检查单场活动，冲突返回本人activeSessionId。新建事务锁定有效配置并保存完整快照与计时事实，成功201；提交后才发布session.started。开始请求必须携带timing证据（取自GET /timing/samples），服务端据此建立startedAt与deadlineAt；证据不可接受时返回400，不得以接收时间代替点击时间。
+      description: '（V1.1）在演绎页资源加载完成后、用户点击“开始演绎”时发出；配置页“进入演绎”不调用本接口。先按本人+startRequestId核对原请求，同键同含义返回原场200（即使已终态），不同配置409；再检查单场活动，冲突返回本人activeSessionId。新建事务锁定有效配置并保存完整快照与计时事实，成功201；提交后才发布session.started。开始请求必须携带timing证据（取自GET
+        /timing/samples），服务端据此建立startedAt与deadlineAt；证据不可接受时返回400，不得以接收时间代替点击时间。
 
 
         需求依据：PRD§8.3、BR-P05～06；数据库§7.1、§7.7'
@@ -2147,6 +2160,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例骗子甲
                       age: 30
                       gender: 男
@@ -2164,6 +2180,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例受害者乙
                       age: 30
                       gender: 女
@@ -2180,6 +2199,10 @@ paths:
                   outcome: null
                   interruption: null
                   readingUntil: null
+                  nextAction: null
+                  paused: false
+                  pausedAt: null
+                  pausedCreditMs: 0
                   report: null
                 requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
           headers:
@@ -2405,6 +2428,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例骗子甲
                       age: 30
                       gender: 男
@@ -2422,6 +2448,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例受害者乙
                       age: 30
                       gender: 女
@@ -2438,6 +2467,10 @@ paths:
                   outcome: null
                   interruption: null
                   readingUntil: null
+                  nextAction: null
+                  paused: false
+                  pausedAt: null
+                  pausedCreditMs: 0
                   report: null
                 requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
           headers:
@@ -2705,6 +2738,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例骗子甲
                       age: 30
                       gender: 男
@@ -2722,6 +2758,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例受害者乙
                       age: 30
                       gender: 女
@@ -2738,6 +2777,10 @@ paths:
                   outcome: null
                   interruption: null
                   readingUntil: null
+                  nextAction: null
+                  paused: false
+                  pausedAt: null
+                  pausedCreditMs: 0
                   report: null
                 requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
           headers:
@@ -2918,20 +2961,18 @@ paths:
 
                 event: session.started
 
-                data: {"eventId": "evt-example-started", "sessionId": "501", "stateVersion": "0", "data": {"sessionId":
-                "501", "status": "RUNNING", "stateVersion": "0", "startedAt": "2026-10-15T02:00:00.000Z", "deadlineAt":
-                "2026-10-15T02:10:00.000Z", "endedAt": null, "currentRoundNo": 0, "configuration": {"scenario":
-                {"id": "1", "code": "TASK_REBATE", "name": "刷单返利诈骗", "description": "以完成任务获得返利为由诱导垫付和追加投入。", "focus":
-                "青年群体"}, "scammer": {"id": "11", "avatar": {"key": "avatar_example_01", "url": "/anti.scam/v1/avatars/avatar_example_01"},
-                "name": "示例骗子甲", "age": 30, "gender": "男", "identity": "示例人物身份", "description": "仅用于接口字段演示，不代替PRD初始人物卡。",
-                "contextTime": "工作日晚间", "contextPlace": "家中", "currentState": "正在查看手机消息", "fraudExperience": "HIGH",
-                "speechSkill": "HIGH", "manipulationSkill": "MEDIUM", "behaviorTraits": "善于利用小额返利建立信任。"}, "victim":
-                {"id": "21", "avatar": {"key": "avatar_example_01", "url": "/anti.scam/v1/avatars/avatar_example_01"},
+                data: {"eventId": "evt-example-started", "sessionId": "501", "stateVersion": "0", "data": {"sessionId": "501",
+                "status": "RUNNING", "stateVersion": "0", "startedAt": "2026-10-15T02:00:00.000Z", "deadlineAt": "2026-10-15T02:10:00.000Z",
+                "endedAt": null, "currentRoundNo": 0, "configuration": {"scenario": {"id": "1", "code": "TASK_REBATE", "name":
+                "刷单返利诈骗", "description": "以完成任务获得返利为由诱导垫付和追加投入。", "focus": "青年群体"}, "scammer": {"id": "11", "avatar": {"key":
+                "avatar_example_01", "url": "/anti.scam/v1/avatars/avatar_example_01"}, "name": "示例骗子甲", "age": 30, "gender":
+                "男", "identity": "示例人物身份", "description": "仅用于接口字段演示，不代替PRD初始人物卡。", "contextTime": "工作日晚间", "contextPlace":
+                "家中", "currentState": "正在查看手机消息", "fraudExperience": "HIGH", "speechSkill": "HIGH", "manipulationSkill": "MEDIUM",
+                "behaviorTraits": "善于利用小额返利建立信任。"}, "victim": {"id": "21", "avatar": {"key": "avatar_example_01", "url": "/anti.scam/v1/avatars/avatar_example_01"},
                 "name": "示例受害者乙", "age": 30, "gender": "女", "identity": "示例人物身份", "description": "仅用于接口字段演示，不代替PRD初始人物卡。",
-                "contextTime": "工作日晚间", "contextPlace": "家中", "currentState": "正在查看手机消息", "antiFraudAwareness":
-                "MEDIUM", "riskTendency": "LOW", "personalityTraits": "谨慎，遇到转账要求时会核实。"}}, "currentRound": null,
-                "latestRiskScore": null, "outcome": null, "interruption": null, "readingUntil": null, "report":
-                null}}
+                "contextTime": "工作日晚间", "contextPlace": "家中", "currentState": "正在查看手机消息", "antiFraudAwareness": "MEDIUM",
+                "riskTendency": "LOW", "personalityTraits": "谨慎，遇到转账要求时会核实。"}}, "currentRound": null, "latestRiskScore": null,
+                "outcome": null, "interruption": null, "readingUntil": null, "report": null}}
 
 
                 '
@@ -3088,13 +3129,18 @@ paths:
           $ref: '#/components/schemas/ReportUpdatedEvent'
         session.state:
           $ref: '#/components/schemas/SessionStateEvent'
+        session.paused:
+          $ref: '#/components/schemas/SessionPausedEvent'
+        session.resumed:
+          $ref: '#/components/schemas/SessionResumedEvent'
   /simulations/{id}/opening/presented:
     post:
       tags:
       - 演绎
       summary: 开场呈现回执
       operationId: presentOpening
-      description: '仅RUNNING且currentRoundNo=0接受首次回执。COMPLETED必须确认场景及双方头像、必要动画正常；服务端把开场完成与建立首轮的持久事实一起提交后推进。 FAILED只接受本作用域可发生的错误，服务端核定MEDIA_FAILED并停止推进。相同已应用完成事实先做幂等识别；相反结果409；终态中新到回执200返回IGNORED_TERMINAL，不补写、不复活。详见第4章回执矩阵。
+      description: '（V1.1）开场回执覆盖场景介绍动画与双方人物卡两段呈现。仅RUNNING且currentRoundNo=0接受首次回执。COMPLETED必须确认场景及双方头像、必要动画正常；服务端把开场完成与建立首轮的持久事实一起提交后推进。
+        FAILED只接受本作用域可发生的错误，服务端核定MEDIA_FAILED并停止推进。相同已应用完成事实先做幂等识别；相反结果409；终态中新到回执200返回IGNORED_TERMINAL，不补写、不复活。详见第4章回执矩阵。
 
 
         需求依据：PRD§8.4、BR-P06；架构§5.3；数据库§7.2～7.3；本轮失败回执确认'
@@ -3141,6 +3187,9 @@ paths:
                         avatar:
                           key: avatar_example_01
                           url: /anti.scam/v1/avatars/avatar_example_01
+                        speakingAvatar:
+                          key: avatar_example_02
+                          url: /anti.scam/v1/avatars/avatar_example_02
                         name: 示例骗子甲
                         age: 30
                         gender: 男
@@ -3158,6 +3207,9 @@ paths:
                         avatar:
                           key: avatar_example_01
                           url: /anti.scam/v1/avatars/avatar_example_01
+                        speakingAvatar:
+                          key: avatar_example_02
+                          url: /anti.scam/v1/avatars/avatar_example_02
                         name: 示例受害者乙
                         age: 30
                         gender: 女
@@ -3181,6 +3233,10 @@ paths:
                     outcome: null
                     interruption: null
                     readingUntil: null
+                    nextAction: null
+                    paused: false
+                    pausedAt: null
+                    pausedCreditMs: 0
                     report: null
                 requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
           headers:
@@ -3382,7 +3438,8 @@ paths:
       - 演绎
       summary: 消息呈现回执
       operationId: presentMessage
-      description: '必须是本人当前轮当前角色消息且PRESENTING；COMPLETED要求文字、角色动画及语音时间轴正常结束。下载成功或静音按钮状态不能作为完成依据。 FAILED只接受本作用域可发生的错误，服务端核定MEDIA_FAILED并停止推进。相同已应用完成事实先做幂等识别；相反结果409；终态中新到回执200返回IGNORED_TERMINAL，不补写、不复活。详见第4章回执矩阵。
+      description: '（V1.1）COMPLETED表示分句逐字显示、动作说明与嘴部开合动画均已随语音完成。必须是本人当前轮当前角色消息且PRESENTING；COMPLETED要求文字、角色动画及语音时间轴正常结束。下载成功或静音按钮状态不能作为完成依据。
+        FAILED只接受本作用域可发生的错误，服务端核定MEDIA_FAILED并停止推进。相同已应用完成事实先做幂等识别；相反结果409；终态中新到回执200返回IGNORED_TERMINAL，不补写、不复活。详见第4章回执矩阵。
 
 
         需求依据：PRD§8.4、BR-P06；架构§5.3；数据库§7.2～7.3；本轮失败回执确认'
@@ -3429,6 +3486,9 @@ paths:
                         avatar:
                           key: avatar_example_01
                           url: /anti.scam/v1/avatars/avatar_example_01
+                        speakingAvatar:
+                          key: avatar_example_02
+                          url: /anti.scam/v1/avatars/avatar_example_02
                         name: 示例骗子甲
                         age: 30
                         gender: 男
@@ -3446,6 +3506,9 @@ paths:
                         avatar:
                           key: avatar_example_01
                           url: /anti.scam/v1/avatars/avatar_example_01
+                        speakingAvatar:
+                          key: avatar_example_02
+                          url: /anti.scam/v1/avatars/avatar_example_02
                         name: 示例受害者乙
                         age: 30
                         gender: 女
@@ -3467,17 +3530,24 @@ paths:
                         roundNo: 1
                         speaker: SCAMMER
                         content: 完成任务后即可领取返利，请先了解任务规则。
+                        actionText: null
                         presentationStatus: COMPLETED
                         presentationCompletedAt: '2026-10-15T02:00:20.000Z'
                         presentationErrorCode: null
                         savedAt: '2026-10-15T02:00:10.000Z'
                         audioUrl: null
+                        audioDurationMs: null
+                        segments: null
                       analysis: null
                       readingUntil: null
                     latestRiskScore: null
                     outcome: null
                     interruption: null
                     readingUntil: null
+                    nextAction: null
+                    paused: false
+                    pausedAt: null
+                    pausedCreditMs: 0
                     report: null
                 requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
           headers:
@@ -3732,6 +3802,9 @@ paths:
                         avatar:
                           key: avatar_example_01
                           url: /anti.scam/v1/avatars/avatar_example_01
+                        speakingAvatar:
+                          key: avatar_example_02
+                          url: /anti.scam/v1/avatars/avatar_example_02
                         name: 示例骗子甲
                         age: 30
                         gender: 男
@@ -3749,6 +3822,9 @@ paths:
                         avatar:
                           key: avatar_example_01
                           url: /anti.scam/v1/avatars/avatar_example_01
+                        speakingAvatar:
+                          key: avatar_example_02
+                          url: /anti.scam/v1/avatars/avatar_example_02
                         name: 示例受害者乙
                         age: 30
                         gender: 女
@@ -3770,20 +3846,26 @@ paths:
                         roundNo: 1
                         speaker: SCAMMER
                         content: 完成任务后即可领取返利，请先了解任务规则。
+                        actionText: null
                         presentationStatus: COMPLETED
                         presentationCompletedAt: '2026-10-15T02:00:20.000Z'
                         presentationErrorCode: null
                         savedAt: '2026-10-15T02:00:10.000Z'
                         audioUrl: null
+                        audioDurationMs: null
+                        segments: null
                       - id: '1002'
                         roundNo: 1
                         speaker: VICTIM
                         content: 我不会转账，也不再参与这个任务。
+                        actionText: null
                         presentationStatus: COMPLETED
                         presentationCompletedAt: '2026-10-15T02:00:20.000Z'
                         presentationErrorCode: null
                         savedAt: '2026-10-15T02:00:10.000Z'
                         audioUrl: null
+                        audioDurationMs: null
+                        segments: null
                       analysis:
                         fraudStage: 建立信任
                         speechAnalysis: 通过小额返利承诺吸引关注。
@@ -3802,6 +3884,10 @@ paths:
                       limitReason: null
                     interruption: null
                     readingUntil: '2026-10-15T02:00:25.000Z'
+                    nextAction: null
+                    paused: false
+                    pausedAt: null
+                    pausedCreditMs: 0
                     report:
                       status: PENDING
                       displayText: 生成中
@@ -4062,6 +4148,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例骗子甲
                       age: 30
                       gender: 男
@@ -4079,6 +4168,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例受害者乙
                       age: 30
                       gender: 女
@@ -4097,6 +4189,10 @@ paths:
                     code: USER_EXIT
                     message: 用户主动离开，本次演绎已中断。
                   readingUntil: null
+                  nextAction: null
+                  paused: false
+                  pausedAt: null
+                  pausedCreditMs: 0
                   report: null
                 requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
           headers:
@@ -4478,8 +4574,7 @@ paths:
       - 复盘与历史
       summary: 报告状态与内容
       operationId: getReport
-      description: 'RUNNING/INTERRUPTED返回200且report/content为null，unavailableReason说明原因，不伪造FAILED。FINISHED必须有报告行，否则500
-        DATA_INCONSISTENT。成功内容仅来自已保存报告；风险和结局引用原事实。GET不触发生成或重试。
+      description: 'RUNNING/INTERRUPTED返回200且report/content为null，unavailableReason说明原因，不伪造FAILED。FINISHED必须有报告行，否则500 DATA_INCONSISTENT。成功内容仅来自已保存报告；风险和结局引用原事实。GET不触发生成或重试。
 
 
         需求依据：PRD§8.5；数据库§9.1、§9.3'
@@ -5159,6 +5254,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例骗子甲
                       age: 30
                       gender: 男
@@ -5176,6 +5274,9 @@ paths:
                       avatar:
                         key: avatar_example_01
                         url: /anti.scam/v1/avatars/avatar_example_01
+                      speakingAvatar:
+                        key: avatar_example_02
+                        url: /anti.scam/v1/avatars/avatar_example_02
                       name: 示例受害者乙
                       age: 30
                       gender: 女
@@ -5197,6 +5298,7 @@ paths:
                       roundNo: 1
                       speaker: SCAMMER
                       content: 完成任务后即可领取返利，请先了解任务规则。
+                      actionText: null
                       presentationStatus: PRESENTING
                       presentationCompletedAt: null
                       presentationErrorCode: null
@@ -5354,7 +5456,7 @@ paths:
       - 计时
       summary: 点击计时采样
       operationId: getTimingSample
-      description: '已登录用户在配置页发起。服务端生成并绑定一个采样样本：sampleId、当前登录Session、服务端采样UTC时间、有效期。样本只在短时间内有效，过期或归属不符时开始请求必须被拒绝。样本用于把客户端单调时钟的点击时刻映射到服务端时间轴，原始样本不经历史或状态接口暴露。绑定服务端样本不能证明客户端诚实报告点击值，该信任边界由服务端可接受误差与异常判据约束。
+      description: '（V1.1）在演绎页加载期间采样，临近过期前刷新。已登录用户在配置页发起。服务端生成并绑定一个采样样本：sampleId、当前登录Session、服务端采样UTC时间、有效期。样本只在短时间内有效，过期或归属不符时开始请求必须被拒绝。样本用于把客户端单调时钟的点击时刻映射到服务端时间轴，原始样本不经历史或状态接口暴露。绑定服务端样本不能证明客户端诚实报告点击值，该信任边界由服务端可接受误差与异常判据约束。
 
 
         需求依据：PRD BR-P05；架构§11.5；数据库§7.7'
@@ -5914,6 +6016,9 @@ paths:
                     avatar:
                       key: avatar_example_01
                       url: /anti.scam/v1/admin/avatars/avatar_example_01
+                    speakingAvatar:
+                      key: avatar_example_02
+                      url: /anti.scam/v1/admin/avatars/avatar_example_02
                     name: 示例骗子甲
                     age: 30
                     gender: 男
@@ -6096,6 +6201,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例骗子甲
                   age: 30
                   gender: 男
@@ -6272,102 +6380,9 @@ paths:
               manipulationSkill: MEDIUM
               behaviorTraits: 善于利用小额返利建立信任。
               avatarKey: avatar_example_01
+              speakingAvatarKey: avatar_example_02
       x-csrf-required: true
   /admin/scammer-profiles/{id}:
-    delete:
-      tags: [管理]
-      summary: 删除骗子画像
-      operationId: adminDeleteScammer
-      description: 管理员确认后永久删除画像记录，保留头像文件。检查版本并串行保护同类最后一个可用画像；不存在返回404。
-      security:
-      - SessionCookie: []
-        CsrfHeader: []
-      x-access-roles: [ADMIN]
-      x-csrf-required: true
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VersionRequest'
-      responses:
-        '200':
-          description: 已删除
-          headers:
-            Cache-Control:
-              schema:
-                type: string
-              description: no-store
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required: [code, message, data, requestId]
-                properties:
-                  code:
-                    type: string
-                    enum: [OK]
-                  message:
-                    type: string
-                  requestId:
-                    type: string
-                  data:
-                    type: object
-                    additionalProperties: false
-                    required: [deleted]
-                    properties:
-                      deleted:
-                        type: boolean
-                        enum: [true]
-        '400':
-          description: VALIDATION_FAILED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: UNAUTHENTICATED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: FORBIDDEN / CSRF_INVALID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: NOT_FOUND
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: VERSION_CONFLICT / LAST_ENABLED_PROFILE
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: INTERNAL_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '503':
-          description: SERVICE_UNAVAILABLE
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
     get:
       tags:
       - 管理
@@ -6401,6 +6416,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例骗子甲
                   age: 30
                   gender: 男
@@ -6583,6 +6601,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例骗子甲
                   age: 30
                   gender: 男
@@ -6808,6 +6829,7 @@ paths:
               behaviorTraits: 善于利用小额返利建立信任。
               avatarKey: avatar_example_01
               version: 0
+              speakingAvatarKey: avatar_example_02
       x-csrf-required: true
   /admin/scammer-profiles/{id}/disable:
     post:
@@ -6843,6 +6865,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例骗子甲
                   age: 30
                   gender: 男
@@ -7090,6 +7115,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例骗子甲
                   age: 30
                   gender: 男
@@ -7330,6 +7358,9 @@ paths:
                     avatar:
                       key: avatar_example_01
                       url: /anti.scam/v1/admin/avatars/avatar_example_01
+                    speakingAvatar:
+                      key: avatar_example_02
+                      url: /anti.scam/v1/admin/avatars/avatar_example_02
                     name: 示例受害者乙
                     age: 30
                     gender: 女
@@ -7511,6 +7542,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例受害者乙
                   age: 30
                   gender: 女
@@ -7685,102 +7719,9 @@ paths:
               riskTendency: LOW
               personalityTraits: 谨慎，遇到转账要求时会核实。
               avatarKey: avatar_example_01
+              speakingAvatarKey: avatar_example_02
       x-csrf-required: true
   /admin/victim-profiles/{id}:
-    delete:
-      tags: [管理]
-      summary: 删除受害者画像
-      operationId: adminDeleteVictim
-      description: 管理员确认后永久删除画像记录，保留头像文件。检查版本并串行保护同类最后一个可用画像；不存在返回404。
-      security:
-      - SessionCookie: []
-        CsrfHeader: []
-      x-access-roles: [ADMIN]
-      x-csrf-required: true
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VersionRequest'
-      responses:
-        '200':
-          description: 已删除
-          headers:
-            Cache-Control:
-              schema:
-                type: string
-              description: no-store
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required: [code, message, data, requestId]
-                properties:
-                  code:
-                    type: string
-                    enum: [OK]
-                  message:
-                    type: string
-                  requestId:
-                    type: string
-                  data:
-                    type: object
-                    additionalProperties: false
-                    required: [deleted]
-                    properties:
-                      deleted:
-                        type: boolean
-                        enum: [true]
-        '400':
-          description: VALIDATION_FAILED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: UNAUTHENTICATED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: FORBIDDEN / CSRF_INVALID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: NOT_FOUND
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: VERSION_CONFLICT / LAST_ENABLED_PROFILE
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: INTERNAL_ERROR
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '503':
-          description: SERVICE_UNAVAILABLE
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
     get:
       tags:
       - 管理
@@ -7814,6 +7755,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例受害者乙
                   age: 30
                   gender: 女
@@ -7995,6 +7939,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例受害者乙
                   age: 30
                   gender: 女
@@ -8218,6 +8165,7 @@ paths:
               personalityTraits: 谨慎，遇到转账要求时会核实。
               avatarKey: avatar_example_01
               version: 0
+              speakingAvatarKey: avatar_example_02
       x-csrf-required: true
   /admin/victim-profiles/{id}/disable:
     post:
@@ -8253,6 +8201,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例受害者乙
                   age: 30
                   gender: 女
@@ -8499,6 +8450,9 @@ paths:
                   avatar:
                     key: avatar_example_01
                     url: /anti.scam/v1/admin/avatars/avatar_example_01
+                  speakingAvatar:
+                    key: avatar_example_02
+                    url: /anti.scam/v1/admin/avatars/avatar_example_02
                   name: 示例受害者乙
                   age: 30
                   gender: 女
@@ -9079,6 +9033,338 @@ paths:
         description: 资源标识
         schema:
           $ref: '#/components/schemas/AvatarKey'
+  /simulations/{id}/pause:
+    post:
+      tags:
+      - 演绎
+      summary: 设置暂停
+      operationId: pauseSimulation
+      description: '（V1.1，API-43）打开设置界面时调用；无请求体。RUNNING且未暂停时写paused_at并发布session.paused；已暂停返回ALREADY_APPLIED；终态（含正式结束后的最后阅读停留）返回IGNORED_TERMINAL。暂停期间服务端不发布round.started与新的message.saved。
+
+
+        需求依据：PRD BR-P13；数据库§7.9'
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      x-access-roles:
+      - USER
+      x-owner-check: true
+      x-requirement-refs:
+      - PRD BR-P13
+      - 数据库§7.9
+      responses:
+        '200':
+          description: 成功；业务载荷见PauseResult
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PauseResultResponse'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '400':
+          description: VALIDATION_FAILED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATION_FAILED:
+                  summary: 请求字段不符合规则
+                  value:
+                    code: VALIDATION_FAILED
+                    message: 请求字段不符合规则
+                    data:
+                      fieldErrors:
+                      - field: reason
+                        code: VALUE_INVALID
+                        message: 字段值不符合接口约定
+                      activeSessionId: null
+                      currentVersion: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                UNAUTHENTICATED:
+                  summary: 请重新登录
+                  value:
+                    code: UNAUTHENTICATED
+                    message: 请重新登录
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '403':
+          description: FORBIDDEN / CSRF_INVALID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                FORBIDDEN:
+                  summary: 当前角色无权访问
+                  value:
+                    code: FORBIDDEN
+                    message: 当前角色无权访问
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+                CSRF_INVALID:
+                  summary: CSRF校验失败，请重新获取令牌
+                  value:
+                    code: CSRF_INVALID
+                    message: CSRF校验失败，请重新获取令牌
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                NOT_FOUND:
+                  summary: 资源不存在或不可访问
+                  value:
+                    code: NOT_FOUND
+                    message: 资源不存在或不可访问
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                INTERNAL_ERROR:
+                  summary: 服务暂时无法完成请求
+                  value:
+                    code: INTERNAL_ERROR
+                    message: 服务暂时无法完成请求
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '503':
+          description: SERVICE_UNAVAILABLE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                SERVICE_UNAVAILABLE:
+                  summary: 服务暂不可用
+                  value:
+                    code: SERVICE_UNAVAILABLE
+                    message: 服务暂不可用
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: 所属路径资源标识；必须校验父子关系
+        schema:
+          $ref: '#/components/schemas/Id'
+      x-csrf-required: true
+  /simulations/{id}/resume:
+    post:
+      tags:
+      - 演绎
+      summary: 继续演绎
+      operationId: resumeSimulation
+      description: '（V1.1，API-44）无请求体。本次计入=max(0,min(now−pausedAt,300000−pausedCreditMs))，同步顺延deadlineAt与晚于pausedAt的readingUntil，清空pausedAt并发布session.resumed；未暂停返回ALREADY_APPLIED；终态返回IGNORED_TERMINAL。
+
+
+        需求依据：PRD BR-P13；数据库§7.9'
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      x-access-roles:
+      - USER
+      x-owner-check: true
+      x-requirement-refs:
+      - PRD BR-P13
+      - 数据库§7.9
+      responses:
+        '200':
+          description: 成功；业务载荷见PauseResult
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PauseResultResponse'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '400':
+          description: VALIDATION_FAILED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                VALIDATION_FAILED:
+                  summary: 请求字段不符合规则
+                  value:
+                    code: VALIDATION_FAILED
+                    message: 请求字段不符合规则
+                    data:
+                      fieldErrors:
+                      - field: reason
+                        code: VALUE_INVALID
+                        message: 字段值不符合接口约定
+                      activeSessionId: null
+                      currentVersion: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                UNAUTHENTICATED:
+                  summary: 请重新登录
+                  value:
+                    code: UNAUTHENTICATED
+                    message: 请重新登录
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '403':
+          description: FORBIDDEN / CSRF_INVALID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                FORBIDDEN:
+                  summary: 当前角色无权访问
+                  value:
+                    code: FORBIDDEN
+                    message: 当前角色无权访问
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+                CSRF_INVALID:
+                  summary: CSRF校验失败，请重新获取令牌
+                  value:
+                    code: CSRF_INVALID
+                    message: CSRF校验失败，请重新获取令牌
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '404':
+          description: NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                NOT_FOUND:
+                  summary: 资源不存在或不可访问
+                  value:
+                    code: NOT_FOUND
+                    message: 资源不存在或不可访问
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                INTERNAL_ERROR:
+                  summary: 服务暂时无法完成请求
+                  value:
+                    code: INTERNAL_ERROR
+                    message: 服务暂时无法完成请求
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+        '503':
+          description: SERVICE_UNAVAILABLE
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                SERVICE_UNAVAILABLE:
+                  summary: 服务暂不可用
+                  value:
+                    code: SERVICE_UNAVAILABLE
+                    message: 服务暂不可用
+                    data: null
+                    requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: 所属路径资源标识；必须校验父子关系
+        schema:
+          $ref: '#/components/schemas/Id'
+      x-csrf-required: true
 components:
   securitySchemes:
     SessionCookie:
@@ -9737,6 +10023,9 @@ components:
           minLength: 1
         avatarKey:
           $ref: '#/components/schemas/AvatarKey'
+        speakingAvatarKey:
+          $ref: '#/components/schemas/AvatarKey'
+          description: 张嘴帧立绘键（V1.1）；两张立绘必须有效且像素尺寸一致
       required:
       - name
       - age
@@ -9751,6 +10040,7 @@ components:
       - manipulationSkill
       - behaviorTraits
       - avatarKey
+      - speakingAvatarKey
       additionalProperties: false
       examples:
       - name: 示例骗子甲
@@ -9766,6 +10056,7 @@ components:
         manipulationSkill: MEDIUM
         behaviorTraits: 善于利用小额返利建立信任。
         avatarKey: avatar_example_01
+        speakingAvatarKey: avatar_example_02
     ScammerUpdate:
       type: object
       description: 全量编辑可编辑字段，必须携带读取时version
@@ -9785,6 +10076,9 @@ components:
         avatarKey:
           $ref: '#/components/schemas/AvatarKey'
         version: *id009
+        speakingAvatarKey:
+          $ref: '#/components/schemas/AvatarKey'
+          description: 张嘴帧立绘键（V1.1）；两张立绘必须有效且像素尺寸一致
       required:
       - name
       - age
@@ -9799,6 +10093,7 @@ components:
       - manipulationSkill
       - behaviorTraits
       - avatarKey
+      - speakingAvatarKey
       - version
       additionalProperties: false
       examples:
@@ -9816,6 +10111,7 @@ components:
         behaviorTraits: 善于利用小额返利建立信任。
         avatarKey: avatar_example_01
         version: 0
+        speakingAvatarKey: avatar_example_02
     ScammerProfile:
       type: object
       description: 普通用户完整画像；历史使用当时快照映射同一展示结构
@@ -9824,6 +10120,9 @@ components:
           $ref: '#/components/schemas/Id'
         avatar: &id023
           $ref: '#/components/schemas/AvatarRef'
+        speakingAvatar:
+          $ref: '#/components/schemas/AvatarRef'
+          description: 张嘴帧半身立绘（V1.1），与avatar像素尺寸一致
         name: *id010
         age: *id011
         gender: *id012
@@ -9839,6 +10138,7 @@ components:
       required:
       - id
       - avatar
+      - speakingAvatar
       - name
       - age
       - gender
@@ -9857,6 +10157,9 @@ components:
         avatar:
           key: avatar_example_01
           url: /anti.scam/v1/avatars/avatar_example_01
+        speakingAvatar:
+          key: avatar_example_02
+          url: /anti.scam/v1/avatars/avatar_example_02
         name: 示例骗子甲
         age: 30
         gender: 男
@@ -9875,6 +10178,9 @@ components:
       properties:
         id: *id022
         avatar: *id023
+        speakingAvatar:
+          $ref: '#/components/schemas/AvatarRef'
+          description: 张嘴帧半身立绘（V1.1），与avatar像素尺寸一致
         name: *id010
         age: *id011
         gender: *id012
@@ -9896,6 +10202,7 @@ components:
       required:
       - id
       - avatar
+      - speakingAvatar
       - name
       - age
       - gender
@@ -9918,6 +10225,9 @@ components:
         avatar:
           key: avatar_example_01
           url: /anti.scam/v1/admin/avatars/avatar_example_01
+        speakingAvatar:
+          key: avatar_example_02
+          url: /anti.scam/v1/admin/avatars/avatar_example_02
         name: 示例骗子甲
         age: 30
         gender: 男
@@ -9962,6 +10272,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/avatars/avatar_example_02
           name: 示例骗子甲
           age: 30
           gender: 男
@@ -10004,6 +10317,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/admin/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/admin/avatars/avatar_example_02
           name: 示例骗子甲
           age: 30
           gender: 男
@@ -10044,6 +10360,9 @@ components:
           minLength: 1
         avatarKey:
           $ref: '#/components/schemas/AvatarKey'
+        speakingAvatarKey:
+          $ref: '#/components/schemas/AvatarKey'
+          description: 张嘴帧立绘键（V1.1）；两张立绘必须有效且像素尺寸一致
       required:
       - name
       - age
@@ -10057,6 +10376,7 @@ components:
       - riskTendency
       - personalityTraits
       - avatarKey
+      - speakingAvatarKey
       additionalProperties: false
       examples:
       - name: 示例受害者乙
@@ -10071,6 +10391,7 @@ components:
         riskTendency: LOW
         personalityTraits: 谨慎，遇到转账要求时会核实。
         avatarKey: avatar_example_01
+        speakingAvatarKey: avatar_example_02
     VictimUpdate:
       type: object
       description: 全量编辑可编辑字段，必须携带读取时version
@@ -10089,6 +10410,9 @@ components:
         avatarKey:
           $ref: '#/components/schemas/AvatarKey'
         version: *id009
+        speakingAvatarKey:
+          $ref: '#/components/schemas/AvatarKey'
+          description: 张嘴帧立绘键（V1.1）；两张立绘必须有效且像素尺寸一致
       required:
       - name
       - age
@@ -10102,6 +10426,7 @@ components:
       - riskTendency
       - personalityTraits
       - avatarKey
+      - speakingAvatarKey
       - version
       additionalProperties: false
       examples:
@@ -10118,6 +10443,7 @@ components:
         personalityTraits: 谨慎，遇到转账要求时会核实。
         avatarKey: avatar_example_01
         version: 0
+        speakingAvatarKey: avatar_example_02
     VictimProfile:
       type: object
       description: 普通用户完整画像；历史使用当时快照映射同一展示结构
@@ -10126,6 +10452,9 @@ components:
           $ref: '#/components/schemas/Id'
         avatar: &id030
           $ref: '#/components/schemas/AvatarRef'
+        speakingAvatar:
+          $ref: '#/components/schemas/AvatarRef'
+          description: 张嘴帧半身立绘（V1.1），与avatar像素尺寸一致
         name: *id010
         age: *id011
         gender: *id012
@@ -10140,6 +10469,7 @@ components:
       required:
       - id
       - avatar
+      - speakingAvatar
       - name
       - age
       - gender
@@ -10157,6 +10487,9 @@ components:
         avatar:
           key: avatar_example_01
           url: /anti.scam/v1/avatars/avatar_example_01
+        speakingAvatar:
+          key: avatar_example_02
+          url: /anti.scam/v1/avatars/avatar_example_02
         name: 示例受害者乙
         age: 30
         gender: 女
@@ -10174,6 +10507,9 @@ components:
       properties:
         id: *id029
         avatar: *id030
+        speakingAvatar:
+          $ref: '#/components/schemas/AvatarRef'
+          description: 张嘴帧半身立绘（V1.1），与avatar像素尺寸一致
         name: *id010
         age: *id011
         gender: *id012
@@ -10194,6 +10530,7 @@ components:
       required:
       - id
       - avatar
+      - speakingAvatar
       - name
       - age
       - gender
@@ -10215,6 +10552,9 @@ components:
         avatar:
           key: avatar_example_01
           url: /anti.scam/v1/admin/avatars/avatar_example_01
+        speakingAvatar:
+          key: avatar_example_02
+          url: /anti.scam/v1/admin/avatars/avatar_example_02
         name: 示例受害者乙
         age: 30
         gender: 女
@@ -10258,6 +10598,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/avatars/avatar_example_02
           name: 示例受害者乙
           age: 30
           gender: 女
@@ -10299,6 +10642,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/admin/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/admin/avatars/avatar_example_02
           name: 示例受害者乙
           age: 30
           gender: 女
@@ -10353,6 +10699,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/avatars/avatar_example_02
           name: 示例骗子甲
           age: 30
           gender: 男
@@ -10370,6 +10719,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/avatars/avatar_example_02
           name: 示例受害者乙
           age: 30
           gender: 女
@@ -10685,7 +11037,12 @@ components:
           - VICTIM
         content: &id034
           type: string
-          description: 完整已保存正文，与播报内容一致；按安全文本展示
+          description: 台词正文（V1.1起不含动作说明），与播报内容一致；按安全文本展示
+        actionText:
+          anyOf:
+          - type: string
+            description: 动作说明（V1.1），舞台展示、不朗读；无行动为null
+          - type: 'null'
         presentationStatus: &id035
           $ref: '#/components/schemas/PresentationStatus'
         presentationCompletedAt: &id036
@@ -10706,6 +11063,7 @@ components:
       - roundNo
       - speaker
       - content
+      - actionText
       - presentationStatus
       - presentationCompletedAt
       - presentationErrorCode
@@ -10716,6 +11074,7 @@ components:
         roundNo: 1
         speaker: SCAMMER
         content: 完成任务后即可领取返利，请先了解任务规则。
+        actionText: null
         presentationStatus: PRESENTING
         presentationCompletedAt: null
         presentationErrorCode: null
@@ -10728,6 +11087,11 @@ components:
         roundNo: *id032
         speaker: *id033
         content: *id034
+        actionText:
+          anyOf:
+          - type: string
+            description: 动作说明（V1.1），舞台展示、不朗读；无行动为null
+          - type: 'null'
         presentationStatus: *id035
         presentationCompletedAt: *id036
         presentationErrorCode: *id037
@@ -10737,27 +11101,50 @@ components:
           - type: string
             description: 仅本场RUNNING且当前消息允许呈现时提供的同源临时地址
           - type: 'null'
+        audioDurationMs:
+          anyOf:
+          - type: integer
+            minimum: 1
+            description: 当前音频总时长（V1.1）；audioUrl为null时为null
+          - type: 'null'
+        segments:
+          anyOf:
+          - type: array
+            items:
+              $ref: '#/components/schemas/AudioSegment'
+            description: 分句时间（V1.1）；按顺序覆盖content全部字符且时间递增；audioUrl为null时为null
+          - type: 'null'
       required:
       - id
       - roundNo
       - speaker
       - content
+      - actionText
       - presentationStatus
       - presentationCompletedAt
       - presentationErrorCode
       - savedAt
       - audioUrl
+      - audioDurationMs
+      - segments
       additionalProperties: false
       examples:
       - id: '1001'
         roundNo: 1
         speaker: SCAMMER
         content: 完成任务后即可领取返利，请先了解任务规则。
+        actionText: null
         presentationStatus: PRESENTING
         presentationCompletedAt: null
         presentationErrorCode: null
         savedAt: '2026-10-15T02:00:10.000Z'
         audioUrl: /anti.scam/v1/simulations/501/messages/1001/audio
+        audioDurationMs: 3200
+        segments:
+        - startMs: 0
+          endMs: 3200
+          charStart: 0
+          charEnd: 21
     LiveRound:
       type: object
       description: 已保存轮次，允许半轮和未评分
@@ -10809,11 +11196,18 @@ components:
           roundNo: 1
           speaker: SCAMMER
           content: 完成任务后即可领取返利，请先了解任务规则。
+          actionText: null
           presentationStatus: PRESENTING
           presentationCompletedAt: null
           presentationErrorCode: null
           savedAt: '2026-10-15T02:00:10.000Z'
           audioUrl: /anti.scam/v1/simulations/501/messages/1001/audio
+          audioDurationMs: 3200
+          segments:
+          - startMs: 0
+            endMs: 3200
+            charStart: 0
+            charEnd: 21
         analysis: null
         readingUntil: null
     HistoryRound:
@@ -10867,6 +11261,7 @@ components:
           roundNo: 1
           speaker: SCAMMER
           content: 完成任务后即可领取返利，请先了解任务规则。
+          actionText: null
           presentationStatus: PRESENTING
           presentationCompletedAt: null
           presentationErrorCode: null
@@ -11002,7 +11397,7 @@ components:
           description: 已校准点击起点，不是请求到达时刻
         deadlineAt:
           $ref: '#/components/schemas/UtcMillis'
-          description: 固定为startedAt+600秒（10分钟）
+          description: 有效截止时间＝startedAt+600秒+pausedCreditMs（V1.1）；暂停中前端冻结倒计时，服务端实时计入（累计≤300秒）
         endedAt:
           anyOf:
           - $ref: '#/components/schemas/UtcMillis'
@@ -11044,6 +11439,19 @@ components:
             - NEXT_ROUND
             - REPORT
           - type: 'null'
+        paused:
+          type: boolean
+          description: 是否处于设置暂停（V1.1）
+        pausedAt:
+          anyOf:
+          - $ref: '#/components/schemas/UtcMillis'
+            description: 当前暂停开始时间；未暂停为null（V1.1）
+          - type: 'null'
+        pausedCreditMs:
+          type: integer
+          minimum: 0
+          maximum: 300000
+          description: 已计入有效时长顺延的累计暂停毫秒数（V1.1）
         report:
           anyOf:
           - $ref: '#/components/schemas/ReportSummary'
@@ -11063,6 +11471,10 @@ components:
       - interruption
       - readingUntil
       - report
+      - nextAction
+      - paused
+      - pausedAt
+      - pausedCreditMs
       additionalProperties: false
       examples:
       - sessionId: '501'
@@ -11084,6 +11496,9 @@ components:
             avatar:
               key: avatar_example_01
               url: /anti.scam/v1/avatars/avatar_example_01
+            speakingAvatar:
+              key: avatar_example_02
+              url: /anti.scam/v1/avatars/avatar_example_02
             name: 示例骗子甲
             age: 30
             gender: 男
@@ -11101,6 +11516,9 @@ components:
             avatar:
               key: avatar_example_01
               url: /anti.scam/v1/avatars/avatar_example_01
+            speakingAvatar:
+              key: avatar_example_02
+              url: /anti.scam/v1/avatars/avatar_example_02
             name: 示例受害者乙
             age: 30
             gender: 女
@@ -11117,6 +11535,10 @@ components:
         outcome: null
         interruption: null
         readingUntil: null
+        nextAction: null
+        paused: false
+        pausedAt: null
+        pausedCreditMs: 0
         report: null
     PresentationResult:
       type: object
@@ -11157,6 +11579,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例骗子甲
               age: 30
               gender: 男
@@ -11174,6 +11599,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例受害者乙
               age: 30
               gender: 女
@@ -11197,6 +11625,10 @@ components:
           outcome: null
           interruption: null
           readingUntil: null
+          nextAction: null
+          paused: false
+          pausedAt: null
+          pausedCreditMs: 0
           report: null
     RiskPoint:
       type: object
@@ -11487,6 +11919,9 @@ components:
             avatar:
               key: avatar_example_01
               url: /anti.scam/v1/avatars/avatar_example_01
+            speakingAvatar:
+              key: avatar_example_02
+              url: /anti.scam/v1/avatars/avatar_example_02
             name: 示例骗子甲
             age: 30
             gender: 男
@@ -11504,6 +11939,9 @@ components:
             avatar:
               key: avatar_example_01
               url: /anti.scam/v1/avatars/avatar_example_01
+            speakingAvatar:
+              key: avatar_example_02
+              url: /anti.scam/v1/avatars/avatar_example_02
             name: 示例受害者乙
             age: 30
             gender: 女
@@ -11525,6 +11963,7 @@ components:
             roundNo: 1
             speaker: SCAMMER
             content: 完成任务后即可领取返利，请先了解任务规则。
+            actionText: null
             presentationStatus: PRESENTING
             presentationCompletedAt: null
             presentationErrorCode: null
@@ -11883,6 +12322,9 @@ components:
             avatar:
               key: avatar_example_01
               url: /anti.scam/v1/avatars/avatar_example_01
+            speakingAvatar:
+              key: avatar_example_02
+              url: /anti.scam/v1/avatars/avatar_example_02
             name: 示例骗子甲
             age: 30
             gender: 男
@@ -11927,6 +12369,9 @@ components:
             avatar:
               key: avatar_example_01
               url: /anti.scam/v1/avatars/avatar_example_01
+            speakingAvatar:
+              key: avatar_example_02
+              url: /anti.scam/v1/avatars/avatar_example_02
             name: 示例受害者乙
             age: 30
             gender: 女
@@ -11969,6 +12414,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/avatars/avatar_example_02
           name: 示例骗子甲
           age: 30
           gender: 男
@@ -12010,6 +12458,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/avatars/avatar_example_02
           name: 示例受害者乙
           age: 30
           gender: 女
@@ -12051,6 +12502,9 @@ components:
             avatar:
               key: avatar_example_01
               url: /anti.scam/v1/admin/avatars/avatar_example_01
+            speakingAvatar:
+              key: avatar_example_02
+              url: /anti.scam/v1/admin/avatars/avatar_example_02
             name: 示例骗子甲
             age: 30
             gender: 男
@@ -12099,6 +12553,9 @@ components:
             avatar:
               key: avatar_example_01
               url: /anti.scam/v1/admin/avatars/avatar_example_01
+            speakingAvatar:
+              key: avatar_example_02
+              url: /anti.scam/v1/admin/avatars/avatar_example_02
             name: 示例受害者乙
             age: 30
             gender: 女
@@ -12145,6 +12602,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/admin/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/admin/avatars/avatar_example_02
           name: 示例骗子甲
           age: 30
           gender: 男
@@ -12190,6 +12650,9 @@ components:
           avatar:
             key: avatar_example_01
             url: /anti.scam/v1/admin/avatars/avatar_example_01
+          speakingAvatar:
+            key: avatar_example_02
+            url: /anti.scam/v1/admin/avatars/avatar_example_02
           name: 示例受害者乙
           age: 30
           gender: 女
@@ -12249,6 +12712,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例骗子甲
               age: 30
               gender: 男
@@ -12266,6 +12732,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例受害者乙
               age: 30
               gender: 女
@@ -12282,6 +12751,10 @@ components:
           outcome: null
           interruption: null
           readingUntil: null
+          nextAction: null
+          paused: false
+          pausedAt: null
+          pausedCreditMs: 0
           report: null
         requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
     PresentationResultResponse:
@@ -12329,6 +12802,9 @@ components:
                 avatar:
                   key: avatar_example_01
                   url: /anti.scam/v1/avatars/avatar_example_01
+                speakingAvatar:
+                  key: avatar_example_02
+                  url: /anti.scam/v1/avatars/avatar_example_02
                 name: 示例骗子甲
                 age: 30
                 gender: 男
@@ -12346,6 +12822,9 @@ components:
                 avatar:
                   key: avatar_example_01
                   url: /anti.scam/v1/avatars/avatar_example_01
+                speakingAvatar:
+                  key: avatar_example_02
+                  url: /anti.scam/v1/avatars/avatar_example_02
                 name: 示例受害者乙
                 age: 30
                 gender: 女
@@ -12369,6 +12848,10 @@ components:
             outcome: null
             interruption: null
             readingUntil: null
+            nextAction: null
+            paused: false
+            pausedAt: null
+            pausedCreditMs: 0
             report: null
         requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
     ReportViewResponse:
@@ -12493,6 +12976,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例骗子甲
               age: 30
               gender: 男
@@ -12510,6 +12996,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例受害者乙
               age: 30
               gender: 女
@@ -12531,6 +13020,7 @@ components:
               roundNo: 1
               speaker: SCAMMER
               content: 完成任务后即可领取返利，请先了解任务规则。
+              actionText: null
               presentationStatus: PRESENTING
               presentationCompletedAt: null
               presentationErrorCode: null
@@ -12657,6 +13147,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例骗子甲
               age: 30
               gender: 男
@@ -12674,6 +13167,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例受害者乙
               age: 30
               gender: 女
@@ -12690,6 +13186,10 @@ components:
           outcome: null
           interruption: null
           readingUntil: null
+          nextAction: null
+          paused: false
+          pausedAt: null
+          pausedCreditMs: 0
           report: null
         reportView:
           sessionId: '501'
@@ -12742,6 +13242,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例骗子甲
               age: 30
               gender: 男
@@ -12759,6 +13262,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例受害者乙
               age: 30
               gender: 女
@@ -12775,6 +13281,10 @@ components:
           outcome: null
           interruption: null
           readingUntil: null
+          nextAction: null
+          paused: false
+          pausedAt: null
+          pausedCreditMs: 0
           report: null
     MessageSavedEvent:
       type: object
@@ -12804,11 +13314,18 @@ components:
           roundNo: 1
           speaker: SCAMMER
           content: 完成任务后即可领取返利，请先了解任务规则。
+          actionText: null
           presentationStatus: PRESENTING
           presentationCompletedAt: null
           presentationErrorCode: null
           savedAt: '2026-10-15T02:00:10.000Z'
           audioUrl: /anti.scam/v1/simulations/501/messages/1001/audio
+          audioDurationMs: 3200
+          segments:
+          - startMs: 0
+            endMs: 3200
+            charStart: 0
+            charEnd: 21
     AnalysisSavedEvent:
       type: object
       description: 本轮解说、风险、依据已原子保存，等待呈现回执。
@@ -12941,6 +13458,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例骗子甲
               age: 30
               gender: 男
@@ -12958,6 +13478,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例受害者乙
               age: 30
               gender: 女
@@ -12979,20 +13502,26 @@ components:
               roundNo: 1
               speaker: SCAMMER
               content: 完成任务后即可领取返利，请先了解任务规则。
+              actionText: null
               presentationStatus: COMPLETED
               presentationCompletedAt: '2026-10-15T02:00:20.000Z'
               presentationErrorCode: null
               savedAt: '2026-10-15T02:00:10.000Z'
               audioUrl: null
+              audioDurationMs: null
+              segments: null
             - id: '1002'
               roundNo: 1
               speaker: VICTIM
               content: 我不会转账，也不再参与这个任务。
+              actionText: null
               presentationStatus: COMPLETED
               presentationCompletedAt: '2026-10-15T02:00:20.000Z'
               presentationErrorCode: null
               savedAt: '2026-10-15T02:00:10.000Z'
               audioUrl: null
+              audioDurationMs: null
+              segments: null
             analysis:
               fraudStage: 建立信任
               speechAnalysis: 通过小额返利承诺吸引关注。
@@ -13011,6 +13540,10 @@ components:
             limitReason: null
           interruption: null
           readingUntil: '2026-10-15T02:00:25.000Z'
+          nextAction: null
+          paused: false
+          pausedAt: null
+          pausedCreditMs: 0
           report:
             status: PENDING
             displayText: 生成中
@@ -13061,6 +13594,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例骗子甲
               age: 30
               gender: 男
@@ -13078,6 +13614,9 @@ components:
               avatar:
                 key: avatar_example_01
                 url: /anti.scam/v1/avatars/avatar_example_01
+              speakingAvatar:
+                key: avatar_example_02
+                url: /anti.scam/v1/avatars/avatar_example_02
               name: 示例受害者乙
               age: 30
               gender: 女
@@ -13096,6 +13635,10 @@ components:
             code: MEDIA_FAILED
             message: 必要媒体呈现失败，本次演绎已中断。
           readingUntil: null
+          nextAction: null
+          paused: false
+          pausedAt: null
+          pausedCreditMs: 0
           report: null
     ReportUpdatedEvent:
       type: object
@@ -13184,6 +13727,9 @@ components:
                 avatar:
                   key: avatar_example_01
                   url: /anti.scam/v1/avatars/avatar_example_01
+                speakingAvatar:
+                  key: avatar_example_02
+                  url: /anti.scam/v1/avatars/avatar_example_02
                 name: 示例骗子甲
                 age: 30
                 gender: 男
@@ -13201,6 +13747,9 @@ components:
                 avatar:
                   key: avatar_example_01
                   url: /anti.scam/v1/avatars/avatar_example_01
+                speakingAvatar:
+                  key: avatar_example_02
+                  url: /anti.scam/v1/avatars/avatar_example_02
                 name: 示例受害者乙
                 age: 30
                 gender: 女
@@ -13217,6 +13766,10 @@ components:
             outcome: null
             interruption: null
             readingUntil: null
+            nextAction: null
+            paused: false
+            pausedAt: null
+            pausedCreditMs: 0
             report: null
           reportView:
             sessionId: '501'
@@ -13226,6 +13779,184 @@ components:
             outcome: null
             content: null
             riskSeries: []
+    AudioSegment:
+      type: object
+      description: （V1.1）台词分句与音频时间的对应关系，供前端逐字显示对齐
+      properties:
+        startMs:
+          type: integer
+          minimum: 0
+          description: 分句在音频中的起始毫秒
+        endMs:
+          type: integer
+          minimum: 1
+          description: 分句结束毫秒，大于startMs
+        charStart:
+          type: integer
+          minimum: 0
+          description: 对应content的起始字符下标（含，按Unicode码点）
+        charEnd:
+          type: integer
+          minimum: 1
+          description: 对应content的结束字符下标（不含）
+      required:
+      - startMs
+      - endMs
+      - charStart
+      - charEnd
+      additionalProperties: false
+    PauseResult:
+      type: object
+      description: （V1.1）暂停／继续返回服务端权威状态
+      properties:
+        effect:
+          type: string
+          enum:
+          - APPLIED
+          - ALREADY_APPLIED
+          - IGNORED_TERMINAL
+          description: 本次请求的处理结果
+        state:
+          $ref: '#/components/schemas/SimulationState'
+      required:
+      - effect
+      - state
+      additionalProperties: false
+    PauseResultResponse:
+      type: object
+      description: PauseResult 的统一成功响应
+      properties:
+        code:
+          type: string
+          const: OK
+        message:
+          type: string
+          description: 供展示的成功说明，不用于程序分支
+        data:
+          $ref: '#/components/schemas/PauseResult'
+        requestId:
+          $ref: '#/components/schemas/RequestId'
+      required:
+      - code
+      - message
+      - data
+      - requestId
+      additionalProperties: false
+      examples:
+      - code: OK
+        message: 成功
+        data:
+          effect: APPLIED
+          state:
+            sessionId: '501'
+            status: RUNNING
+            stateVersion: '1'
+            startedAt: '2026-10-15T02:00:00.000Z'
+            deadlineAt: '2026-10-15T02:10:00.000Z'
+            endedAt: null
+            currentRoundNo: 1
+            configuration:
+              scenario:
+                id: '1'
+                code: TASK_REBATE
+                name: 刷单返利诈骗
+                description: 以完成任务获得返利为由诱导垫付和追加投入。
+                focus: 青年群体
+              scammer:
+                id: '11'
+                avatar:
+                  key: avatar_example_01
+                  url: /anti.scam/v1/avatars/avatar_example_01
+                speakingAvatar:
+                  key: avatar_example_02
+                  url: /anti.scam/v1/avatars/avatar_example_02
+                name: 示例骗子甲
+                age: 30
+                gender: 男
+                identity: 示例人物身份
+                description: 仅用于接口字段演示，不代替PRD初始人物卡。
+                contextTime: 工作日晚间
+                contextPlace: 家中
+                currentState: 正在查看手机消息
+                fraudExperience: HIGH
+                speechSkill: HIGH
+                manipulationSkill: MEDIUM
+                behaviorTraits: 善于利用小额返利建立信任。
+              victim:
+                id: '21'
+                avatar:
+                  key: avatar_example_01
+                  url: /anti.scam/v1/avatars/avatar_example_01
+                speakingAvatar:
+                  key: avatar_example_02
+                  url: /anti.scam/v1/avatars/avatar_example_02
+                name: 示例受害者乙
+                age: 30
+                gender: 女
+                identity: 示例人物身份
+                description: 仅用于接口字段演示，不代替PRD初始人物卡。
+                contextTime: 工作日晚间
+                contextPlace: 家中
+                currentState: 正在查看手机消息
+                antiFraudAwareness: MEDIUM
+                riskTendency: LOW
+                personalityTraits: 谨慎，遇到转账要求时会核实。
+            currentRound:
+              roundNo: 1
+              phase: SCAMMER_GENERATING
+              interactionComplete: false
+              presentationComplete: false
+              messages: []
+              analysis: null
+              readingUntil: null
+            latestRiskScore: null
+            outcome: null
+            interruption: null
+            readingUntil: null
+            nextAction: null
+            paused: false
+            pausedAt: null
+            pausedCreditMs: 0
+            report: null
+        requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
+    SessionPausedEvent:
+      type: object
+      description: （V1.1）设置暂停已保存：演出、阅读停留到期处理与下一轮调度冻结。
+      properties:
+        eventId:
+          type: string
+          description: 不透明事件标识；同次推送重发保持，快照可产生新标识
+        sessionId:
+          $ref: '#/components/schemas/Id'
+        stateVersion:
+          $ref: '#/components/schemas/StateVersion'
+        data:
+          $ref: '#/components/schemas/SimulationState'
+      required:
+      - eventId
+      - sessionId
+      - stateVersion
+      - data
+      additionalProperties: false
+    SessionResumedEvent:
+      type: object
+      description: （V1.1）继续演绎已保存：本次计入的暂停时长已顺延到deadlineAt与当前readingUntil。
+      properties:
+        eventId:
+          type: string
+          description: 不透明事件标识；同次推送重发保持，快照可产生新标识
+        sessionId:
+          $ref: '#/components/schemas/Id'
+        stateVersion:
+          $ref: '#/components/schemas/StateVersion'
+        data:
+          $ref: '#/components/schemas/SimulationState'
+      required:
+      - eventId
+      - sessionId
+      - stateVersion
+      - data
+      additionalProperties: false
 x-document-status: 接口设计稿；已确认规则与待验证项并存
 x-validation-blockers:
 - TBD-01a

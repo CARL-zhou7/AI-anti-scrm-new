@@ -1,0 +1,9 @@
+{
+  "_comment": "Dev/test only. The victim never decides; 20 rounds -> UNDETERMINED / ROUND_LIMIT.",
+  "delayMs": 100,
+  "defaults": {
+    "scammer": [{"output": {"line": "第{{round}}次跟你说了，这个机会真的很难得，再考虑一下吧。", "action": null, "intent": "INTERNAL-NOTE-SECRET 反复劝说", "tone": {"speed": "NORMAL", "style": "劝说"}}}],
+    "victim": [{"output": {"line": "我还是拿不定主意，再让我想想。", "action": null, "psychology": "INTERNAL-NOTE-SECRET 犹豫不决", "tone": {"speed": "SLOW", "style": "犹豫"}}}],
+    "narrator": [{"output": {"fraudStage": "反复劝诱", "speechAnalysis": "持续强调机会难得，试图用重复消磨对方的判断。", "methodAnalysis": "软磨硬泡式劝说，等待对方松口。", "victimPsychology": "受害者犹豫不决，既未拒绝也未答应。", "riskScore": 50, "riskReason": "受害者仍在考虑配合，尚未承诺或执行危险操作。", "actualFraudOccurred": false, "goalAchieved": false, "cooperationStopped": false, "evidence": [], "candidateOutcome": null, "candidateReason": null}}]
+  }
+}

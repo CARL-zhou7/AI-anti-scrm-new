@@ -5,6 +5,8 @@ import RegisterView from '../views/RegisterView.vue'
 import HomeView from '../views/HomeView.vue'
 import PlaceholderView from '../views/PlaceholderView.vue'
 import ConfigurationView from '../views/ConfigurationView.vue'
+import SimulationView from '../views/SimulationView.vue'
+import ReportEntryView from '../views/ReportEntryView.vue'
 import AdminHomeView from '../views/AdminHomeView.vue'
 import AdminScenariosView from '../views/AdminScenariosView.vue'
 import AdminScammersView from '../views/AdminScammersView.vue'
@@ -18,6 +20,8 @@ const router = createRouter({
     { path: '/register', component: RegisterView, meta: { title: '注册', public: true } },
     { path: '/home', component: HomeView, meta: { title: '首页', role: 'USER' } },
     { path: '/configuration', component: ConfigurationView, meta: { title: '开始体验', role: 'USER' } },
+    { path: '/simulation', component: SimulationView, meta: { title: '情景演绎', role: 'USER', fullscreen: true } },
+    { path: '/simulations/:id/report', component: ReportEntryView, meta: { title: '演绎结果', role: 'USER' } },
     { path: '/history', component: PlaceholderView, props: { title: '个人历史' }, meta: { title: '个人历史', role: 'USER' } },
     { path: '/admin', component: AdminHomeView, meta: { title: '管理后台', role: 'ADMIN' } },
     { path: '/admin/scenarios', component: AdminScenariosView, meta: { title: '场景管理', role: 'ADMIN' } },

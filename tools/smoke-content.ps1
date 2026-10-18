@@ -102,7 +102,7 @@ try {
     Api '/auth/login' 200 POST @{username=$env:ADMIN_USERNAME;password=$env:ADMIN_PASSWORD} $token | Out-Null
     foreach ($path in $paths) { Api $path 403 | Out-Null }
     $tables = @(Sql "SELECT table_name FROM information_schema.tables WHERE table_schema='content_smoke' ORDER BY table_name;")
-    Assert-That (($tables -join ',') -eq 'flyway_schema_history,fraud_scenario,scammer_profile,sys_user,victim_profile') 'Unexpected business tables'
+    Assert-That (($tables -join ',') -eq 'agent_prompt,flyway_schema_history,fraud_scenario,scammer_profile,simulation_message,simulation_report,simulation_round,simulation_session,sys_user,victim_profile') 'Unexpected business tables'
     'PASS: MySQL 8.0.45 V1-V3 migrations, six content endpoints, pagination, avatars, role isolation and disabled profiles.' | Tee-Object "$runDir/result.txt"
 } finally {
     if ($app -and -not $app.HasExited) { Stop-Process -Id $app.Id }

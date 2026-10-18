@@ -22,20 +22,6 @@ public class AdminProfileController {
         return PageQuery.from(query);
     }
 
-    @DeleteMapping("/scammer-profiles/{id}")
-    public ApiResponse<java.util.Map<String, Boolean>> deleteScammer(@PathVariable String id, @Valid @RequestBody VersionRequest body, @RequestParam MultiValueMap<String, String> query) {
-        PageQuery.validate(query, Set.of());
-        service.deleteScammer(id, body);
-        return ApiResponse.ok(java.util.Map.of("deleted", true));
-    }
-
-    @DeleteMapping("/victim-profiles/{id}")
-    public ApiResponse<java.util.Map<String, Boolean>> deleteVictim(@PathVariable String id, @Valid @RequestBody VersionRequest body, @RequestParam MultiValueMap<String, String> query) {
-        PageQuery.validate(query, Set.of());
-        service.deleteVictim(id, body);
-        return ApiResponse.ok(java.util.Map.of("deleted", true));
-    }
-
     @GetMapping("/scammer-profiles")
     public ApiResponse<PageView<AdminScammerView>> listScammers(@RequestParam MultiValueMap<String, String> query, Authentication auth) {
         return ApiResponse.ok(service.listScammers(page(query), auth.getName()));

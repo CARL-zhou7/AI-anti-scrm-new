@@ -17,7 +17,8 @@ public record ScammerWriteRequest(
         @NotNull(message = "此项不能为空") Level speechSkill,
         @NotNull(message = "此项不能为空") Level manipulationSkill,
         @NotBlank(message = "此项不能为空") String behaviorTraits,
-        @NotBlank(message = "此项不能为空") @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "头像标识格式不正确") String avatarKey) {
+        @NotBlank(message = "此项不能为空") @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "头像标识格式不正确") String avatarKey,
+        @NotBlank(message = "此项不能为空") @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "头像标识格式不正确") String speakingAvatarKey) {
     public void validateText() {
         RequestContent.checkField("name", name, 64);
         RequestContent.checkField("gender", gender, 16);
@@ -28,7 +29,7 @@ public record ScammerWriteRequest(
         RequestContent.checkField("currentState", currentState, RequestContent.MAX_TEXT_CHARS);
         RequestContent.checkField("behaviorTraits", behaviorTraits, RequestContent.MAX_TEXT_CHARS);
     }
-    public ScammerProfileValues values(String storedAvatarKey) {
-        return new ScammerProfileValues(name, age, gender, identity, description, contextTime, contextPlace, currentState, fraudExperience, speechSkill, manipulationSkill, behaviorTraits, storedAvatarKey);
+    public ScammerProfileValues values(String storedAvatarKey, String storedSpeakingAvatarKey) {
+        return new ScammerProfileValues(name, age, gender, identity, description, contextTime, contextPlace, currentState, fraudExperience, speechSkill, manipulationSkill, behaviorTraits, storedAvatarKey, storedSpeakingAvatarKey);
     }
 }

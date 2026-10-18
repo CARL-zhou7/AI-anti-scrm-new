@@ -1,4 +1,4 @@
-"""Generate the five initial fictional portraits; requires Pillow (development only)."""
+"""Generate the five initial fictional portraits (closed- and open-mouth frames); requires Pillow (development only)."""
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1] / 'backend/var/avatars'
 NAMES = ['陈启明', '梁悦', '林晓', '赵诚', '周桂兰']
 
 
-def portrait(index):
+def portrait(index, speaking=False):
     image = Image.new('RGB', (512, 512), ['#dce5df', '#e6ded4', '#e5ebd5', '#dce3eb', '#eee3da'][index])
     d = ImageDraw.Draw(image)
     skin, hair = '#e3b798', '#353735' if index != 4 else '#a7aaa5'
@@ -27,7 +27,11 @@ def portrait(index):
         d.line((x - 12, 207, x + 10, 205), fill=hair, width=4)
         d.ellipse((x - 4, 220, x + 4, 227), fill='#373c36')
     d.line((254, 230, 248, 251, 258, 251), fill='#bb8a71', width=3)
-    d.arc((231, 249, 280, 278), 15, 160, fill='#906652', width=3)
+    if speaking:
+        # Open-mouth frame: same canvas and pixels except the mouth, for two-frame lip flap.
+        d.ellipse((238, 253, 273, 281), fill='#6e4436', outline='#906652', width=2)
+    else:
+        d.arc((231, 249, 280, 278), 15, 160, fill='#906652', width=3)
     d.polygon([(220, 335), (256, 365), (231, 399), (200, 350)], fill='#e4e7dc')
     d.polygon([(290, 335), (256, 365), (279, 399), (312, 350)], fill='#e4e7dc')
     if index == 1:
@@ -47,17 +51,20 @@ def generate():
     ROOT.mkdir(parents=True, exist_ok=True)
     keys = []
     for index, name in enumerate(NAMES):
-        data = portrait(index)
-        filename = sha256(data).hexdigest() + '.png'
-        path = ROOT / filename
-        if path.exists():
-            assert path.read_bytes() == data, 'Immutable avatar content differs'
-        else:
-            path.write_bytes(data)
-        with Image.open(BytesIO(data)) as decoded:
-            decoded.verify()
-        keys.append('avatars/' + filename)
-        print(name, keys[-1])
+        pair = []
+        for speaking in (False, True):
+            data = portrait(index, speaking)
+            filename = sha256(data).hexdigest() + '.png'
+            path = ROOT / filename
+            if path.exists():
+                assert path.read_bytes() == data, 'Immutable avatar content differs'
+            else:
+                path.write_bytes(data)
+            with Image.open(BytesIO(data)) as decoded:
+                decoded.verify()
+            pair.append('avatars/' + filename)
+        keys.append(tuple(pair))
+        print(name, 'closed', pair[0], 'speaking', pair[1])
     return keys
 
 

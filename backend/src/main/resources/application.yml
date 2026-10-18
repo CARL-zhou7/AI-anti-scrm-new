@@ -26,6 +26,10 @@ spring:
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+  mvc:
+    async:
+      # Keep in step with app.simulation.sse.emitter-timeout-ms (TBD-04).
+      request-timeout: 1800000
 server:
   tomcat:
     max-swallow-size: -1
@@ -51,3 +55,49 @@ app:
   admin:
     username: ${ADMIN_USERNAME:}
     password: ${ADMIN_PASSWORD:}
+  simulation:
+    timing:
+      sample-ttl-ms: 60000          # TBD-01a
+      max-uncertainty-ms: 1500      # TBD-01a
+      max-click-to-arrival-ms: 30000 # TBD-01a
+    llm:
+      provider: ${LLM_PROVIDER:deepseek}   # deepseek | scripted (scripted only in dev/test)
+      base-url: ${LLM_BASE_URL:https://api.deepseek.com}
+      model: ${LLM_MODEL:deepseek-chat}
+      api-key: ${LLM_API_KEY:}
+      call-timeout-ms: 20000
+      transient-retries: 2
+      max-tokens: 800
+    tts:
+      provider: ${TTS_PROVIDER:cosyvoice}  # cosyvoice | silent (silent only in dev/test)
+      gateway-url: ${TTS_GATEWAY_URL:http://127.0.0.1:50080}
+      call-timeout-ms: 30000
+      # Preset voices (V-09): each age band x gender has a primary and a backup; ids must exist in the gateway voices.json.
+      voices:
+        - { id: youth_male_a, age-group: YOUTH, gender: MALE, rank: PRIMARY }
+        - { id: youth_male_b, age-group: YOUTH, gender: MALE, rank: BACKUP }
+        - { id: youth_female_a, age-group: YOUTH, gender: FEMALE, rank: PRIMARY }
+        - { id: youth_female_b, age-group: YOUTH, gender: FEMALE, rank: BACKUP }
+        - { id: youth_neutral_a, age-group: YOUTH, gender: NEUTRAL, rank: PRIMARY }
+        - { id: youth_neutral_b, age-group: YOUTH, gender: NEUTRAL, rank: BACKUP }
+        - { id: middle_male_a, age-group: MIDDLE, gender: MALE, rank: PRIMARY }
+        - { id: middle_male_b, age-group: MIDDLE, gender: MALE, rank: BACKUP }
+        - { id: middle_female_a, age-group: MIDDLE, gender: FEMALE, rank: PRIMARY }
+        - { id: middle_female_b, age-group: MIDDLE, gender: FEMALE, rank: BACKUP }
+        - { id: middle_neutral_a, age-group: MIDDLE, gender: NEUTRAL, rank: PRIMARY }
+        - { id: middle_neutral_b, age-group: MIDDLE, gender: NEUTRAL, rank: BACKUP }
+        - { id: senior_male_a, age-group: SENIOR, gender: MALE, rank: PRIMARY }
+        - { id: senior_male_b, age-group: SENIOR, gender: MALE, rank: BACKUP }
+        - { id: senior_female_a, age-group: SENIOR, gender: FEMALE, rank: PRIMARY }
+        - { id: senior_female_b, age-group: SENIOR, gender: FEMALE, rank: BACKUP }
+        - { id: senior_neutral_a, age-group: SENIOR, gender: NEUTRAL, rank: PRIMARY }
+        - { id: senior_neutral_b, age-group: SENIOR, gender: NEUTRAL, rank: BACKUP }
+    audio-temp-dir: ${AUDIO_TEMP_DIR:var/tmp-audio}
+    sse:
+      heartbeat-ms: 15000           # TBD-04
+      emitter-timeout-ms: 1800000   # TBD-04
+    connection:
+      lost-grace-ms: 30000          # TBD-05
+    executors:
+      lanes: 8
+    report-attempt-timeout-ms: 120000

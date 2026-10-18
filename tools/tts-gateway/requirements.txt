@@ -1,0 +1,4 @@
+# Only on the TTS host (not part of the Java/frontend dependency trees).
+# CosyVoice itself is installed from its repository per its README (it pins torch/torchaudio).
+numpy>=1.26
+# System requirement: ffmpeg with libmp3lame on PATH.

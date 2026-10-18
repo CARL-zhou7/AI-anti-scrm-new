@@ -67,6 +67,8 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .securityContext(c -> c.securityContextRepository(context))
                 .authorizeHttpRequests(a -> a
+                        // SSE completes on async/error dispatches; URL rules below are unchanged.
+                        .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC, jakarta.servlet.DispatcherType.ERROR).permitAll()
                         .requestMatchers(req -> req.getRequestURI().contains("..")
                                 || req.getRequestURI().contains("\\") || req.getRequestURI().indexOf('\0') >= 0).denyAll()
                         .requestMatchers("/anti.scam/v1/auth/csrf", "/anti.scam/v1/auth/login").permitAll()

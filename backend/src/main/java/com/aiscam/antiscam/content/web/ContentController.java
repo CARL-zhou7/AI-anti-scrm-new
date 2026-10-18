@@ -7,6 +7,7 @@ import com.aiscam.antiscam.content.web.dto.*;
 import java.util.List;
 import java.util.Set;
 import org.springframework.http.ResponseEntity;
+import com.aiscam.antiscam.auth.web.dto.Account;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
@@ -46,9 +47,10 @@ public class ContentController {
     }
 
     @GetMapping({"/avatars/{key}", "/avatars", "/avatars/"})
-    public ResponseEntity<byte[]> avatar(@PathVariable(required = false) String key, @RequestParam MultiValueMap<String, String> query) {
+    public ResponseEntity<byte[]> avatar(@PathVariable(required = false) String key, @RequestParam MultiValueMap<String, String> query,
+            Authentication auth) {
         PageQuery.validate(query, Set.of());
-        var resource = content.avatar(key);
+        var resource = content.avatar(key, Long.parseLong(((Account) auth.getPrincipal()).id()));
         return ResponseEntity.ok().header("Cache-Control", "private, no-store")
                 .header("X-Content-Type-Options", "nosniff").header("Content-Type", resource.mediaType()).body(resource.bytes());
     }

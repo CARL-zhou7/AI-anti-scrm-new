@@ -52,4 +52,41 @@ public class ApiException extends RuntimeException {
     public static ApiException dataInconsistent(String message) {
         return new ApiException(500, "DATA_INCONSISTENT", message);
     }
+
+    public static ApiException activeSimulationExists(String activeSessionId) {
+        return new ApiException(409, "ACTIVE_SIMULATION_EXISTS", "你已有一场进行中的演绎",
+                new ErrorDetail(List.of(), activeSessionId, null));
+    }
+
+    public static ApiException idempotencyConflict() {
+        return new ApiException(409, "IDEMPOTENCY_CONFLICT", "同一开始请求不能用于不同配置");
+    }
+
+    public static ApiException profileUnavailable() {
+        return new ApiException(409, "PROFILE_UNAVAILABLE", "所选画像已不可用，请返回重新选择");
+    }
+
+    public static ApiException timingNotReady() {
+        return new ApiException(503, "TIMING_PROTOCOL_NOT_READY", "计时校准暂不可用，请稍后重试");
+    }
+
+    public static ApiException serviceUnavailable() {
+        return new ApiException(503, "SERVICE_UNAVAILABLE", "服务正在恢复，请稍后重试");
+    }
+
+    public static ApiException stageConflict() {
+        return new ApiException(409, "STAGE_CONFLICT", "当前演绎阶段不接受该回执");
+    }
+
+    public static ApiException presentationConflict() {
+        return new ApiException(409, "PRESENTATION_CONFLICT", "该对象已有相反的呈现结果");
+    }
+
+    public static ApiException audioNotReady() {
+        return new ApiException(409, "AUDIO_NOT_READY", "语音尚未就绪");
+    }
+
+    public static ApiException audioExpired() {
+        return new ApiException(410, "AUDIO_EXPIRED", "语音已失效");
+    }
 }

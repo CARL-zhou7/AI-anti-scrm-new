@@ -17,8 +17,12 @@ for (const [path, method] of [
   ['/admin/victim-profiles', 'get'], ['/admin/victim-profiles', 'post'],
   ['/admin/victim-profiles/{id}', 'get'], ['/admin/victim-profiles/{id}', 'put'],
   ['/admin/victim-profiles/{id}/disable', 'post'], ['/admin/victim-profiles/{id}/enable', 'post'],
-  ['/admin/scammer-profiles/{id}', 'delete'], ['/admin/victim-profiles/{id}', 'delete'],
   ['/admin/avatars', 'post'], ['/admin/avatars/{key}', 'get'],
+  ['/timing/samples', 'get'], ['/simulations', 'post'], ['/simulations/{id}', 'get'], ['/simulations/{id}/events', 'get'],
+  ['/simulations/{id}/opening/presented', 'post'], ['/simulations/{id}/messages/{messageId}/presentation', 'post'],
+  ['/simulations/{id}/rounds/{roundNo}/analysis/presented', 'post'], ['/simulations/{id}/exit', 'post'],
+  ['/simulations/{id}/messages/{messageId}/audio', 'get'], ['/simulations/{id}/pause', 'post'], ['/simulations/{id}/resume', 'post'],
+  ['/simulations/{id}/report', 'get'], ['/simulations/{id}/report/retry', 'post'], ['/simulations/{id}/detail', 'get'],
 ]) assert.ok(document.paths[path]?.[method], `${method} ${path} is missing`)
 assert.equal(document.servers[0].url, '/anti.scam/v1')
 assert.equal(document.components.schemas.Scenario.additionalProperties, false)
@@ -27,4 +31,19 @@ assert.equal(document.components.schemas.AdminScenario.additionalProperties, fal
 for (const field of ['enabled', 'version', 'createdAt', 'updatedAt']) {
   assert.ok(document.components.schemas.AdminScammerProfile.required.includes(field))
 }
-console.log('OpenAPI valid; phase 1 (7) + phase 2 (6) + phase 3 (18) operations present.')
+// V1.1 (phase 4): pause/resume, audio segments, action text, speaking avatar; permanent profile deletion removed (D-1).
+const s = document.components.schemas
+for (const f of ['paused', 'pausedAt', 'pausedCreditMs', 'nextAction']) assert.ok(s.SimulationState.required.includes(f), `SimulationState.${f}`)
+assert.equal(s.SimulationState.properties.pausedCreditMs.maximum, 300000)
+for (const f of ['actionText', 'audioDurationMs', 'segments']) assert.ok(s.LiveMessage.required.includes(f), `LiveMessage.${f}`)
+assert.ok(s.HistoryMessage.required.includes('actionText'))
+for (const f of ['startMs', 'endMs', 'charStart', 'charEnd']) assert.ok(s.AudioSegment.required.includes(f))
+for (const n of ['ScammerProfile', 'VictimProfile', 'AdminScammerProfile', 'AdminVictimProfile']) assert.ok(s[n].required.includes('speakingAvatar'), n)
+for (const n of ['ScammerWrite', 'VictimWrite', 'ScammerUpdate', 'VictimUpdate']) assert.ok(s[n].required.includes('speakingAvatarKey'), n)
+assert.ok(!('internalNote' in s.LiveMessage.properties) && !('internalNote' in s.HistoryMessage.properties))
+const events = document.paths['/simulations/{id}/events'].get['x-event-schemas']
+assert.equal(Object.keys(events ?? {}).length, 11)
+for (const p of ['/admin/scammer-profiles/{id}', '/admin/victim-profiles/{id}']) assert.ok(!document.paths[p]?.delete, `DELETE ${p} must be removed (D-1)`)
+const operations = Object.values(document.paths).reduce((n, item) => n + ['get', 'post', 'put', 'delete'].filter(m => item[m]).length, 0)
+assert.equal(operations, 44)
+console.log('OpenAPI valid; 44 operations (V1.1) and 11 SSE event types present; profile DELETE removed.')

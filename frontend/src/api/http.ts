@@ -28,7 +28,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data
 }
 
-async function write<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown): Promise<T> {
+async function write<T>(path: string, method: 'POST' | 'PUT', body?: unknown): Promise<T> {
     const token = await csrf.ensure()
     const form = body instanceof FormData
     try {
@@ -44,8 +44,16 @@ async function write<T>(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: 
     }
 }
 
+/** Best-effort exit notification while the page is going away: keepalive fetch with the in-memory CSRF token. */
+export function postKeepalive(path: string, body: unknown, token: string | null): void {
+  try {
+    void fetch(apiBase + path, { method: 'POST', keepalive: true, credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...(token ? { 'X-CSRF-TOKEN': token } : {}) },
+      body: JSON.stringify(body) }).catch(() => undefined)
+  } catch { /* the page is unloading; nothing else to do */ }
+}
+
 export const http = {
-  delete: <T>(path: string, body: unknown) => write<T>(path, 'DELETE', body),
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) => write<T>(path, 'POST', body),
   put: <T>(path: string, body: unknown) => write<T>(path, 'PUT', body),

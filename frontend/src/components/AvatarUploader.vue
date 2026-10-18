@@ -3,7 +3,8 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { adminApi } from '../api/admin'
 import type { AvatarUpload } from '../api/types'
 
-const props = defineProps<{ avatarKey: string; previewUrl: string; disabled: boolean }>()
+const props = withDefaults(defineProps<{ avatarKey: string; previewUrl: string; disabled: boolean; label?: string; testPrefix?: string }>(),
+  { label: '头像', testPrefix: 'avatar' })
 const emit = defineEmits<{ uploaded: [value: AvatarUpload]; busy: [value: boolean]; ready: [value: boolean] }>()
 const file = ref<File | null>(null), localUrl = ref(''), uploading = ref(false), error = ref(''), failed = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null), previewRevision = ref(0)
@@ -46,16 +47,16 @@ onBeforeUnmount(release)
 </script>
 
 <template>
-  <div class="avatar-uploader" data-testid="avatar-uploader">
-    <span>头像（静态 JPG / PNG，最大 5 MB）</span>
-    <input ref="fileInput" type="file" hidden accept="image/png,image/jpeg" data-testid="avatar-file-input" :disabled="disabled || uploading" @change="select" />
+  <div class="avatar-uploader" :data-testid="testPrefix + '-uploader'">
+    <span>{{ label }}（静态 JPG / PNG，最大 5 MB）</span>
+    <input ref="fileInput" type="file" hidden accept="image/png,image/jpeg" :data-testid="testPrefix + '-file-input'" :disabled="disabled || uploading" @change="select" />
     <div class="admin-avatar-preview">
-      <img v-if="source" :key="source + previewRevision" :src="source" alt="头像预览" data-testid="avatar-preview" @load="loaded" @error="imageError" />
-      <p v-else class="field-help">请先选择并上传头像。</p>
-      <button type="button" class="button button-light" data-testid="avatar-upload" :disabled="disabled || uploading || (file !== null && file.size > 5 * 1024 * 1024)" @click="chooseOrUpload">{{ uploading ? '上传中…' : file ? '确认上传' : '上传头像' }}</button>
-      <button type="button" class="button button-light" data-testid="avatar-cancel" :disabled="!file || disabled || uploading" @click="cancel">取消</button>
+      <img v-if="source" :key="source + previewRevision" :src="source" :alt="label + '预览'" :data-testid="testPrefix + '-preview'" @load="loaded" @error="imageError" />
+      <p v-else class="field-help">请先选择并上传{{ label }}。</p>
+      <button type="button" class="button button-light" :data-testid="testPrefix + '-upload'" :disabled="disabled || uploading || (file !== null && file.size > 5 * 1024 * 1024)" @click="chooseOrUpload">{{ uploading ? '上传中…' : file ? '确认上传' : '上传' + label }}</button>
+      <button type="button" class="button button-light" :data-testid="testPrefix + '-cancel'" :disabled="!file || disabled || uploading" @click="cancel">取消</button>
     </div>
     <p v-if="file && !error" class="field-help">当前为本地预览，点击确认上传，或取消恢复原头像。</p>
-    <p v-if="error || failed" class="field-error" role="alert" data-testid="avatar-upload-error">{{ error || '头像预览加载失败，请重新选择并上传' }}</p>
+    <p v-if="error || failed" class="field-error" role="alert" :data-testid="testPrefix + '-upload-error'">{{ error || label + '预览加载失败，请重新选择并上传' }}</p>
   </div>
 </template>

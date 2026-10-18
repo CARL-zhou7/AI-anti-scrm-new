@@ -17,8 +17,9 @@ public record VictimUpdateRequest(
         @NotNull(message = "此项不能为空") Level riskTendency,
         @NotBlank(message = "此项不能为空") String personalityTraits,
         @NotBlank(message = "此项不能为空") @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "头像标识格式不正确") String avatarKey,
+        @NotBlank(message = "此项不能为空") @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "头像标识格式不正确") String speakingAvatarKey,
         @NotNull(message = "请提供内容版本") @Min(value = 0, message = "版本不能为负数") Integer version) {
     public VictimWriteRequest content() {
-        return new VictimWriteRequest(name, age, gender, identity, description, contextTime, contextPlace, currentState, antiFraudAwareness, riskTendency, personalityTraits, avatarKey);
+        return new VictimWriteRequest(name, age, gender, identity, description, contextTime, contextPlace, currentState, antiFraudAwareness, riskTendency, personalityTraits, avatarKey, speakingAvatarKey);
     }
 }

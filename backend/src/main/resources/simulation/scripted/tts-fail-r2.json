@@ -1,0 +1,9 @@
+{
+  "_comment": "Dev/test only. Round 2's victim line carries the silent synthesizer's failure marker -> the text is saved (PENDING) and the run is interrupted as TTS_FAILED.",
+  "extends": "default",
+  "rounds": {
+    "2": {
+      "victim": [{"output": {"line": "[TTS_FAIL] 什么好处？你先说清楚。", "action": null, "psychology": "INTERNAL-NOTE-SECRET 好奇", "tone": {"speed": "NORMAL", "style": "好奇"}}}]
+    }
+  }
+}

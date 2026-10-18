@@ -17,4 +17,5 @@ export const csrf = {
   },
   refresh(): Promise<string> { this.clear(); return this.ensure() },
   clear(): void { token = null },
+  current(): string | null { return token },
 }

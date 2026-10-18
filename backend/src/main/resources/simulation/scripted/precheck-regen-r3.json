@@ -1,0 +1,17 @@
+{
+  "_comment": "Dev/test only. Round 3's first victim reply stops cooperation (a formal outcome before round 5): it must be discarded, never saved or published, and regenerated (BR-P12).",
+  "extends": "default",
+  "delayMs": 300,
+  "rounds": {
+    "3": {
+      "victim": [
+        {"output": {"line": "DISCARDED-CANDIDATE 这一定是骗局，我不跟你聊了。", "action": "已经拉黑了对方", "psychology": "INTERNAL-NOTE-SECRET 直接终止", "tone": {"speed": "NORMAL", "style": "坚决"}}},
+        {"output": {"line": "听起来有点太好了，我得想一想。", "action": null, "psychology": "INTERNAL-NOTE-SECRET 觉得可疑，开始犹豫", "tone": {"speed": "SLOW", "style": "犹豫"}}}
+      ],
+      "narrator": [
+        {"output": {"fraudStage": "诱导操作", "speechAnalysis": "用简单步骤与稀缺名额催促行动。", "methodAnalysis": "稀缺性暗示。", "victimPsychology": "识破后直接拉黑。", "riskScore": 0, "riskReason": "受害者明确拒绝并拉黑对方。", "actualFraudOccurred": false, "goalAchieved": false, "cooperationStopped": true, "evidence": [{"factCode": "COOPERATION_STOPPED", "speaker": "VICTIM", "source": "ACTION", "roundNo": 3, "quote": "已经拉黑了对方", "eventOrder": 1}], "candidateOutcome": "NOT_DEFRAUDED", "candidateReason": "受害者拉黑对方，明确终止配合。"}},
+        {"output": {"fraudStage": "诱导操作", "speechAnalysis": "用“简单步骤”“名额不多”降低门槛并制造稀缺。", "methodAnalysis": "稀缺性与轻松获利暗示，催促尽快行动。", "victimPsychology": "察觉“好得不真实”，产生怀疑并选择拖延。", "riskScore": 50, "riskReason": "仍在考虑是否配合，没有承诺或执行危险操作。", "actualFraudOccurred": false, "goalAchieved": false, "cooperationStopped": false, "evidence": [], "candidateOutcome": null, "candidateReason": null}}
+      ]
+    }
+  }
+}

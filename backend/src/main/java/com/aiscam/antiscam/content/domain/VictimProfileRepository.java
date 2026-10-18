@@ -14,6 +14,10 @@ public interface VictimProfileRepository extends Repository<VictimProfile, Long>
     Optional<VictimProfile> findByIdAndEnabled(long id, byte enabled);
     List<VictimProfile> findByEnabled(byte enabled);
     boolean existsByAvatarKeyAndEnabled(String avatarKey, byte enabled);
+    boolean existsBySpeakingAvatarKeyAndEnabled(String speakingAvatarKey, byte enabled);
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select p from VictimProfile p where p.id = :id")
+    Optional<VictimProfile> shareLockById(@Param("id") long id);
     Optional<VictimProfile> findById(long id);
     VictimProfile save(VictimProfile profile);
     List<VictimProfile> findByIdGreaterThanOrderByIdAsc(long id, Pageable page);

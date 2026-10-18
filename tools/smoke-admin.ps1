@@ -117,7 +117,8 @@ try {
     $after = (Api '/admin/scammer-profiles').data.items
     Assert-That (@($after | Where-Object enabled).Count -eq 1) 'No enabled scammer remains'
     $last = @($after | Where-Object enabled)[0]
-    Assert-That ((Api "/admin/scammer-profiles/$($last.id)" 409 DELETE @{version=$last.version} $token).code -eq 'LAST_ENABLED_PROFILE') 'Deleted last enabled profile'
+    # D-1: permanent deletion was removed; an unmapped method answers 400 VALIDATION_FAILED and the record stays.
+    Assert-That ((Api "/admin/scammer-profiles/$($last.id)" 400 DELETE @{version=$last.version} $token).code -eq 'VALIDATION_FAILED') 'DELETE still available'
     foreach ($p in $after) { if (-not $p.enabled) { Api "/admin/scammer-profiles/$($p.id)/enable" 200 POST @{version=$p.version} $token | Out-Null } }
     Write-Output 'PASS: pagination and concurrent last-enabled protection'
 
@@ -147,9 +148,9 @@ try {
         $seed = if ($kind -eq 'scammer') { $scammers[0] } else { $victims[0] }
         $body = @{}
         foreach ($property in $seed.PSObject.Properties) {
-            if ($property.Name -notin @('id','avatar','enabled','version','createdAt','updatedAt')) { $body[$property.Name]=$property.Value }
+            if ($property.Name -notin @('id','avatar','speakingAvatar','enabled','version','createdAt','updatedAt')) { $body[$property.Name]=$property.Value }
         }
-        $body.name = "新增$kind"; $body.avatarKey = $uploaded.key
+        $body.name = "新增$kind"; $body.avatarKey = $uploaded.key; $body.speakingAvatarKey = $uploaded.key
         $created = (Api "/admin/$kind-profiles" 201 POST $body $token).data
         Assert-That ($created.enabled -and $created.version -eq 0 -and $created.avatar.url -like '/anti.scam/v1/admin/avatars/*') 'Created profile invalid'
         $body.version=0; $body.name="修改$kind"
@@ -173,20 +174,13 @@ try {
         $script:client=$adminClient
         Assert-That (-not (Api "/admin/$kind-profiles/$($created.id)").data.enabled) 'Admin cannot read disabled profile'
         Api "/admin/$kind-profiles/$($created.id)/enable" 200 POST @{version=2} $token | Out-Null
-        Assert-That ((Api "/admin/$kind-profiles/$($created.id)" 409 DELETE @{version=2} $token).code -eq 'VERSION_CONFLICT') 'Stale delete accepted'
-        Api "/admin/$kind-profiles/$($created.id)" 403 DELETE @{version=3} | Out-Null
-        $script:client=$userClient
-        Api "/admin/$kind-profiles/$($created.id)" 403 DELETE @{version=3} $userToken | Out-Null
-        $script:client=$adminClient
-        Assert-That ((Api "/admin/$kind-profiles/$($created.id)" 200 DELETE @{version=3} $token).data.deleted) 'Delete failed'
-        Api "/admin/$kind-profiles/$($created.id)" 404 | Out-Null
-        $script:client=$userClient
-        Api "/$kind-profiles/$($created.id)" 404 | Out-Null
-        $script:client=$adminClient
+        # D-1: no permanent deletion; the profile is still readable afterwards.
+        Api "/admin/$kind-profiles/$($created.id)" 400 DELETE @{version=3} $token | Out-Null
+        Assert-That ((Api "/admin/$kind-profiles/$($created.id)").data.id -eq $created.id) 'Profile disappeared after DELETE'
     }
     Write-Output 'PASS: both profile families create/edit/toggle, strict validation and USER visibility'
     $tables = "SELECT table_name FROM information_schema.tables WHERE table_schema='admin_smoke' ORDER BY table_name;" | & "$MySqlBin/mysql.exe" --no-defaults --host=127.0.0.1 --port=13309 --user=root --batch --skip-column-names
-    Assert-That (($tables -join ',') -eq 'flyway_schema_history,fraud_scenario,scammer_profile,sys_user,victim_profile') 'Unexpected schema change'
+    Assert-That (($tables -join ',') -eq 'agent_prompt,flyway_schema_history,fraud_scenario,scammer_profile,simulation_message,simulation_report,simulation_round,simulation_session,sys_user,victim_profile') 'Unexpected schema change'
     'PASS: admin console smoke on isolated MySQL 8.0.45; no existing database touched.' | Tee-Object "$runDir/result.txt"
 
 } finally {

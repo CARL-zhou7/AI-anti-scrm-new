@@ -16,7 +16,8 @@ public record VictimWriteRequest(
         @NotNull(message = "此项不能为空") Level antiFraudAwareness,
         @NotNull(message = "此项不能为空") Level riskTendency,
         @NotBlank(message = "此项不能为空") String personalityTraits,
-        @NotBlank(message = "此项不能为空") @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "头像标识格式不正确") String avatarKey) {
+        @NotBlank(message = "此项不能为空") @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "头像标识格式不正确") String avatarKey,
+        @NotBlank(message = "此项不能为空") @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "头像标识格式不正确") String speakingAvatarKey) {
     public void validateText() {
         RequestContent.checkField("name", name, 64);
         RequestContent.checkField("gender", gender, 16);
@@ -27,7 +28,7 @@ public record VictimWriteRequest(
         RequestContent.checkField("currentState", currentState, RequestContent.MAX_TEXT_CHARS);
         RequestContent.checkField("personalityTraits", personalityTraits, RequestContent.MAX_TEXT_CHARS);
     }
-    public VictimProfileValues values(String storedAvatarKey) {
-        return new VictimProfileValues(name, age, gender, identity, description, contextTime, contextPlace, currentState, antiFraudAwareness, riskTendency, personalityTraits, storedAvatarKey);
+    public VictimProfileValues values(String storedAvatarKey, String storedSpeakingAvatarKey) {
+        return new VictimProfileValues(name, age, gender, identity, description, contextTime, contextPlace, currentState, antiFraudAwareness, riskTendency, personalityTraits, storedAvatarKey, storedSpeakingAvatarKey);
     }
 }

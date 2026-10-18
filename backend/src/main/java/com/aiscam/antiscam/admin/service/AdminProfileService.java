@@ -34,26 +34,18 @@ public class AdminProfileService {
         }
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    public void deleteScammer(String id, VersionRequest request) {
-        long target = PageQuery.id(id);
-        var rows = scammers.lockAllByOrderByIdAsc();
-        var row = rows.stream().filter(p -> p.getId() == target).findFirst().orElseThrow(ApiException::notFound);
-        if (row.isEnabled() && rows.stream().filter(ScammerProfile::isEnabled).count() == 1) throw ApiException.lastEnabledProfile();
-        if (row.getRowVersion() != request.version()) throw ApiException.versionConflict(row.getRowVersion());
-        em.remove(row);
-        em.flush();
-    }
-
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    public void deleteVictim(String id, VersionRequest request) {
-        long target = PageQuery.id(id);
-        var rows = victims.lockAllByOrderByIdAsc();
-        var row = rows.stream().filter(p -> p.getId() == target).findFirst().orElseThrow(ApiException::notFound);
-        if (row.isEnabled() && rows.stream().filter(VictimProfile::isEnabled).count() == 1) throw ApiException.lastEnabledProfile();
-        if (row.getRowVersion() != request.version()) throw ApiException.versionConflict(row.getRowVersion());
-        em.remove(row);
-        em.flush();
+    /** Resolves the open-mouth frame and requires it to have the same pixel size as the closed frame. */
+    private String speakingAvatar(String key, String closedStoredKey) {
+        String stored;
+        try { stored = avatars.storedKey(key); }
+        catch (ApiException e) {
+            if (e.status != 400 && e.status != 404) throw e;
+            throw ApiException.field("speakingAvatarKey", "VALUE_INVALID", "请先上传有效的张嘴立绘并确认可预览");
+        }
+        if (!avatars.dimensions(stored).equals(avatars.dimensions(closedStoredKey))) {
+            throw ApiException.field("speakingAvatarKey", "VALUE_INVALID", "两张立绘尺寸必须一致");
+        }
+        return stored;
     }
 
     public PageView<AdminScammerView> listScammers(PageQuery query, String account) {
@@ -71,7 +63,8 @@ public class AdminProfileService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AdminScammerView createScammer(ScammerWriteRequest request) {
         request.validateText();
-        var row = scammers.save(new ScammerProfile(request.values(avatar(request.avatarKey()))));
+        String closed = avatar(request.avatarKey());
+        var row = scammers.save(new ScammerProfile(request.values(closed, speakingAvatar(request.speakingAvatarKey(), closed))));
         em.flush(); em.refresh(row);
         return AdminScammerView.from(row);
     }
@@ -81,9 +74,10 @@ public class AdminProfileService {
         var body = request.content();
         body.validateText();
         String avatarKey = avatar(body.avatarKey());
+        String speakingKey = speakingAvatar(body.speakingAvatarKey(), avatarKey);
         var row = scammers.lockById(PageQuery.id(id)).orElseThrow(ApiException::notFound);
         if (row.getRowVersion() != request.version()) throw ApiException.versionConflict(row.getRowVersion());
-        row.apply(body.values(avatarKey));
+        row.apply(body.values(avatarKey, speakingKey));
         em.flush();
         if (row.getRowVersion() == request.version()) {
             em.createQuery("update ScammerProfile p set p.rowVersion = p.rowVersion + 1 where p.id = :id")
@@ -121,7 +115,8 @@ public class AdminProfileService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AdminVictimView createVictim(VictimWriteRequest request) {
         request.validateText();
-        var row = victims.save(new VictimProfile(request.values(avatar(request.avatarKey()))));
+        String closed = avatar(request.avatarKey());
+        var row = victims.save(new VictimProfile(request.values(closed, speakingAvatar(request.speakingAvatarKey(), closed))));
         em.flush(); em.refresh(row);
         return AdminVictimView.from(row);
     }
@@ -131,9 +126,10 @@ public class AdminProfileService {
         var body = request.content();
         body.validateText();
         String avatarKey = avatar(body.avatarKey());
+        String speakingKey = speakingAvatar(body.speakingAvatarKey(), avatarKey);
         var row = victims.lockById(PageQuery.id(id)).orElseThrow(ApiException::notFound);
         if (row.getRowVersion() != request.version()) throw ApiException.versionConflict(row.getRowVersion());
-        row.apply(body.values(avatarKey));
+        row.apply(body.values(avatarKey, speakingKey));
         em.flush();
         if (row.getRowVersion() == request.version()) {
             em.createQuery("update VictimProfile p set p.rowVersion = p.rowVersion + 1 where p.id = :id")

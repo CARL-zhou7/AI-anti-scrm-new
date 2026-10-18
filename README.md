@@ -1,15 +1,16 @@
-# AI反诈情景推演平台 · 第一至三阶段
+# AI反诈情景推演平台 · 第一至四阶段
 
-已实现登录注册、首页、场景画像配置与管理后台的前后端代码。接口以根目录 `openapi.yaml` 为准。
+已实现登录注册、首页、场景画像配置、管理后台与AI情景演绎的前后端代码。接口以根目录 `openapi.yaml` 为准。
 
 设计文档集中在 `docs/`：
 
-- [PRD V3.1 正式开发基线版](docs/PRD_V3.1_正式开发基线版.md)
-- [系统架构设计文档 V1.0](docs/系统架构设计文档_V1.0.md)
-- [数据库设计文档 V1.0](<docs/数据库设计文档 V1.0.md>)
-- [接口文档 V1.0](docs/接口文档_V1.0.md)
+- [PRD V3.2 正式开发基线版](docs/AI反诈情景推演平台_PRD_V3_2_正式开发基线版.md)
+- [系统架构设计文档 V1.1](docs/AI反诈情景推演平台_系统架构设计文档_V1_1.md)
+- [数据库设计文档 V1.1](docs/AI反诈情景推演平台_数据库设计文档_V1_1.md)
+- [接口文档 V1.1](docs/AI反诈情景推演平台_接口文档_V1_1.md)
 - [第二阶段场景画像配置开发计划](<coding plan/2026-10-17-phase2-scenario-profile-configuration.md>)
 - [第三阶段管理后台开发计划](<coding plan/2026-10-17-phase3-admin-console.md>)
+- [第四阶段AI情景演绎开发计划](<coding plan/2026-10-18-phase4-ai-simulation.md>)
 
 ## 已实现范围
 
@@ -29,9 +30,9 @@
 | GET | `/victim-profiles/{id}` | 可用受害者完整详情，仅 USER |
 | GET | `/avatars/{key}` | 可用画像引用的受控头像，仅 USER |
 
-前端支持注册、登录、角色分流、刷新恢复登录态、退出、加载失败重试和移动端布局。`/configuration` 支持三场景、双方画像的自由选择、完整详情和确认、加载更多；所有内容来自服务端。头像加载失败会阻止开始，点击开始时重新请求双方详情，被停用项清除并要求重选。校验成功仅提示「开始演绎将在下一阶段开放」，不会发送 POST 或创建演绎。选中项只保存在页面内存中。`/history` 仍为后续阶段说明页，`/admin` 已接入管理后台。首页资讯为空。
+前端支持注册、登录、角色分流、刷新恢复登录态、退出、加载失败重试和移动端布局。`/configuration` 支持三场景、双方画像的自由选择、完整详情和确认、加载更多；所有内容来自服务端。头像加载失败会阻止开始，点击开始时重新请求双方详情，被停用项清除并要求重选。校验成功后点击「进入演绎」跳转演绎页（不发送 POST、不创建演绎、不计时），见第四阶段。选中项只保存在页面内存中。`/history` 仍为后续阶段说明页，`/admin` 已接入管理后台。首页资讯为空。
 
-未实现开始演绎、单场活动限制、历史记录、报告、真实资讯、短信/邮箱验证、密码找回和角色切换。数据库现有 4 张业务表：`sys_user`、`fraud_scenario`、`scammer_profile`、`victim_profile`，外加 `flyway_schema_history`。没有后续模块的占位表或接口。
+未实现历史记录、复盘报告生成与查看、真实资讯、短信/邮箱验证、密码找回和角色切换。数据库现有 9 张业务表：`sys_user`、`fraud_scenario`、`scammer_profile`、`victim_profile`、`simulation_session`、`simulation_round`、`simulation_message`、`simulation_report`、`agent_prompt`，外加 `flyway_schema_history`。
 
 ## 第二阶段运行与验收
 
@@ -71,7 +72,7 @@ pwsh -NoProfile -File tools/smoke-content.ps1
 
 ## 第三阶段：管理后台
 
-按 [第三阶段开发计划](<coding plan/2026-10-17-phase3-admin-console.md>) 实现 18 项 ADMIN 接口（含后续新增的双方画像删除接口），沿用当前四张业务表，没有新增或修改迁移脚本。启动方式不变，使用预开通管理员登录后进入 `/admin`。
+按 [第三阶段开发计划](<coding plan/2026-10-17-phase3-admin-console.md>) 实现 ADMIN 接口，沿用当时的四张业务表。第三阶段曾新增的双方画像永久删除接口已在第四阶段按决策 D-1 移除。启动方式不变，使用预开通管理员登录后进入 `/admin`。
 
 | 页面 | 功能 |
 |---|---|
@@ -97,14 +98,12 @@ pwsh -NoProfile -File tools/smoke-content.ps1
 | PUT | `/admin/victim-profiles/{id}` | 编辑受害者画像 |
 | POST | `/admin/victim-profiles/{id}/disable` | 停用受害者画像 |
 | POST | `/admin/victim-profiles/{id}/enable` | 启用受害者画像 |
-| DELETE | `/admin/scammer-profiles/{id}` | 删除骗子画像 |
-| DELETE | `/admin/victim-profiles/{id}` | 删除受害者画像 |
 | POST | `/admin/avatars` | 上传头像 |
 | GET | `/admin/avatars/{key}` | 后台预览头像 |
 
-保存使用版本号，版本冲突时保留输入并提供手动重新读取，不自动覆盖或重试写入。重复启用/停用不增加版本；每类至少保留一个启用画像，并通过数据库行锁保护并发停用。删除需确认并提交当前版本，最后一个可用画像不能删除；删除永久移除画像记录，头像文件保留以免影响共享引用。编辑表单在原卡片位置展开。头像选择统一使用「上传头像」，选图后可确认上传或取消恢复原头像。管理员可查看停用画像，普通用户只能看到启用画像；编辑不会改变启停状态。
+保存使用版本号，版本冲突时保留输入并提供手动重新读取，不自动覆盖或重试写入。重复启用/停用不增加版本；每类至少保留一个启用画像，并通过数据库行锁保护并发停用。画像不提供永久删除（D-1），只能停用/重新启用。编辑表单在原卡片位置展开。头像选择统一使用「上传头像」，选图后可确认上传或取消恢复原头像。管理员可查看停用画像，普通用户只能看到启用画像；编辑不会改变启停状态。
 
-头像必须先上传并成功预览才能保存画像，支持真实可解码的静态 JPG/PNG，最多 5 MiB。上传按 SHA-256 寻址，不覆盖已有文件；管理员可预览未引用的图片，用户仅能读取启用画像引用的图片。为避免图片解码耗尽内存，当前最多接受 1600 万像素，超出返回 INVALID_IMAGE。长文本按开发计划暂限 16000 个 Unicode 码点（TBD-09 待正式确认）。存储根仍使用 `AVATAR_STORE`，后台预览读取同一目录；`spring.servlet.multipart.max-file-size=5MB`、`max-request-size=6MB` 为文件和 multipart 请求上限。头像文件需与数据库一同备份；未引用文件的自动清理未纳入本阶段。
+画像需要闭嘴（兼头像）与张嘴两张同尺寸半身立绘（V1.1），都必须先上传并成功预览才能保存，支持真实可解码的静态 JPG/PNG，最多 5 MiB。上传按 SHA-256 寻址，不覆盖已有文件；管理员可预览未引用的图片，用户仅能读取启用画像引用的图片。为避免图片解码耗尽内存，当前最多接受 1600 万像素，超出返回 INVALID_IMAGE。长文本按开发计划暂限 16000 个 Unicode 码点（TBD-09 待正式确认）。存储根仍使用 `AVATAR_STORE`，后台预览读取同一目录；`spring.servlet.multipart.max-file-size=5MB`、`max-request-size=6MB` 为文件和 multipart 请求上限。头像文件需与数据库一同备份；未引用文件的自动清理未纳入本阶段。
 
 2026-10-17 验证结果：后端 12 项测试与打包通过，前端 14 项测试与生产构建通过；OpenAPI 静态校验通过（7 + 6 + 16 项操作），隔离 MySQL 管理后台冒烟通过。
 
@@ -117,6 +116,93 @@ pwsh -NoProfile -File tools/smoke-admin.ps1
 脚本需要 PowerShell 7.5+、MySQL 8.0.45 和 Java 21，使用独立端口 13309/18082，在 `.tools/admin-smoke-<随机值>` 内创建数据库和头像存储；不连接现有业务库，结束后关闭自己的进程并保留日志。覆盖角色隔离、CSRF、版本冲突、并发停用、双方画像写入和用户可见性、头像上传边界。未执行压力测试、全量 Testcontainers 或浏览器人工验收。本阶段代码保留在工作区，待人工验收后再提交 GitHub。
 
 人工检查建议：管理员登录 → 修改场景 → 新增双方画像并上传头像 → 编辑/启停 → 双窗口产生版本冲突并重新读取 → 普通用户确认配置页内容和推荐展示。
+
+## 第四阶段：AI情景演绎
+
+按 [第四阶段开发计划](<coding plan/2026-10-18-phase4-ai-simulation.md>) 实现情景演绎模块，依据 `docs/` 下 PRD V3.2 与系统架构、数据库、接口文档 V1.1。开发环境 JDK 为 Amazon Corretto 21（本机 `D:/Java/jdk-21/jdk21.0.12_12`，21.0.12）。
+
+### 用户流程
+
+配置页「进入演绎」只重新核验画像并跳转 `/simulation`，**不建记录、不计时**。演绎页先加载场景、双方画像、四张立绘与计时样本；就绪后显示「开始演绎」，点击时刻（校准到服务端时间轴）才是 600 秒计时起点。随后依次为场景介绍动画（按场景代码选择三段预制 CSS/SVG 动画，≤15 秒）→ 双方人物卡（合计 7 秒，信息全部取自开始时的配置快照）→ 正式演绎。
+
+舞台左骗子、右受害者，位置固定；中间是「通话线」分隔，说话时有光点从说话方传向倾听方。每轮：骗子发言 → 受害者回应 → 底部解说（诈骗阶段 / 手段 / 话术 / 受害者心理 / 风险依据）与五档风险节点条（0/25/50/75/100，开场显示「尚未评分」）→ 5 秒阅读停留 → 服务端建立下一轮。发言时立绘在闭嘴/张嘴两帧间每 120 ms 切换，气泡文字按服务端分句时间与 `audio.currentTime` 逐字显示，动作说明另起一行（不朗读）。同一轮双方气泡都保留，下一轮 `round.started` 时只清空前端舞台气泡，历史数据不受影响。顶部只有设置按钮：打开即暂停（冻结语音、逐字、嘴型、动画与停留倒计时），提供声音开关（只静音，时间轴不变）、继续演绎（从原位置继续，不重播）、退出演绎（二次确认）。正式结束后进入 `/simulations/{id}/report` 复盘入口页，显示正式结局与「报告生成中」；报告内容属于第五阶段。中断显示服务端给出的原因，不提供续演。
+
+### 接口（统一前缀 `/anti.scam/v1`，仅 USER，ADMIN 403，他人或不存在统一 404）
+
+| 方法 | 地址 | 用途 |
+|---|---|---|
+| GET | `/timing/samples` | 点击计时采样（演绎页加载期间） |
+| POST | `/simulations` | 开始演绎（新建 201；同 `startRequestId` 重发 200 原场） |
+| GET | `/simulations/{id}` | 当前演绎状态 |
+| GET | `/simulations/{id}/events` | SSE（11 类事件，首帧 `session.state`，心跳注释帧） |
+| POST | `/simulations/{id}/opening/presented` | 开场呈现回执 |
+| POST | `/simulations/{id}/messages/{messageId}/presentation` | 消息呈现回执 |
+| POST | `/simulations/{id}/rounds/{roundNo}/analysis/presented` | 分析呈现回执 |
+| POST | `/simulations/{id}/exit` | 主动退出（USER_EXIT；正式结束后原样返回） |
+| GET | `/simulations/{id}/messages/{messageId}/audio` | 当前呈现消息的临时 MP3 |
+| POST | `/simulations/{id}/pause` | 设置暂停（无请求体） |
+| POST | `/simulations/{id}/resume` | 继续演绎（无请求体；按计入时长顺延截止与停留） |
+
+`GET /avatars/{key}` 增加「被本人演绎快照引用」的授权分支，画像停用后本人仍能看到当时的立绘。`openapi.yaml` 已同步到接口文档 V1.1：44 项操作、11 类事件，删除两个画像 DELETE 路径。
+
+### 实现要点
+
+- **数据**：迁移 V4（`speaking_avatar_key` 张嘴立绘列，五个初始画像回填由 `tools/generate-avatars.py` 生成的张嘴帧）、V5（`agent_prompt`、`simulation_session/round/message/report` 五表及数据库设计中的 CHECK/唯一/生成列约束）、V6（Java 迁移，从 `prompts/v1/*.txt` 写入四类 Prompt 第 1 版，校验和覆盖模板文本：已执行后修改模板会令 Flyway 校验失败，修正须新增版本迁移）。业务表共 9 张。
+- **先保存再发布**：所有演绎表写入集中在 `SimulationTransitions`，每个方法是一个短事务（锁会话行、核对状态/轮号/阶段、写入、`state_version+1`），提交后才发 SSE；模型与 TTS 调用不在事务内。
+- **编排**：`SimulationOrchestrator` 按会话串行（`SessionLanes`），模型与语音调用在虚拟线程上提前计算：开场期间准备第 1 轮骗子台词与语音，骗子说话时准备受害者回应，解说停留期间准备下一轮骗子台词。预备内容只在内存，轮到对应阶段才保存发布，终态时丢弃。第 1～4 轮受害者回应先由解说做候选判定，形成正式结局则丢弃重生（≤2 次，仍不合规按 `DIALOGUE_FAILED`）。
+- **Agent**：骗子 / 受害者 / 解说三角色各自只拿可见信息（内部意图与心理只给解说；受害者看不到场景关键目标）。输出为严格 JSON，校验台词长度（≤120 码点）、动作混入台词、风险五档（10 分直接拒绝不取整）、累计事实不回退、证据逐字引用受害者原文、场景目标先后顺序、候选结局优先级；不合格在预算内透明重试，耗尽后中断。`internal_note` 不出现在任何用户响应、SSE 或日志。
+- **时间**：`startedAt` 由计时样本校准点击时刻，不回退为请求到达时间；截止 = 开始 + 600 秒 + 已计入暂停（单场 ≤300 秒）。完整轮位置到时 → `UNDETERMINED/TIME_LIMIT`，否则 → `INTERRUPTED/TIME_LIMIT`；第 20 轮无结局 → `UNDETERMINED/ROUND_LIMIT`；永不建第 21 轮。截止由定时器与每秒兜底扫描收敛。
+- **语音**：按画像性别与年龄段映射 18 个预设音色（青年/中年/老年 × 男/女/中性，各主选+备选；双方相同时受害者用备选），开始时固定在 `runtime_snapshot`。服务端分句后逐句合成并拼接为一个 MP3，分句时间与音频只存临时目录（`AUDIO_TEMP_DIR`，默认 `var/tmp-audio`），终态删除。
+- **收敛**：重启时所有 RUNNING 会话按 `SERVICE_RESTARTED` 中断并清空临时音频（完成前开始请求返回 503）；登出按 `USER_EXIT`；失联只有在「无 SSE 超过 30 秒 + 断开后无任何请求 + 剩余时长不足以完成当前呈现」同时成立时才按 `CONNECTION_LOST` 中断。刷新由 `sessionStorage` 标记识别并按 `REFRESH` 退出，关闭标签用 `pagehide` keepalive 尽力通知。
+
+### 运行配置
+
+| 环境变量 | 默认 | 说明 |
+|---|---|---|
+| `LLM_PROVIDER` | `deepseek`（dev 下默认 `scripted`） | `scripted` 为固定剧本，只允许 dev/test，生产启动直接失败 |
+| `LLM_API_KEY` / `LLM_MODEL` / `LLM_BASE_URL` | 空 / `deepseek-chat` / `https://api.deepseek.com` | OpenAI 兼容 Chat Completions，JSON 输出模式；生产缺 Key 启动失败 |
+| `TTS_PROVIDER` | `cosyvoice`（dev 下默认 `silent`） | `silent` 生成可解码静音 MP3，只允许 dev/test |
+| `TTS_GATEWAY_URL` | `http://127.0.0.1:50080` | CosyVoice 网关，见 [tools/tts-gateway](tools/tts-gateway/README.md) |
+| `AUDIO_TEMP_DIR` | `var/tmp-audio` | 临时语音目录 |
+
+dev 默认用脚本模型和静音语音，无需 API Key 与 GPU 即可完整走通。脚本按骗子画像姓名选择：姓名为 `剧本:<名称>` 时读取 `backend/src/main/resources/simulation/scripted/<名称>.json`，否则用 `default.json`（5 轮后未受骗结束）；另有 `round-limit-20`、`precheck-regen-r3`、`tts-fail-r2`。使用真实服务时设置 `LLM_PROVIDER=deepseek`、`LLM_API_KEY`、`TTS_PROVIDER=cosyvoice` 并部署网关。
+
+### 第四阶段决策记录（2026-10-18 需求方确认）
+
+| 编号 | 结论 |
+|---|---|
+| D-1 | 去掉画像永久删除：移除两个 DELETE 接口、服务方法、前端删除按钮、yaml 路径与冒烟用例；画像只保留停用/启用 |
+| D-2 | 阅读停留结束、新一轮已建立但尚无消息时到达 600 秒，按数据库设计视为未完成轮：`INTERRUPTED/TIME_LIMIT`、无报告 |
+| D-3 | CosyVoice 参考音频可自行生成或从网上获取，优先明确允许使用的公开素材，逐条在网关 `voices.json` 记录来源，不提交仓库 |
+| D-4 | 台词、动作说明、解说每项硬上限 120 个码点（超出视为不合格并重生，不截断已保存内容）；18 岁以下画像按青年音色映射 |
+
+### 简单测试与验收记录（2026-10-19）
+
+```powershell
+cd backend; .\mvnw.cmd package            # JAVA_HOME 指向 Corretto 21
+cd ../frontend; npm.cmd test; npm.cmd run build
+cd ..; node tools/validate-openapi.mjs
+node tools/smoke-simulation.mjs            # 需先 package；隔离 MySQL 13310 + 后端 18083
+```
+
+| 检查 | 结果 |
+|---|---|
+| 后端单元与 MockMvc 测试 | 通过 22 项（新增 10 项：计时校准、暂停截止、结局与场景目标规则、风险非法值、证据逐字引用、上下文隔离、Prompt 变量、分句与静音 MP3） |
+| 前端测试与构建 | 通过 20 项（新增 5 项：逐字进度、事件去重/版本、演出控制器开场回执/气泡保留/冻结继续/静音）；`vue-tsc` 与生产构建通过 |
+| OpenAPI 静态校验 | 通过：44 项操作、11 类事件，画像 DELETE 已移除 |
+| 隔离端到端 `tools/smoke-simulation.mjs`（脚本模型 + 静音语音，5 场景并行） | 通过：V1→V6 空库迁移；5 轮未受骗 + PENDING 报告 + 事件顺序 + 内部意图零泄露；第 3 轮预检重生且被丢弃候选从未入库/下发；第 2 轮 TTS 失败 → `TTS_FAILED` 且文字保留；暂停 2 秒顺延约 2 秒且暂停期间无新事件；幂等开始、单场活动冲突、他人 404、退出后回执 `IGNORED_TERMINAL`、DELETE 不可用 |
+| 浏览器人工走查（Chrome 内核预览，dev 脚本模式） | 通过：加载 → 开始 → 场景介绍 → 人物卡 → 5 轮演出 → 暂停冻结与原位继续（截止顺延 23.5 秒）→ 结局页 |
+| `smoke-admin.ps1` / `smoke-content.ps1` | 已按 V1.1 更新载荷、DELETE 断言与 9 张表清单；**未执行**（本机无 PowerShell 7） |
+| 计划 Task 14 中 S06/S08/S11/S14/S15/S17 与 L01～L04 长用例 | 未执行（按“简单测试”要求只覆盖上表用例） |
+| 真实模型 9 场、CosyVoice 实时率、端到端时间预算、Edge 浏览器、HTTPS 代理 SSE | 未执行：未提供 API Key、未部署 CosyVoice 与云主机（V-01/V-02/V-05/V-09/V-10/V-11、TBD-04 仍待实测） |
+
+### 已知限制
+
+- 报告行只在正式结束时以 PENDING 创建，第五阶段实现生成任务前一直显示「生成中」。
+- 编排、预备区、计时样本、SSE 连接与临时音频都是单进程内存/本地状态，多实例部署前需重审。
+- 关闭标签页后通知可能送达不了，服务端靠失联三条件或截止时间收敛，期间同账号新开始会收到 409（接口文档已接受的边界）。
+- V4 把第三阶段由管理员新增、没有张嘴帧的画像临时回填为闭嘴图（启动日志 WARN 列出），需管理员补传张嘴立绘后才有嘴部动画。
+- 真实模型下校验器会拒绝不一致的判定并重试，可能增加中断率；这是预期行为，调整应新增 Prompt 版本而不是放宽校验。
 
 ## 项目结构与锁定版本
 

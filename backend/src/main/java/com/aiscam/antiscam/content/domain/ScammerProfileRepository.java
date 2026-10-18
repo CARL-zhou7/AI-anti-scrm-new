@@ -14,6 +14,10 @@ public interface ScammerProfileRepository extends Repository<ScammerProfile, Lon
     Optional<ScammerProfile> findByIdAndEnabled(long id, byte enabled);
     List<ScammerProfile> findByEnabled(byte enabled);
     boolean existsByAvatarKeyAndEnabled(String avatarKey, byte enabled);
+    boolean existsBySpeakingAvatarKeyAndEnabled(String speakingAvatarKey, byte enabled);
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select p from ScammerProfile p where p.id = :id")
+    Optional<ScammerProfile> shareLockById(@Param("id") long id);
     Optional<ScammerProfile> findById(long id);
     ScammerProfile save(ScammerProfile profile);
     List<ScammerProfile> findByIdGreaterThanOrderByIdAsc(long id, Pageable page);

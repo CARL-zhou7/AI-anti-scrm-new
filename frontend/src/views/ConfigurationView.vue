@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { contentApi } from '../api/content'
 import { ApiError } from '../api/http'
 import type { Scenario, ScammerProfilePayload, VictimProfilePayload } from '../api/types'
@@ -7,6 +8,7 @@ import ScenarioPicker from '../components/ScenarioPicker.vue'
 import ProfileCard from '../components/ProfileCard.vue'
 import ConfigurationSummary from '../components/ConfigurationSummary.vue'
 
+const router = useRouter()
 const scenarios = ref<Scenario[]>([]), scammers = ref<ScammerProfilePayload[]>([]), victims = ref<VictimProfilePayload[]>([])
 const selectedScenarioId = ref<string | null>(null), selectedScammerId = ref<string | null>(null), selectedVictimId = ref<string | null>(null)
 const busy = ref(false), checking = ref(false), error = ref(''), notice = ref(''), reselect = ref(false)
@@ -90,8 +92,13 @@ async function start() {
   }
   if (!reselect.value) {
     const failure = results.find(r => r.status === 'rejected')
-    notice.value = failure?.status === 'rejected' ? message(failure.reason)
-      : '配置已核验，请确认最新人物信息。开始演绎将在下一阶段开放'
+    if (failure?.status === 'rejected') notice.value = message(failure.reason)
+    else {
+      // Entering the stage creates nothing and starts no clock; the run begins with the click on that page.
+      checking.value = false
+      await router.push({ path: '/simulation', query: { scenarioId: selectedScenarioId.value!, scammerProfileId: selectedScammerId.value!, victimProfileId: selectedVictimId.value! } })
+      return
+    }
   }
   checking.value = false
 }
@@ -132,8 +139,8 @@ onMounted(load)
       <div class="configuration-actions">
         <p v-if="reselect" class="error-message" data-testid="configuration-reselect-hint" role="alert">所选画像已不可用，请重新选择</p>
         <p v-if="notice" class="success-message" role="status">{{ notice }}</p>
-        <p id="configuration-start-help" class="field-help">{{ ready ? '点击后会重新核验双方画像的可用性。本阶段暂不创建演绎。' : '请选择一个场景和双方画像，并等待所选头像加载成功。' }}</p>
-        <button class="button button-primary" data-testid="configuration-start" :disabled="!ready || checking" aria-describedby="configuration-start-help" @click="start">{{ checking ? '正在核验…' : '开始演绎' }}</button>
+        <p id="configuration-start-help" class="field-help">{{ ready ? '进入演绎页后，资源加载完成即可点击开始演绎。' : '请选择一个场景和双方画像，并等待所选头像加载成功。' }}</p>
+        <button class="button button-primary" data-testid="configuration-start" :disabled="!ready || checking" aria-describedby="configuration-start-help" @click="start">{{ checking ? '正在核验…' : '进入演绎' }}</button>
       </div>
     </template>
   </div>

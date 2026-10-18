@@ -1,0 +1,130 @@
+{
+  "voices": [
+    {
+      "id": "youth_male_a",
+      "description": "青年男声（主选）",
+      "referenceAudio": "refs/youth_male_a.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "youth_male_b",
+      "description": "青年男声（备选）",
+      "referenceAudio": "refs/youth_male_b.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "youth_female_a",
+      "description": "青年女声（主选）",
+      "referenceAudio": "refs/youth_female_a.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "youth_female_b",
+      "description": "青年女声（备选）",
+      "referenceAudio": "refs/youth_female_b.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "youth_neutral_a",
+      "description": "青年中性声（主选）",
+      "referenceAudio": "refs/youth_neutral_a.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "youth_neutral_b",
+      "description": "青年中性声（备选）",
+      "referenceAudio": "refs/youth_neutral_b.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "middle_male_a",
+      "description": "中年男声（主选）",
+      "referenceAudio": "refs/middle_male_a.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "middle_male_b",
+      "description": "中年男声（备选）",
+      "referenceAudio": "refs/middle_male_b.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "middle_female_a",
+      "description": "中年女声（主选）",
+      "referenceAudio": "refs/middle_female_a.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "middle_female_b",
+      "description": "中年女声（备选）",
+      "referenceAudio": "refs/middle_female_b.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "middle_neutral_a",
+      "description": "中年中性声（主选）",
+      "referenceAudio": "refs/middle_neutral_a.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "middle_neutral_b",
+      "description": "中年中性声（备选）",
+      "referenceAudio": "refs/middle_neutral_b.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "senior_male_a",
+      "description": "老年男声（主选）",
+      "referenceAudio": "refs/senior_male_a.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "senior_male_b",
+      "description": "老年男声（备选）",
+      "referenceAudio": "refs/senior_male_b.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "senior_female_a",
+      "description": "老年女声（主选）",
+      "referenceAudio": "refs/senior_female_a.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "senior_female_b",
+      "description": "老年女声（备选）",
+      "referenceAudio": "refs/senior_female_b.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "senior_neutral_a",
+      "description": "老年中性声（主选）",
+      "referenceAudio": "refs/senior_neutral_a.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    },
+    {
+      "id": "senior_neutral_b",
+      "description": "老年中性声（备选）",
+      "referenceAudio": "refs/senior_neutral_b.wav",
+      "referenceText": "参考音频对应的逐字文本，填写实际录音内容。",
+      "source": "填写来源：自行生成工具与日期，或公开素材链接及许可（D-3）"
+    }
+  ]
+}

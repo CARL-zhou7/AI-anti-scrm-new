@@ -1,3 +1,10 @@
 app:
   security:
     session-cookie-secure: false
+  simulation:
+    # Local development defaults to the scripted model and silent synthesis so the module runs without
+    # an API key or a CosyVoice host. Set LLM_PROVIDER=deepseek / TTS_PROVIDER=cosyvoice to use the real services.
+    llm:
+      provider: ${LLM_PROVIDER:scripted}
+    tts:
+      provider: ${TTS_PROVIDER:silent}

@@ -13,8 +13,6 @@ export const adminApi = {
     http.put<AdminProfile>(`/admin/${kind}-profiles/${encodeURIComponent(id)}`, body),
   setEnabled: (kind: ProfileKind, id: string, enabled: boolean, version: number) =>
     http.post<AdminProfile>(`/admin/${kind}-profiles/${encodeURIComponent(id)}/${enabled ? 'enable' : 'disable'}`, { version }),
-  deleteProfile: (kind: ProfileKind, id: string, version: number) =>
-    http.delete<{ deleted: boolean }>(`/admin/${kind}-profiles/${encodeURIComponent(id)}`, { version }),
   uploadAvatar(file: File) {
     const body = new FormData(); body.append('file', file)
     return http.postForm<AvatarUpload>('/admin/avatars', body)

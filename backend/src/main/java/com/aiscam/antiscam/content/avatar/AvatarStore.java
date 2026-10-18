@@ -9,6 +9,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.LinkOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.awt.Dimension;
 import java.util.Arrays;
 import java.util.HexFormat;
 import javax.imageio.ImageIO;
@@ -46,6 +47,16 @@ public class AvatarStore {
             throw ApiException.notFound();
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    /** Pixel size of a verified stored avatar (used to check the closed/open-mouth frames match). */
+    public Dimension dimensions(String storedKey) {
+        try {
+            var image = ImageIO.read(new ByteArrayInputStream(load(storedKey).bytes()));
+            return new Dimension(image.getWidth(), image.getHeight());
+        } catch (IOException e) {
+            throw ApiException.notFound();
         }
     }
 

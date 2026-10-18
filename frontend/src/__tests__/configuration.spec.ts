@@ -5,10 +5,13 @@ import { contentApi } from '../api/content'
 import { ApiError } from '../api/http'
 import type { ScammerProfilePayload, VictimProfilePayload } from '../api/types'
 
-const scammer: ScammerProfilePayload = { id: '1', avatar: { key: 's', url: '/anti.scam/v1/avatars/s' }, name: '人物甲', age: 35,
+const push = vi.hoisted(() => vi.fn())
+vi.mock('vue-router', async original => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ push }) }))
+
+const scammer: ScammerProfilePayload = { id: '1', avatar: { key: 's', url: '/anti.scam/v1/avatars/s' }, speakingAvatar: { key: 's2', url: '/anti.scam/v1/avatars/s2' }, name: '人物甲', age: 35,
   gender: '男', identity: '身份甲', description: '描述甲', contextTime: '时间甲', contextPlace: '地点甲', currentState: '状态甲',
   fraudExperience: 'HIGH', speechSkill: 'MEDIUM', manipulationSkill: 'LOW', behaviorTraits: '行为甲' }
-const victim: VictimProfilePayload = { id: '2', avatar: { key: 'v', url: '/anti.scam/v1/avatars/v' }, name: '人物乙', age: 22,
+const victim: VictimProfilePayload = { id: '2', avatar: { key: 'v', url: '/anti.scam/v1/avatars/v' }, speakingAvatar: { key: 'v2', url: '/anti.scam/v1/avatars/v2' }, name: '人物乙', age: 22,
   gender: '女', identity: '身份乙', description: '描述乙', contextTime: '时间乙', contextPlace: '地点乙', currentState: '状态乙',
   antiFraudAwareness: 'MEDIUM', riskTendency: 'HIGH', personalityTraits: '性格乙' }
 
@@ -43,7 +46,9 @@ it('shows complete server content, requires all selections and only rechecks via
   await flushPromises()
   expect(contentApi.getScammerProfile).toHaveBeenCalledWith('1')
   expect(contentApi.getVictimProfile).toHaveBeenCalledWith('2')
-  expect(selected.text()).toContain('开始演绎将在下一阶段开放')
+  // "进入演绎" only navigates: no POST, no record, no clock.
+  expect(selected.get('[data-testid=configuration-start]').text()).toContain('进入演绎')
+  expect(push).toHaveBeenCalledWith({ path: '/simulation', query: { scenarioId: '1', scammerProfileId: '1', victimProfileId: '2' } })
 })
 
 it('clears an unavailable selection and blocks a failed avatar', async () => {

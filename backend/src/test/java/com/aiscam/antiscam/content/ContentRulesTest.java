@@ -45,7 +45,8 @@ class ContentRulesTest {
         var store = new AvatarStore(Path.of("var"));
         try (var files = Files.list(Path.of("var/avatars"))) {
             var avatars = files.toList();
-            assertEquals(5, avatars.size());
+            // Five seed profiles x two portrait frames (closed mouth / open mouth, V1.1).
+            assertEquals(10, avatars.size());
             for (var file : avatars) {
                 String key = "avatars/" + file.getFileName();
                 assertTrue(AvatarKey.isValid(key));
@@ -53,6 +54,8 @@ class ContentRulesTest {
                 assertEquals("image/png", store.load(key).mediaType());
             }
         }
+        assertEquals(store.dimensions("avatars/3e1d7c5636e6bafa6dd598a71ebb482c086430ae55b03d88a31049de2421becc.png"),
+                store.dimensions("avatars/f6251f3b667ff5ab944425676b3ff8da2743d76e902990fa9ad42d7e453a734b.png"));
         assertFalse(AvatarKey.isValid("avatars/../../application.yml"));
         assertThrows(ApiException.class, () -> store.load("avatars/../../application.yml"));
         assertEquals(404, assertThrows(ApiException.class, () -> store.load("avatars/" + "0".repeat(64) + ".png")).status);

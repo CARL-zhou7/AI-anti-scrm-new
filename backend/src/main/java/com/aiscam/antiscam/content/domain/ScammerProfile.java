@@ -13,6 +13,8 @@ public class ScammerProfile {
     private String name;
     @Column(name = "avatar_key", nullable = false, length = 255)
     private String avatarKey;
+    @Column(name = "speaking_avatar_key", nullable = false, length = 255)
+    private String speakingAvatarKey;
     @Column(name = "age", nullable = false, columnDefinition = "smallint unsigned")
     private Integer age;
     @Column(name = "gender", nullable = false, length = 16)
@@ -51,6 +53,7 @@ public class ScammerProfile {
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getAvatarKey() { return avatarKey; }
+    public String getSpeakingAvatarKey() { return speakingAvatarKey; }
     public Integer getAge() { return age; }
     public String getGender() { return gender; }
     public String getIdentity() { return identity; }
@@ -83,6 +86,7 @@ public class ScammerProfile {
         manipulationSkill = values.manipulationSkill();
         behaviorTraits = values.behaviorTraits();
         avatarKey = values.avatarKey();
+        speakingAvatarKey = values.speakingAvatarKey();
     }
     public void setEnabled(boolean value) { enabled = (byte) (value ? 1 : 0); }
     public boolean isEnabled() { return enabled == 1; }

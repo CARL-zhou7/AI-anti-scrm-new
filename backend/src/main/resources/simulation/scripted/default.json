@@ -1,0 +1,31 @@
+{
+  "_comment": "Dev/test only. Five rounds; the victim stops in round 5 -> NOT_DEFRAUDED. Internal notes carry INTERNAL-NOTE-SECRET so leaks are easy to grep.",
+  "delayMs": 300,
+  "rounds": {
+    "1": {
+      "scammer": [{"output": {"line": "你好，我这边有个机会想跟你聊聊，耽误你几分钟可以吗？", "action": null, "intent": "INTERNAL-NOTE-SECRET 建立联系，降低戒备", "tone": {"speed": "NORMAL", "style": "热情"}}}],
+      "victim": [{"output": {"line": "你是谁？我好像不认识你。", "action": null, "psychology": "INTERNAL-NOTE-SECRET 对陌生人有些警惕", "tone": {"speed": "NORMAL", "style": "疑惑"}}}],
+      "narrator": [{"output": {"fraudStage": "接触与建立联系", "speechAnalysis": "以“机会”开场，激发好奇心，同时用礼貌降低戒备。", "methodAnalysis": "陌生来电或消息主动搭讪，为后续诱导铺垫。", "victimPsychology": "对陌生身份保持本能警惕，先追问对方来历。", "riskScore": 25, "riskReason": "尚未建立信任，受害者主动追问身份，保持警惕。", "actualFraudOccurred": false, "goalAchieved": false, "cooperationStopped": false, "evidence": [], "candidateOutcome": null, "candidateReason": null}}]
+    },
+    "2": {
+      "scammer": [{"output": {"line": "别紧张，我是通过朋友推荐找到你的，这件事对你很有好处。", "action": null, "intent": "INTERNAL-NOTE-SECRET 借熟人关系建立信任", "tone": {"speed": "NORMAL", "style": "亲切"}}}],
+      "victim": [{"output": {"line": "什么好处？你先说清楚是怎么回事。", "action": null, "psychology": "INTERNAL-NOTE-SECRET 有些好奇，但仍想弄清楚", "tone": {"speed": "NORMAL", "style": "好奇"}}}],
+      "narrator": [{"output": {"fraudStage": "建立信任", "speechAnalysis": "借“朋友推荐”虚构熟人背书，弱化陌生感。", "methodAnalysis": "利用人际信任与利益诱惑引起兴趣。", "victimPsychology": "被“好处”吸引产生好奇，但仍要求说明细节。", "riskScore": 50, "riskReason": "受害者开始表现兴趣并继续交流，但尚未承诺任何操作。", "actualFraudOccurred": false, "goalAchieved": false, "cooperationStopped": false, "evidence": [], "candidateOutcome": null, "candidateReason": null}}]
+    },
+    "3": {
+      "scammer": [{"output": {"line": "只要按我说的做几个简单步骤，很快就能看到结果，名额不多。", "action": "发送了一个所谓的操作说明", "intent": "INTERNAL-NOTE-SECRET 制造稀缺感推动行动", "tone": {"speed": "FAST", "style": "急切"}}}],
+      "victim": [{"output": {"line": "听起来有点太好了，我得想一想。", "action": null, "psychology": "INTERNAL-NOTE-SECRET 觉得可疑，开始犹豫", "tone": {"speed": "SLOW", "style": "犹豫"}}}],
+      "narrator": [{"output": {"fraudStage": "诱导操作", "speechAnalysis": "用“简单步骤”“名额不多”降低门槛并制造稀缺。", "methodAnalysis": "稀缺性与轻松获利暗示，催促尽快行动。", "victimPsychology": "察觉“好得不真实”，产生怀疑并选择拖延。", "riskScore": 50, "riskReason": "仍在考虑是否配合，没有承诺或执行危险操作。", "actualFraudOccurred": false, "goalAchieved": false, "cooperationStopped": false, "evidence": [], "candidateOutcome": null, "candidateReason": null}}]
+    },
+    "4": {
+      "scammer": [{"output": {"line": "现在就得决定，过了今天就没机会了，你先把手续办了吧。", "action": null, "intent": "INTERNAL-NOTE-SECRET 施加时间压力", "tone": {"speed": "FAST", "style": "催促"}}}],
+      "victim": [{"output": {"line": "这么着急让我有点不放心，我先去核实一下。", "action": "正在拨打官方客服电话核实", "psychology": "INTERNAL-NOTE-SECRET 时间压力反而引起警觉", "tone": {"speed": "NORMAL", "style": "谨慎"}}}],
+      "narrator": [{"output": {"fraudStage": "施加压力", "speechAnalysis": "以“过了今天就没机会”制造紧迫感，阻止思考。", "methodAnalysis": "时间压力是典型操控手段，意在跳过核实环节。", "victimPsychology": "紧迫要求引发不安，决定先通过官方渠道核实。", "riskScore": 25, "riskReason": "受害者暂停配合并着手独立核实，风险回落。", "actualFraudOccurred": false, "goalAchieved": false, "cooperationStopped": false, "evidence": [], "candidateOutcome": null, "candidateReason": null}}]
+    },
+    "5": {
+      "scammer": [{"output": {"line": "核实什么呀，我还能骗你吗？赶紧操作，不然就来不及了。", "action": null, "intent": "INTERNAL-NOTE-SECRET 阻止核实，继续施压", "tone": {"speed": "FAST", "style": "不耐烦"}}}],
+      "victim": [{"output": {"line": "我已经问过官方了，根本没有这回事，我不会再理你了。", "action": "已经把对方拉黑并删除了聊天记录", "psychology": "INTERNAL-NOTE-SECRET 确认是骗局，坚决终止", "tone": {"speed": "NORMAL", "style": "坚定"}}}],
+      "narrator": [{"output": {"fraudStage": "阻止核实", "speechAnalysis": "以反问否认嫌疑，并继续催促，试图打断核实。", "methodAnalysis": "阻挠独立核实、持续施压，是诈骗收网前的典型做法。", "victimPsychology": "通过官方渠道得到确认，识破骗局后果断终止联系。", "riskScore": 0, "riskReason": "受害者完成独立核实并拉黑对方，明确停止配合。", "actualFraudOccurred": false, "goalAchieved": false, "cooperationStopped": true, "evidence": [{"factCode": "COOPERATION_STOPPED", "speaker": "VICTIM", "source": "ACTION", "roundNo": 5, "quote": "已经把对方拉黑", "eventOrder": 1}], "candidateOutcome": "NOT_DEFRAUDED", "candidateReason": "受害者未实际受骗，第5轮通过官方渠道核实后拉黑对方，明确终止配合。"}}]
+    }
+  }
+}
