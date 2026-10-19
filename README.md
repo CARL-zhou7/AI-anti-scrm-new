@@ -167,6 +167,15 @@ pwsh -NoProfile -File tools/smoke-admin.ps1
 
 dev 默认用脚本模型和静音语音，无需 API Key 与 GPU 即可完整走通。脚本按骗子画像姓名选择：姓名为 `剧本:<名称>` 时读取 `backend/src/main/resources/simulation/scripted/<名称>.json`，否则用 `default.json`（5 轮后未受骗结束）；另有 `round-limit-20`、`precheck-regen-r3`、`tts-fail-r2`。使用真实服务时设置 `LLM_PROVIDER=deepseek`、`LLM_API_KEY`、`TTS_PROVIDER=cosyvoice` 并部署网关。
 
+本地使用真实 LLM 时，在已被 Git 忽略的 `backend/.env` 中添加以下两项，保留原有数据库配置后重启后端。仅填写 Key 不会切换 dev 默认的脚本模型；语音可暂时沿用 dev 默认的静音模式。
+
+```properties
+LLM_PROVIDER=deepseek
+LLM_API_KEY=你的DeepSeek密钥
+```
+
+日志中的 `BeanCreationException: simulationConfig` 和 `Caused by: ... LLM_API_KEY must be set outside dev/test` 是同一条异常链：未启用 dev/test 且未提供 Key，启动校验失败。检查 `backend/.env` 中的 `SPRING_PROFILES_ACTIVE=dev`，并确认 IDEA 的工作目录为仓库根目录或 `backend`，且运行配置中没有其他 profile 覆盖；不要关闭生产密钥校验。
+
 ### 第四阶段决策记录（2026-10-18 需求方确认）
 
 | 编号 | 结论 |

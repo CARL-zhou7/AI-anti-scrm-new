@@ -30,8 +30,9 @@ public class CosyVoiceGatewayClient implements TtsClient {
         var client = RestClient.builder().requestFactory(factory).baseUrl(baseUrl).build();
         try {
             String body = client.post().uri("/v1/synthesize").contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("voiceId", voiceId, "speed", speed,
-                            "segments", segments.stream().map(SentenceSegmenter.Segment::text).toList()))
+                    // A byte array gives the Python gateway the Content-Length it needs to read the JSON body.
+                    .body(mapper.writeValueAsBytes(Map.of("voiceId", voiceId, "speed", speed,
+                            "segments", segments.stream().map(SentenceSegmenter.Segment::text).toList())))
                     .retrieve().body(String.class);
             JsonNode json = mapper.readTree(body);
             if (!"mp3".equals(json.path("format").asText())) throw new TtsException("unexpected audio format");

@@ -14,6 +14,7 @@ Run:  python app.py --host 127.0.0.1 --port 50080 --voices voices.json --model-d
 import argparse
 import base64
 import json
+import logging
 import math
 import subprocess
 import threading
@@ -32,11 +33,11 @@ class Synthesizer:
         self.lock = threading.Lock()  # one inference at a time per model instance
         if not dry_run:
             from cosyvoice.cli.cosyvoice import CosyVoice2  # imported lazily: only the TTS host has CosyVoice
-            from cosyvoice.utils.file_utils import load_wav
             self.model = CosyVoice2(model_dir, load_jit=False, load_trt=False, fp16=False)
             self.sample_rate = self.model.sample_rate
-            self.prompts = {vid: (v['referenceText'], load_wav(v['referenceAudio'], 16000)) for vid, v in self.voices.items()}
+            self.prompts = {vid: (v['referenceText'], v['referenceAudio']) for vid, v in self.voices.items()}
             self.model_name = model_dir
+            logging.getLogger().addFilter(lambda record: 'synthesis text' not in record.getMessage())
 
     def synthesize(self, voice_id, speed, segments):
         if voice_id not in self.voices:

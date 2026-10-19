@@ -22,8 +22,8 @@ public class AvatarStore {
 
     public AvatarStore(@Value("${app.content.avatar-store:var}") Path directory) {
         // Support both repository-root and backend working directories for local launches.
-        if (directory.equals(Path.of("var")) && !Files.isDirectory(directory)
-                && Files.isDirectory(Path.of("backend/var"))) directory = Path.of("backend/var");
+        if (directory.equals(Path.of("var")) && !Files.isDirectory(directory.resolve("avatars"))
+                && Files.isDirectory(Path.of("backend/var/avatars"))) directory = Path.of("backend/var");
         this.directory = directory.toAbsolutePath().normalize();
     }
 

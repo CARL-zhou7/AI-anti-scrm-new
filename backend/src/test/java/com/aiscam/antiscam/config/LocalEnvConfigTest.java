@@ -18,6 +18,11 @@ class LocalEnvConfigTest {
                 DB_URL=jdbc:mysql://localhost:3306/custom_schema
                 DB_USERNAME=local_test_user
                 DB_PASSWORD=test-only#password
+                SPRING_PROFILES_ACTIVE=dev
+                LLM_PROVIDER=deepseek
+                LLM_API_KEY=test-only-api-key
+                TTS_PROVIDER=silent
+                app.simulation.tts.call-timeout-ms=60000
                 """);
         new ApplicationContextRunner()
                 .withInitializer(new ConfigDataApplicationContextInitializer())
@@ -29,6 +34,11 @@ class LocalEnvConfigTest {
                             environment.getProperty("spring.datasource.url"));
                     assertEquals("local_test_user", environment.getProperty("spring.datasource.username"));
                     assertEquals("test-only#password", environment.getProperty("spring.datasource.password"));
+                    assertEquals("dev", String.join(",", environment.getActiveProfiles()));
+                    assertEquals("deepseek", environment.getProperty("app.simulation.llm.provider"));
+                    assertEquals("test-only-api-key", environment.getProperty("app.simulation.llm.api-key"));
+                    assertEquals("silent", environment.getProperty("app.simulation.tts.provider"));
+                    assertEquals(60000, environment.getProperty("app.simulation.tts.call-timeout-ms", Integer.class));
                 });
     }
 }
