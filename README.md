@@ -1,6 +1,6 @@
-# AI反诈情景推演平台 · 第一至四阶段
+# AI反诈情景推演平台 · 第一至六阶段
 
-已实现登录注册、首页、场景画像配置、管理后台与AI情景演绎的前后端代码。接口以根目录 `openapi.yaml` 为准。
+已实现登录注册、首页、场景画像配置、管理后台、AI情景演绎、复盘分析与个人历史的前后端代码。接口以根目录 `openapi.yaml` 为准。
 
 设计文档集中在 `docs/`：
 
@@ -11,6 +11,8 @@
 - [第二阶段场景画像配置开发计划](<coding plan/2026-10-17-phase2-scenario-profile-configuration.md>)
 - [第三阶段管理后台开发计划](<coding plan/2026-10-17-phase3-admin-console.md>)
 - [第四阶段AI情景演绎开发计划](<coding plan/2026-10-18-phase4-ai-simulation.md>)
+- [第五阶段复盘分析开发计划](<coding plan/2026-10-19-phase5-analysis-report.md>)
+- [第六阶段历史记录开发计划](<coding plan/2026-10-19-phase6-history.md>)
 
 ## 已实现范围
 
@@ -30,9 +32,9 @@
 | GET | `/victim-profiles/{id}` | 可用受害者完整详情，仅 USER |
 | GET | `/avatars/{key}` | 可用画像引用的受控头像，仅 USER |
 
-前端支持注册、登录、角色分流、刷新恢复登录态、退出、加载失败重试和移动端布局。`/configuration` 支持三场景、双方画像的自由选择、完整详情和确认、加载更多；所有内容来自服务端。头像加载失败会阻止开始，点击开始时重新请求双方详情，被停用项清除并要求重选。校验成功后点击「进入演绎」跳转演绎页（不发送 POST、不创建演绎、不计时），见第四阶段。选中项只保存在页面内存中。`/history` 仍为后续阶段说明页，`/admin` 已接入管理后台。首页资讯为空。
+前端支持注册、登录、角色分流、刷新恢复登录态、退出、加载失败重试和移动端布局。`/configuration` 支持三场景、双方画像的自由选择、完整详情和确认、加载更多；所有内容来自服务端。头像加载失败会阻止开始，点击开始时重新请求双方详情，被停用项清除并要求重选。校验成功后点击「进入演绎」跳转演绎页（不发送 POST、不创建演绎、不计时），见第四阶段。选中项只保存在页面内存中。`/history` 与 `/history/:id` 已接入本人历史列表与详情，`/admin` 已接入管理后台。首页资讯为空。
 
-未实现历史记录、复盘报告生成与查看、真实资讯、短信/邮箱验证、密码找回和角色切换。数据库现有 9 张业务表：`sys_user`、`fraud_scenario`、`scammer_profile`、`victim_profile`、`simulation_session`、`simulation_round`、`simulation_message`、`simulation_report`、`agent_prompt`，外加 `flyway_schema_history`。
+未实现真实资讯、短信/邮箱验证、密码找回和角色切换。数据库现有 9 张业务表：`sys_user`、`fraud_scenario`、`scammer_profile`、`victim_profile`、`simulation_session`、`simulation_round`、`simulation_message`、`simulation_report`、`agent_prompt`，外加 `flyway_schema_history`。
 
 ## 第二阶段运行与验收
 
@@ -80,7 +82,7 @@ pwsh -NoProfile -File tools/smoke-content.ps1
 | `/admin/scammers` | 分页查看、新增、编辑、启用和停用骗子画像 |
 | `/admin/victims` | 分页查看、新增、编辑、启用和停用受害者画像 |
 
-统一接口前缀 `/anti.scam/v1`。写请求需要会话和 CSRF，普通用户禁止访问后台接口，管理员禁止访问用户内容接口。后台不提供用户演绎与报告查看；演绎、复盘、历史仍未实现。
+统一接口前缀 `/anti.scam/v1`。写请求需要会话和 CSRF，普通用户禁止访问后台接口，管理员禁止访问用户内容接口。后台不提供用户演绎与报告查看；个人历史仅本人可访问。
 
 | 方法 | 地址 | 用途 |
 |---|---|---|
@@ -207,11 +209,112 @@ node tools/smoke-simulation.mjs            # 需先 package；隔离 MySQL 13310
 
 ### 已知限制
 
-- 报告行只在正式结束时以 PENDING 创建，第五阶段实现生成任务前一直显示「生成中」。
+- 报告行只在正式结束时以 PENDING 创建，第五阶段执行器会自动领取（含第四阶段遗留的 PENDING 行）。
 - 编排、预备区、计时样本、SSE 连接与临时音频都是单进程内存/本地状态，多实例部署前需重审。
 - 关闭标签页后通知可能送达不了，服务端靠失联三条件或截止时间收敛，期间同账号新开始会收到 409（接口文档已接受的边界）。
 - V4 把第三阶段由管理员新增、没有张嘴帧的画像临时回填为闭嘴图（启动日志 WARN 列出），需管理员补传张嘴立绘后才有嘴部动画。
 - 真实模型下校验器会拒绝不一致的判定并重试，可能增加中断率；这是预期行为，调整应新增 Prompt 版本而不是放宽校验。
+
+## 第五阶段：复盘分析
+
+正式结束后进入 `/simulations/:id/report`，显示唯一正式结局及依据、过程总结、逐轮分析、骗子话术分析、受害者行为分析、结局分析和实际风险折线。风险只引用已保存评分，缺失轮次不补 0。中断演绎显示「不生成正式复盘」及中断原因，不提供报告重试；`/history` 仍留待第六阶段。
+
+| 方法 | 地址（统一前缀 `/anti.scam/v1`） | 用途 |
+|---|---|---|
+| GET | `/simulations/{id}/report` | 本人报告状态与已保存内容，只读，不触发生成 |
+| POST | `/simulations/{id}/report/retry` | 本人失败报告重新入队，无请求体，需 CSRF |
+
+报告状态：`PENDING/RUNNING` →「生成中」、`SUCCEEDED` →「已完成」、`FAILED` →「生成失败」且可手动重试。每次重试只进行一次生成尝试，不自动重试。失败重新入队返回 202，`attemptNo` 在领取时才递增；已排队、生成中或已成功时返回 200，关联原任务/报告，不重复生成。演绎仍在进行或已中断时重试返回 409 `REPORT_NOT_APPLICABLE`；正式结束但缺报告行返回 500 `DATA_INCONSISTENT`。ADMIN 禁止读取用户报告，他人与不存在资源统一 404。
+
+后台从持久队列扫描任务，页面离开和 SSE 断开不取消生成，报告不计入演绎 600 秒。每次使用原配置快照、原消息与解说、原风险、唯一正式结果和当时钉住的 REPORT 模板；程序只做格式与硬约束校验，解释由模型负责。正文与成功状态同事务保存；成功报告不可改写，旧次数或旧令牌的迟到结果不能覆盖新尝试。报告变化提交后发送完整 `report.updated`；SSE 重连的 `session.state.reportView` 与 GET 使用同一装配方法。
+
+执行器使用独立调度线程、并发许可及虚拟线程，不占演绎编排资源。运行超时收敛为 `FAILED/TIMEOUT`；重启先把旧 `RUNNING` 收敛为 `FAILED/SERVICE_RESTARTED`，再补齐结果完整但缺报告行的异常记录，最后允许派发。GET 本身不修复或重试。没有新增依赖、数据库迁移或 Prompt 版本，V1～V6 与现有模板保持原样。
+
+| 配置 | 默认值 | 含义 |
+|---|---|---|
+| `app.simulation.report.enabled` | `true` | 是否派发任务；关闭时仍做启动收敛 |
+| `app.simulation.report.poll-ms` | `1000` | 队列与超时扫描间隔，毫秒，正值 |
+| `app.simulation.report.max-concurrent` | `4` | 本进程并发尝试上限，正整数 |
+| `app.simulation.report.initial-delay-ms` | `2000` | 首次扫描延迟，毫秒，非负 |
+| `app.simulation.report-attempt-timeout-ms` | `120000` | 一次领取到保存的预算，毫秒，正值 |
+
+模型调用预算取本次剩余时间与 `app.simulation.llm.call-timeout-ms`（默认 20000）的较小值。重试入队后由下一次持久队列扫描领取，无额外内存唤醒。前端每 2 秒查询一次生成状态，最多 60 次；成功、失败、中断或页面卸载后停止，达到上限提示稍后刷新。
+
+### 第五阶段简单测试（2026-10-19）
+
+```powershell
+cd D:\AI-anti-scam\backend
+.\mvnw.cmd test '-Dtest=Report*Test,AgentRulesTest,SimulationRulesTest'
+.\mvnw.cmd -DskipTests package
+cd ..\frontend
+npm.cmd test
+npm.cmd run build
+cd ..
+node tools/validate-openapi.mjs
+node tools/smoke-report.mjs     # 隔离 MySQL 13311 + 后端 18084，不连接已有业务库
+```
+
+本机 Maven Wrapper 在系统 PowerShell 下遇到 `.Target[0]` 空数组问题，因此本次使用已安装的 Maven 3.9.11：`mvn.cmd -o '-Dmaven.repo.local=D:\AI-anti-scam\.tools\m2'`，JDK 为 Corretto 21.0.8。沙箱内临时目录指向工作区：先创建 `.tools/java-tmp`，再设置 `$env:JAVA_TOOL_OPTIONS='-Djava.io.tmpdir=D:/AI-anti-scam/.tools/java-tmp -Dfile.encoding=UTF-8'`。
+
+| 检查 | 实际结果 |
+|---|---|
+| 后端复盘规则、上下文、视图与 MockMvc；既有 Agent/演绎规则 | 17 项通过，其中复盘新增 7 项 |
+| 前端简单测试 | 24 项通过，其中新增 4 项覆盖状态轮询、失败重试、无报告分支及风险折线 |
+| TypeScript 与生产构建、OpenAPI 静态校验 | 通过 |
+| 后端可运行 jar 打包 | 通过，打包复用上述测试结果，使用 `-DskipTests` |
+| 隔离 MySQL 8.0.45 + HTTP/SSE 报告冒烟 | 通过：5 轮正式结束后自动生成、正文五段及逐轮对应、风险与库中逐项一致、SSE 重连视图同源、报告重试事件、失败重试 202 与尝试号递增、成功重试 200 且正文不变、中断/进行中 409、他人与不存在同 404、ADMIN 403、匿名 401、CSRF 403、no-store 与内部字段无泄露 |
+| 既有演绎端到端简短回归 | 5 个并行场景通过：正式结束并保存报告、预检重生、TTS 失败、暂停继续、退出/幂等/权限；测试服务退出后已释放独立端口 |
+| 既有全套后端测试 | 首轮未全过：系统临时目录权限错误；既有 `ContentRulesTest` 固定期望 10 张头像，而本机目录现有 16 张。本次未修改该测试或现有头像 |
+| 真实模型、真实语音、浏览器人工验收、压力与完整故障矩阵、Docker/Testcontainers | 未执行，按要求保留为人工检验与后续验证 |
+
+已知限制：重启收敛和 SSE 通知按当前单实例部署设计，多实例部署前需按数据库 DBD-10 重审；外部调用取消为尽力而为，不能保证供应商不再计算或收费，但迟到结果不能写入。模型语义是否充分仍需人工检验，格式或硬约束不合格时显示生成失败，需手动重试；成功报告没有编辑、导出或分享入口。
+
+本阶段使用 Ponytail 控制改动范围、writing-plans 核对既有开发计划、Spring Boot Engineer 沿用事务与鉴权约定。按用户要求不执行 git commit 或 push，代码保留本地待人工检验。
+
+## 第六阶段：历史记录
+
+按 [第六阶段开发计划](<coding plan/2026-10-19-phase6-history.md>)，结合 PRD V3.2、架构/数据库/接口 V1.1 与 `openapi.yaml` 实现只读历史模块。不新增依赖、数据表、列或迁移，不调用模型、TTS 或触发报告生成。保留工作区已有第五阶段实现。
+
+| 方法 | 地址（统一前缀 `/anti.scam/v1`） | 用途 |
+|---|---|---|
+| GET | `/simulations` | 本人全部已保存记录，含进行中、已结束及已中断 |
+| GET | `/simulations/{id}/detail` | 当时完整配置、逐轮过程、结果/中断及报告摘要 |
+
+列表固定按 `startedAt DESC, id DESC` 键集分页，`limit` 默认 20、范围 1—100，返回 `items/nextCursor/hasMore`，无 `total`。游标签名绑定本人及用途；重启后旧游标失效，刷新列表即可，多实例部署前需改用共享持久签名密钥。不接受筛选、搜索、页码或 `userId`，未知/重复查询参数均报 400。两个接口仅 USER、逐次验证归属，ADMIN 为 403、匿名为 401，他人与不存在记录同为安全 404；响应为 `no-store`。
+
+前端 `/history` 展示北京时间、快照场景与双方姓名、演绎及报告状态，支持空状态、失败重试和加载更多；点击进入 `/history/:id`。详情复用画像组件与风险折线，展示当时完整配置、台词和单独的动作说明、解说与风险依据。只有一方消息时标注「本轮未完成」，双方消息已保存但必要呈现未完成时另行说明；无分析为 null，风险图不补 0。详情不返回音频 URL、音频时长、片段时间轴、内部备注、Prompt 或运行诊断。
+
+历史名称、配置、头像键均取开始时冻结快照，不随后台编辑、换图或停用改变。已保存对话、风险和结局不重新生成。成功报告显示「已完成」并可查看；失败显示「生成失败」并进入原报告页手动重试；PENDING/RUNNING 显示「生成中」；中断明确「不生成正式复盘」。FINISHED 缺报告行时，列表该条 `report=null` 并记录 WARN，页面显示「报告状态异常」；详情返回 500 `DATA_INCONSISTENT`。不提供删除、导出、分享、下载、音视频回放或续演。
+
+### 第六阶段简单验证（2026-10-19）
+
+```powershell
+cd D:\AI-anti-scam\backend
+$env:JAVA_HOME = 'C:\Users\lenovo\.jdks\corretto-21.0.8'
+$env:JAVA_TOOL_OPTIONS = '-Djava.io.tmpdir=D:/AI-anti-scam/.tools/java-tmp -Dfile.encoding=UTF-8'
+mvn.cmd -o '-Dmaven.repo.local=D:\AI-anti-scam\.tools\m2' '-Dtest=History*Test,ContentRulesTest#cursorIsSignedAndBoundToAccountAndResource+validatesQueryAndIdsWithoutOverflow,Report*Test' package
+cd ..\frontend
+npm.cmd test -- src/__tests__/history.spec.ts src/__tests__/report.spec.ts
+npm.cmd run build
+cd ..
+node tools/validate-openapi.mjs
+node tools/smoke-simulation.mjs --java "$env:JAVA_HOME\bin\java.exe"
+# 可选报告专项回归，--report 分支不运行历史检查：
+node tools/smoke-report.mjs --java "$env:JAVA_HOME\bin\java.exe"
+```
+
+历史断言已并入既有 `tools/smoke-simulation.mjs`，使用独立 MySQL 13310 / 后端 18083，不连接现有数据库。复用原五个演绎场景；追加历史分页（含相同毫秒的开始时间）、快照不变性、报告摘要、未评分轮和权限检查。S04 用户已有一条演绎，所以按数据库实际记录集验分页；S07 在 TTS 失败前已保存双方台词，检查其「交互已保存、呈现未完成、分析缺失」，不把已保存台词伪装为缺失。
+
+| 检查 | 实际结果 |
+|---|---|
+| 后端历史规则与 MockMvc、既有内容游标/参数、报告回归 | 15 项通过，新增历史 6 项；jar 打包成功 |
+| 前端历史与报告简单检查 | 9 项通过，新增历史 5 项 |
+| TypeScript、Vite 生产构建、OpenAPI 静态校验 | 通过 |
+| 隔离 MySQL 8.0.45 演绎及历史冒烟 | 全部通过：既有 5 个演绎场景；历史列表/详情、并列开始时间逐页不重不漏、快照不变性、报告摘要、未评分轮、本人权限与 no-store。日志：`.tools/simulation-smoke-b4b36193`；隔离进程已关闭，未使用 Testcontainers |
+| 既有头像固定数量检查 | 首轮失败：预期 10 张、本机目录实际 16 张；保留原测试与全部素材，定向回归只运行受影响的游标/参数检查 |
+| 全量回归、Docker/Testcontainers、真实模型/语音、浏览器人工及压力测试 | 未执行，按要求仅做简单验证 |
+
+本阶段使用 Ponytail 控制范围、Spring Boot Engineer 核对只读事务与分层、REST API Conventions 保持现有接口契约。未执行 git commit 或 push，等待人工检验后再提交。
 
 ## 项目结构与锁定版本
 

@@ -1,6 +1,21 @@
 {
   "_comment": "Dev/test only. Five rounds; the victim stops in round 5 -> NOT_DEFRAUDED. Internal notes carry INTERNAL-NOTE-SECRET so leaks are easy to grep.",
   "delayMs": 300,
+  "defaults": {
+    "report": [{"output": {
+      "summary": "骗子以机会和利益吸引受害者，并反复催促操作。受害者逐渐起疑，通过官方渠道核实后终止联系。",
+      "roundAnalyses": [
+        {"roundNo": 1, "analysis": "陌生人以机会开场，受害者先追问身份。"},
+        {"roundNo": 2, "analysis": "骗子借朋友推荐建立信任，受害者要求解释具体内容。"},
+        {"roundNo": 3, "analysis": "骗子制造稀缺感，受害者对不合理的承诺产生怀疑。"},
+        {"roundNo": 4, "analysis": "催促操作反而引发警觉，受害者选择通过官方渠道核实。"},
+        {"roundNo": 5, "analysis": "受害者核实骗局并拉黑对方，明确停止配合。"}
+      ],
+      "speechAnalysis": "虚构熟人背书、强调机会难得并制造时间压力，试图阻止受害者独立核实。",
+      "victimBehaviorAnalysis": "受害者先追问，再质疑，最终独立核实并终止联系，没有执行危险操作。",
+      "outcomeAnalysis": "未受骗结束：受害者没有实际受骗，通过官方核实识破骗局并停止配合。"
+    }}]
+  },
   "rounds": {
     "1": {
       "scammer": [{"output": {"line": "你好，我这边有个机会想跟你聊聊，耽误你几分钟可以吗？", "action": null, "intent": "INTERNAL-NOTE-SECRET 建立联系，降低戒备", "tone": {"speed": "NORMAL", "style": "热情"}}}],

@@ -28,7 +28,11 @@ public class ScriptedLlmClient implements LlmClient {
 
     @Override
     public String completeJson(LlmRequest request) {
-        Category category = request.role() == AgentRole.NARRATOR ? Category.ANALYSIS : Category.DIALOGUE;
+        Category category = switch (request.role()) {
+            case NARRATOR -> Category.ANALYSIS;
+            case REPORT -> Category.REPORT;
+            default -> Category.DIALOGUE;
+        };
         JsonNode script = script(scriptName(request.scriptKey()));
         String role = request.role().name().toLowerCase(Locale.ROOT);
         JsonNode attempts = attempts(script, request.roundNo(), role);

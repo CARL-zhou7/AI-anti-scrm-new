@@ -107,7 +107,17 @@ export interface LiveRound {
 }
 export interface Outcome { code: 'GOAL_ACHIEVED' | 'LOSS_STOPPED' | 'NOT_DEFRAUDED' | 'UNDETERMINED'; displayText: string; reason: string; limitReason: 'ROUND_LIMIT' | 'TIME_LIMIT' | 'BOTH' | null }
 export interface Interruption { code: string; message: string }
-export interface ReportSummary { status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; displayText: string; canRetry: boolean; attemptNo: number; updatedAt: string; error: { code: string; message: string } | null }
+export interface ReportError { code: 'GENERATION_FAILED' | 'VALIDATION_FAILED' | 'PERSISTENCE_FAILED' | 'TIMEOUT' | 'SERVICE_RESTARTED'; message: string }
+export interface ReportSummary { status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; displayText: string; canRetry: boolean; attemptNo: number; updatedAt: string; error: ReportError | null }
+export interface ReportContent {
+  summary: string; roundAnalyses: { roundNo: number; analysis: string }[]
+  speechAnalysis: string; victimBehaviorAnalysis: string; outcomeAnalysis: string
+}
+export interface ReportView {
+  sessionId: string; simulationStatus: SimulationStatus; report: ReportSummary | null
+  unavailableReason: 'SIMULATION_RUNNING' | 'SIMULATION_INTERRUPTED' | null
+  outcome: Outcome | null; content: ReportContent | null; riskSeries: { roundNo: number; score: number }[]
+}
 export interface SimulationState {
   sessionId: string; status: SimulationStatus; stateVersion: string; startedAt: string; deadlineAt: string; endedAt: string | null
   currentRoundNo: number; configuration: Configuration; currentRound: LiveRound | null; latestRiskScore: RiskScore | null
@@ -119,7 +129,7 @@ export interface EffectResult { effect: Effect; state: SimulationState }
 export interface RoundStartedData { roundNo: number; phase: RoundPhase; startedAt: string; deadlineAt: string }
 export interface AnalysisSavedData { roundNo: number; analysis: Analysis }
 export interface RoundReadingData { roundNo: number; readingUntil: string; nextAction: NextAction }
-export interface SessionStateData { state: SimulationState; reportView: unknown }
+export interface SessionStateData { state: SimulationState; reportView: ReportView }
 export type SimulationEvent =
   | { type: 'session.started' | 'session.finished' | 'session.interrupted' | 'session.paused' | 'session.resumed'; data: SimulationState }
   | { type: 'session.state'; data: SessionStateData }
@@ -127,5 +137,23 @@ export type SimulationEvent =
   | { type: 'message.saved'; data: LiveMessage }
   | { type: 'analysis.saved'; data: AnalysisSavedData }
   | { type: 'round.reading'; data: RoundReadingData }
-  | { type: 'report.updated'; data: unknown }
+  | { type: 'report.updated'; data: ReportView }
 export type SimulationEventEnvelope = SimulationEvent & { eventId: string; sessionId: string; stateVersion: string }
+
+export interface HistoryItem {
+  sessionId: string; startedAt: string; scenarioName: string; scammerName: string; victimName: string
+  status: SimulationStatus; report: ReportSummary | null; outcome: Outcome | null; interruption: Interruption | null
+}
+export interface HistoryPage { items: HistoryItem[]; nextCursor: string | null; hasMore: boolean }
+export interface HistoryMessage {
+  id: string; roundNo: number; speaker: Speaker; content: string; actionText: string | null
+  presentationStatus: PresentationStatus; presentationCompletedAt: string | null; presentationErrorCode: string | null; savedAt: string
+}
+export interface HistoryRound {
+  roundNo: number; phase: RoundPhase; interactionComplete: boolean; presentationComplete: boolean
+  messages: HistoryMessage[]; analysis: Analysis | null; readingUntil: string | null
+}
+export interface HistoryDetail {
+  sessionId: string; status: SimulationStatus; startedAt: string; deadlineAt: string; endedAt: string | null
+  configuration: Configuration; rounds: HistoryRound[]; outcome: Outcome | null; interruption: Interruption | null; report: ReportSummary | null
+}

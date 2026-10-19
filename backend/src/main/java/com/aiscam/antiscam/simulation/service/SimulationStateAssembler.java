@@ -4,6 +4,7 @@ import static com.aiscam.antiscam.common.time.UtcTime.format;
 
 import com.aiscam.antiscam.common.error.ApiException;
 import com.aiscam.antiscam.media.TempAudioStore;
+import com.aiscam.antiscam.report.service.ReportViewMapper;
 import com.aiscam.antiscam.simulation.domain.*;
 import com.aiscam.antiscam.simulation.snapshot.ConfigurationSnapshots;
 import com.aiscam.antiscam.simulation.web.dto.SimulationViews.*;
@@ -40,14 +41,8 @@ public class SimulationStateAssembler {
             else if (s.isRunning() && current.getPhase() == RoundPhase.COMPLETE) nextAction = "NEXT_ROUND";
         }
         Outcome outcome = s.getStatus() == SimulationStatus.FINISHED ? outcome(s) : null;
-        Interruption interruption = s.getStatus() == SimulationStatus.INTERRUPTED
-                ? new Interruption(s.getInterruptionCode().name(), s.getInterruptionDetail()) : null;
-        ReportSummary report = null;
-        if (s.getStatus() == SimulationStatus.FINISHED) {
-            var row = reports.findById(s.getId()).orElseThrow(() -> ApiException.dataInconsistent("记录状态异常，请稍后重试"));
-            report = new ReportSummary(row.getStatus().name(), row.getStatus().displayText(), row.getStatus() == ReportStatus.FAILED,
-                    row.getAttemptNo(), format(row.getUpdatedAt()), null);
-        }
+        Interruption interruption = interruption(s);
+        ReportSummary report = reportView(s).report();
         return new State(s.getId().toString(), s.getStatus().name(), Long.toString(s.getStateVersion()), format(s.getStartedAt()),
                 format(s.getDeadlineAt()), format(s.getEndedAt()), s.getCurrentRoundNo(),
                 snapshots.toConfigurationView(s.getScenarioSnapshot(), s.getScammerSnapshot(), s.getVictimSnapshot()),
@@ -57,7 +52,10 @@ public class SimulationStateAssembler {
     }
 
     public SessionStateData sessionState(SimulationSession s) {
-        State state = assemble(s);
+        return new SessionStateData(assemble(s), reportView(s));
+    }
+
+    public ReportView reportView(SimulationSession s) {
         List<RiskPoint> series = s.getStatus() == SimulationStatus.FINISHED
                 ? rounds.findBySessionIdOrderByRoundNoAsc(s.getId()).stream().filter(SimulationRound::hasAnalysis)
                         .map(r -> new RiskPoint(r.getRoundNo(), r.getRiskScore())).toList()
@@ -67,8 +65,13 @@ public class SimulationStateAssembler {
             case INTERRUPTED -> "SIMULATION_INTERRUPTED";
             case FINISHED -> null;
         };
-        return new SessionStateData(state, new ReportView(state.sessionId(), state.status(), state.report(), unavailable,
-                state.outcome(), null, series));
+        if (unavailable != null) return new ReportView(s.getId().toString(), s.getStatus().name(), null, unavailable, null, null, series);
+        var row = reports.findById(s.getId()).orElseThrow(() -> ApiException.dataInconsistent("记录状态异常，请稍后重试"));
+        var report = ReportViewMapper.summary(row);
+        var content = row.getStatus() == ReportStatus.SUCCEEDED
+                ? ReportViewMapper.content(row.getContentJson(), rounds.findBySessionIdOrderByRoundNoAsc(s.getId()).size(),
+                        s.getOutcomeCode().displayText()) : null;
+        return new ReportView(s.getId().toString(), s.getStatus().name(), report, null, outcome(s), content, series);
     }
 
     public LiveMessage message(SimulationSession s, SimulationMessage m, int roundNo) {
@@ -107,8 +110,14 @@ public class SimulationStateAssembler {
                 analysis(r), format(r.getReadingUntil()));
     }
 
-    private static Outcome outcome(SimulationSession s) {
+    public static Outcome outcome(SimulationSession s) {
+        if (s.getStatus() != SimulationStatus.FINISHED) return null;
         return new Outcome(s.getOutcomeCode().name(), s.getOutcomeCode().displayText(), s.getOutcomeReason(),
                 s.getLimitReason() == null ? null : s.getLimitReason().name());
+    }
+
+    public static Interruption interruption(SimulationSession s) {
+        return s.getStatus() == SimulationStatus.INTERRUPTED
+                ? new Interruption(s.getInterruptionCode().name(), s.getInterruptionDetail()) : null;
     }
 }

@@ -12,14 +12,16 @@ const arg = (name, fallback) => { const i = process.argv.indexOf(name); return i
 const MYSQL_BIN = arg('--mysql', 'C:/Program Files/MySQL/MySQL Server 8.0/bin')
 const JAVA = arg('--java', process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin', 'java') : 'java')
 const ROOT = resolve(import.meta.dirname, '..')
-const RUN = join(ROOT, '.tools', 'simulation-smoke-' + randomUUID().slice(0, 8))
-const DB_PORT = 13310, APP_PORT = 18083, BASE = `http://127.0.0.1:${APP_PORT}/anti.scam/v1`
+const REPORT_ONLY = process.argv.includes('--report')
+const RUN = join(ROOT, '.tools', (REPORT_ONLY ? 'report' : 'simulation') + '-smoke-' + randomUUID().slice(0, 8))
+const DB_PORT = REPORT_ONLY ? 13311 : 13310, APP_PORT = REPORT_ONLY ? 18084 : 18083, BASE = `http://127.0.0.1:${APP_PORT}/anti.scam/v1`
 const PASSWORD = randomUUID().replaceAll('-', '')
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 const children = []
 const results = []
 
 async function main() {
+  assert.ok(existsSync(join(MYSQL_BIN, 'mysqld.exe')), 'MySQL 8.0.45 is required; use --mysql to specify its bin directory')
   mkdirSync(join(RUN, 'assets', 'avatars'), { recursive: true })
   const init = spawnSync(join(MYSQL_BIN, 'mysqld'), ['--no-defaults', '--initialize-insecure', `--datadir=${join(RUN, 'data')}`])
   assert.equal(init.status, 0, 'MySQL initialization failed')
@@ -49,32 +51,102 @@ async function main() {
   }
   const seed = (await admin.call('GET', '/admin/scammer-profiles')).data.items[0]
   const scripted = {}
-  for (const script of ['precheck-regen-r3', 'tts-fail-r2']) {
+  for (const script of REPORT_ONLY ? [] : ['precheck-regen-r3', 'tts-fail-r2']) {
     const body = { name: '剧本:' + script, age: 30, gender: '男', identity: '诈骗团伙话务人员', description: '冒烟用', contextTime: '晚上',
       contextPlace: '房间', currentState: '准备联系', fraudExperience: 'HIGH', speechSkill: 'HIGH', manipulationSkill: 'HIGH',
       behaviorTraits: '冒烟用', avatarKey: seed.avatar.key, speakingAvatarKey: seed.speakingAvatar.key }
     scripted[script] = (await admin.call('POST', '/admin/scammer-profiles', body, 201)).data.id
   }
-  await admin.call('DELETE', '/admin/scammer-profiles/' + scripted['tts-fail-r2'], { version: 0 }, 400) // D-1: no permanent delete
+  if (!REPORT_ONLY) await admin.call('DELETE', '/admin/scammer-profiles/' + scripted['tts-fail-r2'], { version: 0 }, 400) // D-1: no permanent delete
 
-  const users = await Promise.all(['SimA', 'SimB', 'SimC', 'SimD', 'SimE'].map(u => Client.register(u)))
+  const users = await Promise.all((REPORT_ONLY ? ['ReportA', 'ReportB'] : ['SimA', 'SimB', 'SimC', 'SimD', 'SimE']).map(u => Client.register(u)))
+  if (REPORT_ONLY) {
+    await check('Report generation, manual retry, idempotency and permissions', () => reportFlow(users[0], users[1], admin))
+    return
+  }
   await Promise.all([
-    check('S01 five rounds then NOT_DEFRAUDED, PENDING report, isolation', () => s01(users[0])),
+    check('S01 five rounds then NOT_DEFRAUDED, saved report, isolation', () => s01(users[0])),
     check('S04 round-3 precheck regeneration never published', () => s04(users[1], scripted['precheck-regen-r3'])),
     check('S07 victim TTS failure -> TTS_FAILED, text kept PENDING', () => s07(users[2], scripted['tts-fail-r2'])),
     check('S13 pause/resume shifts deadline, nothing published while paused', () => s13(users[3])),
     check('S09/S10/S12 exit, idempotent start, active conflict, permissions', () => s09(users[4], users[0])),
   ])
+  await check('History list, detail, tied pagination, immutability and permissions', () => historyFlow(users, admin))
 }
 
 // ---------------------------------------------------------------- scenarios
+
+async function historyFlow(users, admin) {
+  const user = users[1], created = []
+  for (let i = 0; i < 3; i++) {
+    const { state } = await user.startOnly({ scammer: '1', victim: '1' })
+    created.push(state.sessionId)
+    await user.call('POST', `/simulations/${state.sessionId}/exit`, { reason: 'NAVIGATION' })
+  }
+  // Force a tie only in this disposable database; every saved record must still appear once.
+  const tiedAt = sql(`SELECT started_at FROM simulation_session WHERE id=${created[0]}`)
+  sql(`UPDATE simulation_session SET started_at='${tiedAt}', deadline_at=TIMESTAMPADD(MICROSECOND,(600000+paused_total_ms)*1000,'${tiedAt}') WHERE id IN (${created.join(',')})`)
+  const expected = sql(`SELECT id FROM simulation_session WHERE user_id=(SELECT user_id FROM simulation_session WHERE id=${created[0]}) ORDER BY started_at DESC,id DESC`).split(/\r?\n/)
+  const ids = []
+  let cursor, firstCursor
+  do {
+    const page = (await user.call('GET', '/simulations?limit=1' + (cursor ? '&cursor=' + cursor : ''))).data
+    assert.equal(page.items.length, 1)
+    ids.push(page.items[0].sessionId)
+    assert.equal(page.hasMore, page.nextCursor !== null)
+    firstCursor ??= page.nextCursor
+    cursor = page.nextCursor
+  } while (cursor)
+  assert.deepEqual(ids, expected)
+  assert.equal(new Set(ids).size, ids.length)
+  const list = (await user.call('GET', '/simulations')).data
+  for (const id of created) {
+    const item = list.items.find(item => item.sessionId === id)
+    assert.equal(item.status, 'INTERRUPTED'); assert.equal(item.report, null); assert.ok(item.interruption.code)
+  }
+  await users[0].call('GET', '/simulations?cursor=' + firstCursor, undefined, 400)
+  const finished = (await users[0].call('GET', '/simulations')).data.items.find(item => item.status === 'FINISHED')
+  assert.ok(finished)
+  await waitForReport(users[0], finished.sessionId)
+  assert.equal((await users[0].call('GET', '/simulations')).data.items.find(item => item.sessionId === finished.sessionId).report.status, 'SUCCEEDED')
+  const path = `/simulations/${finished.sessionId}/detail`
+  const detail = (await users[0].call('GET', path)).data
+  assert.equal(detail.outcome.code, sql(`SELECT outcome_code FROM simulation_session WHERE id=${finished.sessionId}`))
+  assert.equal(detail.rounds.length, Number(sql(`SELECT COUNT(*) FROM simulation_round WHERE session_id=${finished.sessionId}`)))
+  assert.equal(detail.configuration.scenario.name, sql(`SELECT JSON_UNQUOTE(JSON_EXTRACT(scenario_snapshot,'$.name')) FROM simulation_session WHERE id=${finished.sessionId}`))
+  const scenario = (await admin.call('GET', '/admin/scenarios')).data.find(s => s.id === detail.configuration.scenario.id)
+  const edited = (await admin.call('PUT', `/admin/scenarios/${scenario.id}`, { name: '历史快照不应随本名称变化', description: scenario.description, version: scenario.version })).data
+  try {
+    const unchanged = (await users[0].call('GET', path)).data
+    assert.deepEqual(unchanged, detail)
+  } finally {
+    await admin.call('PUT', `/admin/scenarios/${scenario.id}`, { name: scenario.name, description: scenario.description, version: edited.version })
+  }
+  const interrupted = (await users[2].call('GET', '/simulations')).data.items[0]
+  const partial = (await users[2].call('GET', `/simulations/${interrupted.sessionId}/detail`)).data
+  const last = partial.rounds.at(-1)
+  // S07 saves both texts before victim TTS fails: interaction is saved, presentation remains incomplete.
+  assert.equal(last.interactionComplete, true); assert.equal(last.presentationComplete, false); assert.equal(last.analysis, null)
+  assert.equal(last.messages.find(m => m.speaker === 'VICTIM').presentationStatus, 'PENDING')
+  assert.equal(partial.outcome, null); assert.equal(partial.report, null); assert.ok(partial.interruption)
+  const foreign = await user.call('GET', path, undefined, 404)
+  const missing = await user.call('GET', '/simulations/999999/detail', undefined, 404)
+  foreign.requestId = missing.requestId; assert.deepEqual(foreign, missing)
+  await user.call('GET', '/simulations?userId=1', undefined, 400)
+  for (const endpoint of ['/simulations', path]) {
+    await admin.call('GET', endpoint, undefined, 403)
+    await new Client().call('GET', endpoint, undefined, 401)
+  }
+  const serialized = JSON.stringify({ list, detail, partial })
+  for (const key of ['userId', 'internalNote', 'audioUrl', 'audioDurationMs', 'segments']) assert.ok(!serialized.includes(`"${key}":`), key + ' leaked')
+}
 
 async function s01(user) {
   const run = await user.simulate({ scammer: '1', victim: '1' })
   assert.equal(run.final.status, 'FINISHED')
   assert.equal(run.final.outcome.code, 'NOT_DEFRAUDED')
   assert.equal(run.final.currentRoundNo, 5)
-  assert.equal(run.final.report.status, 'PENDING')
+  assert.ok(['PENDING', 'RUNNING', 'SUCCEEDED'].includes(run.final.report.status))
   const types = run.events.map(e => e.type)
   assert.equal(types[0], 'session.state')
   assert.ok(types.indexOf('session.finished') < types.lastIndexOf('round.reading'), 'finished must precede the last round.reading')
@@ -82,8 +154,76 @@ async function s01(user) {
   assert.equal(types.filter(t => t === 'analysis.saved').length, 5)
   assert.ok(!run.raw.includes('INTERNAL-NOTE-SECRET'), 'internal note leaked to a user response or frame')
   assert.equal(sql(`SELECT COUNT(*) FROM simulation_message m JOIN simulation_round r ON r.id=m.round_id WHERE r.session_id=${run.id}`), '10')
-  assert.equal(sql(`SELECT CONCAT(status,'/',attempt_no) FROM simulation_report WHERE session_id=${run.id}`), 'PENDING/0')
+  await waitForReport(user, run.id)
+  assert.equal(sql(`SELECT CONCAT(status,'/',attempt_no,'/',JSON_TYPE(content_json)) FROM simulation_report WHERE session_id=${run.id}`), 'SUCCEEDED/1/OBJECT')
   assert.ok(run.audioChecked, 'audio endpoint was never exercised')
+  return run
+}
+
+async function waitForReport(user, id) {
+  for (let i = 0; i < 60; i++) {
+    const view = (await user.call('GET', `/simulations/${id}/report`)).data
+    if (view.report?.status === 'SUCCEEDED') return view
+    assert.notEqual(view.report?.status, 'FAILED', 'report generation failed: ' + JSON.stringify(view.report?.error))
+    await sleep(500)
+  }
+  throw new Error('Report did not complete within 30s')
+}
+
+async function reportFlow(user, other, admin) {
+  const run = await s01(user), path = `/simulations/${run.id}/report`
+  const view = (await user.call('GET', path)).data
+  assert.deepEqual(Object.keys(view.content).sort(), ['summary', 'roundAnalyses', 'speechAnalysis', 'victimBehaviorAnalysis', 'outcomeAnalysis'].sort())
+  assert.deepEqual(view.content.roundAnalyses.map(r => r.roundNo), [1, 2, 3, 4, 5])
+  const scores = sql(`SELECT CONCAT(round_no,':',risk_score) FROM simulation_round WHERE session_id=${run.id} AND risk_score IS NOT NULL ORDER BY round_no`)
+  assert.equal(view.riskSeries.map(p => `${p.roundNo}:${p.score}`).join('\n'), scores.replaceAll('\r', ''))
+  const snapshot = await fetch(`${BASE}/simulations/${run.id}/events`, { headers: { cookie: user.cookie }, signal: AbortSignal.timeout(10000) })
+  const reader = snapshot.body.getReader()
+  const initial = await readFrame(reader)
+  assert.deepEqual(JSON.parse(/^data:(.*)$/m.exec(initial)[1]).data.reportView, view)
+  // Model output is already saved; inject a failure only inside this disposable database to exercise retry.
+  sql(`UPDATE simulation_report SET status='FAILED', content_json=NULL, error_code='VALIDATION_FAILED' WHERE session_id=${run.id}`)
+  const failed = (await user.call('GET', path)).data
+  assert.equal(failed.report.canRetry, true); assert.equal(failed.content, null)
+  assert.equal(failed.report.error.message, '报告内容未通过校验，可手动重试。')
+  const retried = await user.call('POST', path + '/retry', undefined, 202)
+  assert.equal(retried.data.report.status, 'PENDING'); assert.equal(retried.data.report.attemptNo, 1)
+  const event = await readFrame(reader)
+  assert.match(event, /event:report.updated/)
+  reader.cancel().catch(() => {})
+  await user.call('POST', path + '/retry')
+  const regenerated = await waitForReport(user, run.id)
+  assert.equal(regenerated.report.attemptNo, 2)
+  const again = (await user.call('POST', path + '/retry')).data
+  assert.deepEqual(again.content, regenerated.content); assert.equal(again.report.attemptNo, 2)
+  const foreign = await other.call('GET', path, undefined, 404)
+  const missing = await other.call('GET', '/simulations/999999/report', undefined, 404)
+  foreign.requestId = missing.requestId; assert.deepEqual(foreign, missing)
+  await admin.call('GET', path, undefined, 403)
+  await new Client().call('GET', path, undefined, 401)
+  const token = user.token; user.token = ''
+  await user.call('POST', path + '/retry', undefined, 403); user.token = token
+  const pending = await other.startOnly({ scammer: '1', victim: '1' }), id = pending.state.sessionId
+  assert.equal((await other.call('GET', `/simulations/${id}/report`)).data.unavailableReason, 'SIMULATION_RUNNING')
+  await other.call('POST', `/simulations/${id}/report/retry`, undefined, 409)
+  await other.call('POST', `/simulations/${id}/exit`, { reason: 'NAVIGATION' })
+  const interrupted = (await other.call('GET', `/simulations/${id}/report`)).data
+  assert.equal(interrupted.unavailableReason, 'SIMULATION_INTERRUPTED'); assert.equal(interrupted.report, null)
+  await other.call('POST', `/simulations/${id}/report/retry`, undefined, 409)
+  for (const raw of [user.raw, other.raw, admin.raw]) {
+    assert.ok(!/content_json|task_token|INTERNAL-NOTE-SECRET|PASSWORD|[A-Z]:\\/i.test(raw), 'internal data leaked')
+  }
+}
+
+async function readFrame(reader) {
+  const decoder = new TextDecoder()
+  let frame = ''
+  while (!frame.includes('\n\n')) {
+    const chunk = await reader.read()
+    assert.ok(!chunk.done, 'SSE stream ended before a complete frame')
+    frame += decoder.decode(chunk.value, { stream: true })
+  }
+  return frame.slice(0, frame.indexOf('\n\n'))
 }
 
 async function s04(user, scammerId) {
@@ -171,7 +311,11 @@ class Client {
     const text = await res.text()
     this.raw = (this.raw ?? '') + text
     assert.equal(res.status, expect, `${method} ${path} -> ${res.status} ${text.slice(0, 200)}`)
-    return JSON.parse(text)
+    if (REPORT_ONLY || (method === 'GET' && /^\/simulations(?:\?|$|\/[^/]+\/detail(?:\?|$))/.test(path))) {
+      assert.match(res.headers.get('cache-control') ?? '', /no-store/)
+    }
+    try { return JSON.parse(text) }
+    catch { throw new Error(`${method} ${path} returned invalid JSON (${text.length} bytes)`) }
   }
   async timing() {
     const send = performance.now(); const sample = (await this.call('GET', '/timing/samples')).data; const receive = performance.now()
@@ -230,7 +374,7 @@ class Client {
 // ---------------------------------------------------------------- utilities
 
 function sql(statement, withPassword = true) {
-  const out = spawnSync(join(MYSQL_BIN, 'mysql'), ['--no-defaults', '-h127.0.0.1', `-P${DB_PORT}`, '-uroot', '-N', '-B',
+  const out = spawnSync(join(MYSQL_BIN, 'mysql'), ['--no-defaults', '--default-character-set=utf8mb4', '-h127.0.0.1', `-P${DB_PORT}`, '-uroot', '-N', '-B',
     ...(withPassword ? ['sim_smoke'] : []), '-e', statement], { env: { ...process.env, MYSQL_PWD: withPassword ? PASSWORD : '' }, encoding: 'utf8' })
   if (out.status !== 0) throw new Error('SQL failed: ' + out.stderr)
   return out.stdout.trim()
@@ -255,8 +399,7 @@ main().catch(e => results.push('FAIL setup: ' + e.message)).finally(() => {
       spawnSync(join(MYSQL_BIN, 'mysqladmin'), ['--no-defaults', '-h127.0.0.1', `-P${DB_PORT}`, '-uroot', 'shutdown'],
         { env: { ...process.env, MYSQL_PWD: PASSWORD } })
     }
-    if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(c.pid), '/t', '/f'])
-    else c.kill()
+    c.kill() // These are direct Java/MySQL children; terminate only the processes this harness owns.
   }
   console.log(results.join('\n'))
   console.log('Logs: ' + RUN)

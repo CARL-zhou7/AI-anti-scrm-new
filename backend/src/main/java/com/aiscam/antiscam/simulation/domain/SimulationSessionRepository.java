@@ -8,8 +8,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 public interface SimulationSessionRepository extends JpaRepository<SimulationSession, Long> {
+    List<SimulationSession> findByUserIdOrderByStartedAtDescIdDesc(long userId, Pageable page);
+
+    @Query("select s from SimulationSession s where s.userId = :userId"
+            + " and (s.startedAt < :startedAt or (s.startedAt = :startedAt and s.id < :id))"
+            + " order by s.startedAt desc, s.id desc")
+    List<SimulationSession> findPageBefore(@Param("userId") long userId, @Param("startedAt") Instant startedAt,
+            @Param("id") long id, Pageable page);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from SimulationSession s where s.id = :id")
     Optional<SimulationSession> lockById(@Param("id") long id);

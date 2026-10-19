@@ -59,6 +59,13 @@ public class ConfigurationSnapshots {
         return write(m);
     }
 
+    public Names names(String scenarioJson, String scammerJson, String victimJson) {
+        return new Names(read(scenarioJson).path("name").asText(), read(scammerJson).path("name").asText(),
+                read(victimJson).path("name").asText());
+    }
+
+    public record Names(String scenario, String scammer, String victim) {}
+
     public ConfigurationView toConfigurationView(String scenarioJson, String scammerJson, String victimJson) {
         JsonNode s = read(scenarioJson), c = read(scammerJson), v = read(victimJson);
         var scenario = new ScenarioView(s.path("id").asText(), ScenarioCode.valueOf(s.path("scenario_code").asText()),

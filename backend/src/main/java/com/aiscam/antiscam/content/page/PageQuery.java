@@ -10,6 +10,10 @@ public record PageQuery(String cursor, int limit) {
         if (query.containsKey("enabled") && !"true".equals(query.getFirst("enabled"))) {
             throw ApiException.field("enabled", "VALUE_INVALID", "只允许查询可用画像");
         }
+        return new PageQuery(query.getFirst("cursor"), limit(query));
+    }
+
+    public static int limit(MultiValueMap<String, String> query) {
         int limit = 20;
         if (query.containsKey("limit")) {
             String raw = query.getFirst("limit");
@@ -21,7 +25,7 @@ public record PageQuery(String cursor, int limit) {
             }
             if (limit < 1 || limit > 100) throw ApiException.field("limit", "VALUE_INVALID", "分页大小须为1至100");
         }
-        return new PageQuery(query.getFirst("cursor"), limit);
+        return limit;
     }
 
     public static void validate(MultiValueMap<String, String> query, Set<String> allowed) {

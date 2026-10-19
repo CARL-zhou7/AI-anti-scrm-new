@@ -53,6 +53,10 @@ public class ApiException extends RuntimeException {
         return new ApiException(500, "DATA_INCONSISTENT", message);
     }
 
+    public static ApiException reportNotApplicable() {
+        return new ApiException(409, "REPORT_NOT_APPLICABLE", "该演绎不具备报告重试条件");
+    }
+
     public static ApiException activeSimulationExists(String activeSessionId) {
         return new ApiException(409, "ACTIVE_SIMULATION_EXISTS", "你已有一场进行中的演绎",
                 new ErrorDetail(List.of(), activeSessionId, null));

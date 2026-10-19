@@ -3,7 +3,7 @@ package com.aiscam.antiscam.simulation.domain;
 import jakarta.persistence.*;
 import java.time.Instant;
 
-/** Report row; this phase only creates it as PENDING in the same transaction as the formal finish. */
+/** Durable report work, created in the same transaction as the formal finish. */
 @Entity
 @Table(name = "simulation_report")
 public class SimulationReport {
@@ -52,4 +52,35 @@ public class SimulationReport {
     public int getAttemptNo() { return attemptNo; }
     public Instant getUpdatedAt() { return updatedAt; }
     public String getErrorCode() { return errorCode; }
+    public String getTaskToken() { return taskToken; }
+    public Instant getQueuedAt() { return queuedAt; }
+    public Instant getStartedAt() { return startedAt; }
+    public Instant getAttemptDeadlineAt() { return attemptDeadlineAt; }
+    public Instant getFinishedAt() { return finishedAt; }
+    public String getContentJson() { return contentJson; }
+
+    public void claim(String token, Instant now, Instant deadline) {
+        if (status != ReportStatus.PENDING || token == null || !deadline.isAfter(now)) {
+            throw new IllegalStateException("Report cannot be claimed");
+        }
+        status = ReportStatus.RUNNING;
+        attemptNo++;
+        taskToken = token;
+        startedAt = now;
+        attemptDeadlineAt = deadline;
+        updatedAt = now;
+    }
+
+    public void requeue(Instant now) {
+        if (status != ReportStatus.FAILED) throw new IllegalStateException("Report cannot be requeued");
+        status = ReportStatus.PENDING;
+        queuedAt = now;
+        taskToken = null;
+        startedAt = null;
+        attemptDeadlineAt = null;
+        finishedAt = null;
+        errorCode = null;
+        contentJson = null;
+        updatedAt = now;
+    }
 }

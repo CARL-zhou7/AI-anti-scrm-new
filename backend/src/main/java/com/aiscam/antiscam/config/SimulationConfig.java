@@ -41,11 +41,20 @@ public class SimulationConfig {
     @Bean
     Clock clock() { return Clock.systemUTC(); }
 
-    @Bean(destroyMethod = "shutdown")
+    @Bean(name = {"simulationScheduler", "taskScheduler"}, destroyMethod = "shutdown")
     ThreadPoolTaskScheduler simulationScheduler() {
         var scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(2);
         scheduler.setThreadNamePrefix("sim-timer-");
+        scheduler.initialize();
+        return scheduler;
+    }
+
+    @Bean(destroyMethod = "shutdown")
+    ThreadPoolTaskScheduler reportScheduler() {
+        var scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(1);
+        scheduler.setThreadNamePrefix("report-timer-");
         scheduler.initialize();
         return scheduler;
     }

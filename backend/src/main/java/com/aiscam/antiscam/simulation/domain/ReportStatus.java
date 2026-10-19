@@ -5,4 +5,5 @@ public enum ReportStatus {
     private final String displayText;
     ReportStatus(String displayText) { this.displayText = displayText; }
     public String displayText() { return displayText; }
+    public boolean canRetry() { return this == FAILED; }
 }

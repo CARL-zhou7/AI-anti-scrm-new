@@ -2,6 +2,34 @@
   "_comment": "Dev/test only. The victim never decides; 20 rounds -> UNDETERMINED / ROUND_LIMIT.",
   "delayMs": 100,
   "defaults": {
+    "report": [{"output": {
+      "summary": "骗子反复劝诱，受害者始终犹豫，演绎达到轮数限制。",
+      "roundAnalyses": [
+        {"roundNo": 1, "analysis": "强调机会，受害者仍在考虑。"},
+        {"roundNo": 2, "analysis": "继续劝说，受害者没有决定。"},
+        {"roundNo": 3, "analysis": "重复利益暗示，受害者继续犹豫。"},
+        {"roundNo": 4, "analysis": "反复劝诱仍未促成行动。"},
+        {"roundNo": 5, "analysis": "受害者未明确拒绝也未配合。"},
+        {"roundNo": 6, "analysis": "骗子持续强调机会难得。"},
+        {"roundNo": 7, "analysis": "受害者要求更多考虑时间。"},
+        {"roundNo": 8, "analysis": "重复催促未改变受害者的决定。"},
+        {"roundNo": 9, "analysis": "双方仍停留在劝说与犹豫。"},
+        {"roundNo": 10, "analysis": "没有新的危险行动。"},
+        {"roundNo": 11, "analysis": "骗子继续软磨硬泡。"},
+        {"roundNo": 12, "analysis": "受害者尚未承诺任何操作。"},
+        {"roundNo": 13, "analysis": "持续交流，尚无明确结果。"},
+        {"roundNo": 14, "analysis": "反复强调机会以消磨判断。"},
+        {"roundNo": 15, "analysis": "受害者仍未采取行动。"},
+        {"roundNo": 16, "analysis": "双方没有突破原有交流模式。"},
+        {"roundNo": 17, "analysis": "持续劝诱但未实现关键目标。"},
+        {"roundNo": 18, "analysis": "受害者没有明确终止配合。"},
+        {"roundNo": 19, "analysis": "受害者仍然犹豫不决。"},
+        {"roundNo": 20, "analysis": "达到轮数限制，仍无明确结局。"}
+      ],
+      "speechAnalysis": "不断重复机会难得，试图通过劝说促使对方行动。",
+      "victimBehaviorAnalysis": "始终犹豫，既未执行危险操作，也未明确停止配合。",
+      "outcomeAnalysis": "结局未定：达到轮数限制，受害者仍在考虑，不能据此认定为未受骗结束。"
+    }}],
     "scammer": [{"output": {"line": "第{{round}}次跟你说了，这个机会真的很难得，再考虑一下吧。", "action": null, "intent": "INTERNAL-NOTE-SECRET 反复劝说", "tone": {"speed": "NORMAL", "style": "劝说"}}}],
     "victim": [{"output": {"line": "我还是拿不定主意，再让我想想。", "action": null, "psychology": "INTERNAL-NOTE-SECRET 犹豫不决", "tone": {"speed": "SLOW", "style": "犹豫"}}}],
     "narrator": [{"output": {"fraudStage": "反复劝诱", "speechAnalysis": "持续强调机会难得，试图用重复消磨对方的判断。", "methodAnalysis": "软磨硬泡式劝说，等待对方松口。", "victimPsychology": "受害者犹豫不决，既未拒绝也未答应。", "riskScore": 50, "riskReason": "受害者仍在考虑配合，尚未承诺或执行危险操作。", "actualFraudOccurred": false, "goalAchieved": false, "cooperationStopped": false, "evidence": [], "candidateOutcome": null, "candidateReason": null}}]

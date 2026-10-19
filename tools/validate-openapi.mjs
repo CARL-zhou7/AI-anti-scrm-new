@@ -22,7 +22,8 @@ for (const [path, method] of [
   ['/simulations/{id}/opening/presented', 'post'], ['/simulations/{id}/messages/{messageId}/presentation', 'post'],
   ['/simulations/{id}/rounds/{roundNo}/analysis/presented', 'post'], ['/simulations/{id}/exit', 'post'],
   ['/simulations/{id}/messages/{messageId}/audio', 'get'], ['/simulations/{id}/pause', 'post'], ['/simulations/{id}/resume', 'post'],
-  ['/simulations/{id}/report', 'get'], ['/simulations/{id}/report/retry', 'post'], ['/simulations/{id}/detail', 'get'],
+  ['/simulations/{id}/report', 'get'], ['/simulations/{id}/report/retry', 'post'],
+  ['/simulations', 'get'], ['/simulations/{id}/detail', 'get'],
 ]) assert.ok(document.paths[path]?.[method], `${method} ${path} is missing`)
 assert.equal(document.servers[0].url, '/anti.scam/v1')
 assert.equal(document.components.schemas.Scenario.additionalProperties, false)
@@ -46,4 +47,10 @@ assert.equal(Object.keys(events ?? {}).length, 11)
 for (const p of ['/admin/scammer-profiles/{id}', '/admin/victim-profiles/{id}']) assert.ok(!document.paths[p]?.delete, `DELETE ${p} must be removed (D-1)`)
 const operations = Object.values(document.paths).reduce((n, item) => n + ['get', 'post', 'put', 'delete'].filter(m => item[m]).length, 0)
 assert.equal(operations, 44)
-console.log('OpenAPI valid; 44 operations (V1.1) and 11 SSE event types present; profile DELETE removed.')
+assert.deepEqual(new Set(s.ReportContent.required), new Set(['summary', 'roundAnalyses', 'speechAnalysis', 'victimBehaviorAnalysis', 'outcomeAnalysis']))
+assert.deepEqual(new Set(s.ReportError.properties.code.enum), new Set(['GENERATION_FAILED', 'VALIDATION_FAILED', 'PERSISTENCE_FAILED', 'TIMEOUT', 'SERVICE_RESTARTED']))
+assert.ok(s.ReportView.properties.content.anyOf.some(type => type.type === 'null'))
+assert.deepEqual(new Set(s.HistoryDetail.required), new Set(['sessionId', 'status', 'startedAt', 'deadlineAt', 'endedAt', 'configuration', 'rounds', 'outcome', 'interruption', 'report']))
+assert.ok(!('audioUrl' in s.HistoryMessage.properties))
+assert.ok(!('total' in s.HistoryPage.properties))
+console.log('OpenAPI valid; 44 operations (V1.1) and 11 SSE event types present; phase 5 (2) operations present; phase 6 (2) operations present; profile DELETE removed.')

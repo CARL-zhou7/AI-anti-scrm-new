@@ -26,6 +26,34 @@ public final class AgentOutputValidator {
     private static final Pattern ACTION_IN_LINE = Pattern.compile("[（(【\\[][^）)】\\]]*?(转账|付款|点击|输入|发送|打开)[^）)】\\]]*?[）)】\\]]");
     private AgentOutputValidator() {}
 
+    public static ReportContent report(ReportContent content, int expectedRounds, String outcomeDisplayText) {
+        if (content == null || expectedRounds < 1 || content.roundAnalyses() == null
+                || content.roundAnalyses().size() != expectedRounds) {
+            throw new ReportValidationException("round count mismatch");
+        }
+        reportText(content.summary(), 600);
+        reportText(content.speechAnalysis(), 600);
+        reportText(content.victimBehaviorAnalysis(), 600);
+        reportText(content.outcomeAnalysis(), 600);
+        for (int i = 0; i < expectedRounds; i++) {
+            var round = content.roundAnalyses().get(i);
+            if (round == null || round.roundNo() != i + 1) throw new ReportValidationException("round order mismatch");
+            reportText(round.analysis(), 300);
+        }
+        if (outcomeDisplayText == null || outcomeDisplayText.isBlank() || !content.outcomeAnalysis().contains(outcomeDisplayText)) {
+            throw new ReportValidationException("authoritative outcome missing");
+        }
+        return content;
+    }
+
+    private static void reportText(String text, int max) {
+        // Defensive output limits, not product copy limits; count Unicode code points.
+        if (text == null || text.isBlank() || text.codePointCount(0, text.length()) > max
+                || text.indexOf('<') >= 0 || text.indexOf('>') >= 0) {
+            throw new ReportValidationException("invalid report text");
+        }
+    }
+
     public static ScammerTurn validate(ScammerTurn turn) {
         return new ScammerTurn(line(turn.line()), action(turn.action()), required(turn.intent(), Category.DIALOGUE), turn.tone());
     }

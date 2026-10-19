@@ -3,6 +3,7 @@ package com.aiscam.antiscam.agent;
 import com.aiscam.antiscam.agent.AgentModels.*;
 import com.aiscam.antiscam.agent.LlmClient.LlmRequest;
 import com.aiscam.antiscam.config.SimulationProperties;
+import com.aiscam.antiscam.report.service.ReportContext;
 import java.time.Duration;
 import java.util.List;
 
@@ -17,6 +18,14 @@ public class AgentRunner {
     public AgentRunner(LlmClient llm, SimulationProperties.Llm config) {
         this.llm = llm;
         this.config = config;
+    }
+
+    public ReportContent report(ReportContext context, long timeoutMs) {
+        long timeout = Math.max(1, Math.min(timeoutMs, config.getCallTimeoutMs()));
+        String prompt = PromptRenderer.render(context.template(), context.variables());
+        String raw = llm.completeJson(new LlmRequest(AgentRole.REPORT, prompt, config.getReportTemperature(),
+                config.getMaxTokens(), Duration.ofMillis(timeout), 0, 1, context.scriptKey()));
+        return AgentOutputValidator.report(AgentOutputParser.report(raw), context.roundCount(), context.outcomeDisplayText());
     }
 
     public ScammerTurn scammer(AgentScene scene, List<DialogueLine> history, int roundNo, long remainingMs, int attempt) {

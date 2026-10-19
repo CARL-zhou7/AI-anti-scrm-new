@@ -103,3 +103,8 @@ app:
     executors:
       lanes: 8
     report-attempt-timeout-ms: 120000
+    report:
+      enabled: true
+      poll-ms: 1000
+      max-concurrent: 4
+      initial-delay-ms: 2000

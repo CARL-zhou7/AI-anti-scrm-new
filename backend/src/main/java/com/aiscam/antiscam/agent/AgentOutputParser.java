@@ -17,6 +17,34 @@ public final class AgentOutputParser {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private AgentOutputParser() {}
 
+    public static ReportContent report(String raw) {
+        try {
+            // Report output must be exactly one JSON object, including duplicate/trailing-token checks.
+            JsonNode n = MAPPER.reader()
+                    .with(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                    .with(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION).readTree(raw);
+            if (n == null || !n.isObject()) throw fail(Category.REPORT, "object expected");
+            exactFields(n, Set.of("summary", "roundAnalyses", "speechAnalysis", "victimBehaviorAnalysis", "outcomeAnalysis"), Category.REPORT);
+            if (!n.get("roundAnalyses").isArray()) throw fail(Category.REPORT, "roundAnalyses must be an array");
+            List<RoundAnalysis> rounds = new ArrayList<>();
+            for (JsonNode r : n.get("roundAnalyses")) {
+                if (!r.isObject()) throw fail(Category.REPORT, "round analysis must be an object");
+                exactFields(r, Set.of("roundNo", "analysis"), Category.REPORT);
+                if (!r.get("roundNo").isIntegralNumber() || !r.get("roundNo").canConvertToInt()) {
+                    throw fail(Category.REPORT, "roundNo must be an integer");
+                }
+                rounds.add(new RoundAnalysis(r.get("roundNo").asInt(), text(r, "analysis", Category.REPORT)));
+            }
+            return new ReportContent(text(n, "summary", Category.REPORT), List.copyOf(rounds),
+                    text(n, "speechAnalysis", Category.REPORT), text(n, "victimBehaviorAnalysis", Category.REPORT),
+                    text(n, "outcomeAnalysis", Category.REPORT));
+        } catch (AgentCallException e) {
+            throw new ReportValidationException(e.getMessage());
+        } catch (java.io.IOException | IllegalArgumentException e) {
+            throw new ReportValidationException("output is not strict JSON");
+        }
+    }
+
     public static ScammerTurn scammer(String raw) {
         JsonNode n = object(raw, Category.DIALOGUE, Set.of("line", "action", "intent", "tone"));
         return new ScammerTurn(text(n, "line", Category.DIALOGUE), nullableText(n, "action", Category.DIALOGUE),

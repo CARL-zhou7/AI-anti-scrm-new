@@ -13,6 +13,7 @@ public class SimulationProperties {
     private final Sse sse = new Sse();
     private final Connection connection = new Connection();
     private final Executors executors = new Executors();
+    private final Report report = new Report();
     private String audioTempDir = "var/tmp-audio";
     private long reportAttemptTimeoutMs = 120_000;
 
@@ -22,10 +23,38 @@ public class SimulationProperties {
     public Sse getSse() { return sse; }
     public Connection getConnection() { return connection; }
     public Executors getExecutors() { return executors; }
+    public Report getReport() { return report; }
     public String getAudioTempDir() { return audioTempDir; }
     public void setAudioTempDir(String value) { audioTempDir = value; }
     public long getReportAttemptTimeoutMs() { return reportAttemptTimeoutMs; }
-    public void setReportAttemptTimeoutMs(long value) { reportAttemptTimeoutMs = value; }
+    public void setReportAttemptTimeoutMs(long value) {
+        if (value <= 0) throw new IllegalArgumentException("report-attempt-timeout-ms must be positive");
+        reportAttemptTimeoutMs = value;
+    }
+
+    public static class Report {
+        private boolean enabled = true;
+        private long pollMs = 1000;
+        private int maxConcurrent = 4;
+        private long initialDelayMs = 2000;
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean v) { enabled = v; }
+        public long getPollMs() { return pollMs; }
+        public void setPollMs(long v) {
+            if (v <= 0) throw new IllegalArgumentException("report.poll-ms must be positive");
+            pollMs = v;
+        }
+        public int getMaxConcurrent() { return maxConcurrent; }
+        public void setMaxConcurrent(int v) {
+            if (v < 1) throw new IllegalArgumentException("report.max-concurrent must be positive");
+            maxConcurrent = v;
+        }
+        public long getInitialDelayMs() { return initialDelayMs; }
+        public void setInitialDelayMs(long v) {
+            if (v < 0) throw new IllegalArgumentException("report.initial-delay-ms cannot be negative");
+            initialDelayMs = v;
+        }
+    }
 
     public static class Timing {
         private long sampleTtlMs = 60_000;

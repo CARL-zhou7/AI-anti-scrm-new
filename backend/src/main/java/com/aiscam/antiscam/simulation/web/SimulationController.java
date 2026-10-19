@@ -1,5 +1,7 @@
 package com.aiscam.antiscam.simulation.web;
 
+import static com.aiscam.antiscam.common.web.RequestContent.rejectBody;
+
 import com.aiscam.antiscam.auth.web.dto.Account;
 import com.aiscam.antiscam.common.api.ApiResponse;
 import com.aiscam.antiscam.content.page.PageQuery;
@@ -139,12 +141,6 @@ public class SimulationController {
 
     private static <T> ResponseEntity<ApiResponse<T>> noStore(T body) {
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(ApiResponse.ok(body));
-    }
-
-    private static void rejectBody(String body) {
-        if (body != null && !body.isBlank()) {
-            throw com.aiscam.antiscam.common.error.ApiException.field("body", "UNKNOWN_FIELD", "该接口不接受请求体");
-        }
     }
 
     private static long userId(Authentication auth) { return Long.parseLong(((Account) auth.getPrincipal()).id()); }

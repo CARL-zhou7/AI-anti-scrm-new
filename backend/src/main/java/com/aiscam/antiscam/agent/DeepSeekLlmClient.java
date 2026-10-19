@@ -35,7 +35,11 @@ public class DeepSeekLlmClient implements LlmClient {
 
     @Override
     public String completeJson(LlmRequest request) {
-        Category category = request.role() == AgentRole.NARRATOR ? Category.ANALYSIS : Category.DIALOGUE;
+        Category category = switch (request.role()) {
+            case NARRATOR -> Category.ANALYSIS;
+            case REPORT -> Category.REPORT;
+            default -> Category.DIALOGUE;
+        };
         if (apiKey == null || apiKey.isBlank()) throw new AgentCallException(category, false, "LLM API key missing");
         var factory = new JdkClientHttpRequestFactory(http);
         factory.setReadTimeout(request.timeout());

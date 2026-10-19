@@ -32,12 +32,19 @@ public final class SimulationViews {
     public record Interruption(String code, String message) {}
 
     public record ReportSummary(String status, String displayText, boolean canRetry, int attemptNo, String updatedAt,
-            Object error) {}
+            ReportError error) {}
+
+    public record ReportError(String code, String message) {}
+
+    public record RoundAnalysis(int roundNo, String analysis) {}
+
+    public record ReportContent(String summary, List<RoundAnalysis> roundAnalyses, String speechAnalysis,
+            String victimBehaviorAnalysis, String outcomeAnalysis) {}
 
     public record RiskPoint(int roundNo, int score) {}
 
     public record ReportView(String sessionId, String simulationStatus, ReportSummary report, String unavailableReason,
-            Outcome outcome, Object content, List<RiskPoint> riskSeries) {}
+            Outcome outcome, ReportContent content, List<RiskPoint> riskSeries) {}
 
     public record SessionStateData(State state, ReportView reportView) {}
 

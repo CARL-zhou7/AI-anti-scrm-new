@@ -119,6 +119,7 @@ public class SimulationSession {
     public long getScammerPromptId() { return scammerPromptId; }
     public long getVictimPromptId() { return victimPromptId; }
     public long getNarratorPromptId() { return narratorPromptId; }
+    public long getReportPromptId() { return reportPromptId; }
     public String getRuntimeSnapshot() { return runtimeSnapshot; }
     public SimulationStatus getStatus() { return status; }
     public boolean isRunning() { return status == SimulationStatus.RUNNING; }

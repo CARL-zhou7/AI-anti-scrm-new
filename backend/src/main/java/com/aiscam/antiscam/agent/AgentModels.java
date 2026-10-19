@@ -10,7 +10,7 @@ import java.util.List;
 public final class AgentModels {
     private AgentModels() {}
 
-    public enum AgentRole { SCAMMER, VICTIM, NARRATOR }
+    public enum AgentRole { SCAMMER, VICTIM, NARRATOR, REPORT }
 
     public enum Speed { SLOW, NORMAL, FAST }
 
@@ -24,6 +24,11 @@ public final class AgentModels {
     public record ScammerTurn(String line, String action, String intent, ToneHint tone) {}
 
     public record VictimTurn(String line, String action, String psychology, ToneHint tone) {}
+
+    public record RoundAnalysis(int roundNo, String analysis) {}
+
+    public record ReportContent(String summary, List<RoundAnalysis> roundAnalyses, String speechAnalysis,
+            String victimBehaviorAnalysis, String outcomeAnalysis) {}
 
     public record EvidenceItem(FactCode factCode, SpeakerRole speaker, EvidenceSource source, int roundNo, String quote,
             int eventOrder) {}

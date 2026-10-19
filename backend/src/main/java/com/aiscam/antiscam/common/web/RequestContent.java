@@ -7,6 +7,10 @@ public final class RequestContent {
     public static final int MAX_TEXT_CHARS = 16000;
     private RequestContent() {}
 
+    public static void rejectBody(String body) {
+        if (body != null && !body.isBlank()) throw ApiException.field("body", "UNKNOWN_FIELD", "该接口不接受请求体");
+    }
+
     public static void checkField(String field, String value, int maxChars) {
         if (value == null || value.isBlank()) throw ApiException.field(field, "REQUIRED", "此项不能为空");
         if (value.codePointCount(0, value.length()) > maxChars) {
