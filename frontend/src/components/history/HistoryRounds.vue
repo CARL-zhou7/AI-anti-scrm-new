@@ -9,6 +9,11 @@ const presentations: Record<PresentationStatus, string> = { PENDING: '尚未呈�
     <h2>已保存的演绎过程</h2><p v-if="!rounds.length">暂无已保存轮次</p>
     <article v-for="round in rounds" :key="round.roundNo" class="history-round" data-testid="history-round">
       <h3>第{{ round.roundNo }}轮</h3>
+      <div data-testid="history-round-funds">
+        <p v-if="!round.funds?.fundsRecorded">本轮资金：未记录</p>
+        <p v-else>本轮支付：{{ round.funds.totalPaidYuan ?? '未记录' }}元 · 本轮返款：{{ round.funds.totalRefundedYuan ?? '未记录' }}元 · 本轮预留释放：{{ round.funds.reserveReleasedYuan ?? '未记录' }}元<br />
+          余额：{{ round.funds.availableBalanceYuan ?? '未记录' }}元 · 累计亏损：{{ round.funds.actualLossYuan ?? '未记录' }}元 · 累计追加：{{ round.funds.additionalPaymentCount ?? '未记录' }}次</p>
+      </div>
       <p v-if="!round.interactionComplete" class="field-help" data-testid="history-round-incomplete">本轮未完成（对方回应未保存）</p>
       <p v-else-if="!round.presentationComplete" class="field-help">本轮必要呈现尚未全部完成</p>
       <div v-for="message in round.messages" :key="message.id" class="history-message" data-testid="history-round-message">

@@ -121,11 +121,11 @@ public class SimulationTransitions {
         if (active.size() != PromptType.values().length) throw ApiException.dataInconsistent("记录状态异常，请稍后重试");
         var voicePair = voices.map(scammer.getAge(), scammer.getGender(), victim.getAge(), victim.getGender());
         var session = sessions.saveAndFlush(new SimulationSession(userId, req.startRequestId(), scenarioId, scammerId, victimId,
-                snapshots.scenario(scenario), snapshots.scammer(scammer), snapshots.victim(victim),
+                snapshots.scenario(scenario), snapshots.scammer(scammer), snapshots.victim(victim, scenario.getScenarioCode()),
                 active.get(PromptType.SCAMMER).getId(), active.get(PromptType.VICTIM).getId(),
                 active.get(PromptType.NARRATOR).getId(), active.get(PromptType.REPORT).getId(),
                 snapshots.write(runtimeSnapshot(voicePair)), calibrated.startedAt(), calibrated.receivedAt(),
-                snapshots.write(calibrated.evidenceJson())));
+                snapshots.write(calibrated.evidenceJson()), victim.getAvailableFundsYuan()));
         State state = assembler.assemble(session);
         hub.publishAfterCommit(new SimulationEvent("session.started", session.getId(), session.getStateVersion(), state));
         long id = session.getId();
@@ -136,7 +136,10 @@ public class SimulationTransitions {
     private Map<String, Object> runtimeSnapshot(VoiceMapper.VoicePair voicePair) {
         var llm = properties.getLlm();
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("schema_version", 1);
+        m.put("schema_version", 2);
+        m.put("v12_preview", true);
+        m.put("fund_ruleset_version", "funds-v1");
+        m.put("report_content_schema_version", 1);
         m.put("app_build", "0.1.0-phase4");
         m.put("ruleset_version", "PRD-V3.2");
         m.put("model_config", Map.of("provider", llm.getProvider(), "model", llm.getModel(),
@@ -170,7 +173,7 @@ public class SimulationTransitions {
         Instant now = now();
         if (DeadlineCalculator.isExpired(s, now)) { convergeDeadline(s, now); return result(IGNORED_TERMINAL, s); }
         if (!completed) { interruptLocked(s, InterruptionCode.MEDIA_FAILED, now); return result(APPLIED, s); }
-        var round = rounds.saveAndFlush(new SimulationRound(s.getId(), 1, now));
+        var round = rounds.saveAndFlush(new SimulationRound(s.getId(), 1, now, s.getAvailableBalanceYuan()));
         s.enterRound(1);
         if (!s.isPaused()) {
             hub.publishAfterCommit(new SimulationEvent("round.started", s.getId(), s.getStateVersion(), assembler.roundStarted(s, round)));
@@ -250,7 +253,7 @@ public class SimulationTransitions {
         if (!runnable(s, now) || s.getCurrentRoundNo() != roundNo || roundNo >= OutcomeRules.MAX_ROUNDS) return false;
         var round = rounds.findBySessionIdAndRoundNo(sessionId, roundNo).orElseThrow();
         if (round.getPhase() != RoundPhase.COMPLETE || round.getReadingUntil() == null || round.getReadingUntil().isAfter(now)) return false;
-        var next = rounds.saveAndFlush(new SimulationRound(sessionId, roundNo + 1, now));
+        var next = rounds.saveAndFlush(new SimulationRound(sessionId, roundNo + 1, now, s.getAvailableBalanceYuan()));
         s.enterRound(roundNo + 1);
         hub.publishAfterCommit(new SimulationEvent("round.started", sessionId, s.getStateVersion(), assembler.roundStarted(s, next)));
         afterCommitChanged(sessionId);

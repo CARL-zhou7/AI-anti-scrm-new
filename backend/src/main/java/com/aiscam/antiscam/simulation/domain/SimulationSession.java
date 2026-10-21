@@ -77,18 +77,35 @@ public class SimulationSession {
     @Column(name = "updated_at", insertable = false, updatable = false, columnDefinition = "datetime(3)")
     private Instant updatedAt;
 
+    @Column(name = "initial_available_funds_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int initialAvailableFundsYuan;
+    @Column(name = "available_balance_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int availableBalanceYuan;
+    @Column(name = "total_paid_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int totalPaidYuan;
+    @Column(name = "total_refunded_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int totalRefundedYuan;
+    @Column(name = "actual_loss_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int actualLossYuan;
+    @Column(name = "additional_payment_count", nullable = false, columnDefinition = "smallint unsigned")
+    private int additionalPaymentCount;
+    @Column(name = "reserve_released_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int reserveReleasedYuan;
+
     protected SimulationSession() {}
 
     public SimulationSession(long userId, String startRequestId, long scenarioId, long scammerProfileId,
             long victimProfileId, String scenarioSnapshot, String scammerSnapshot, String victimSnapshot,
             long scammerPromptId, long victimPromptId, long narratorPromptId, long reportPromptId,
-            String runtimeSnapshot, Instant startedAt, Instant receivedAt, String timingEvidence) {
+            String runtimeSnapshot, Instant startedAt, Instant receivedAt, String timingEvidence, int initialAvailableFundsYuan) {
         this.userId = userId;
         this.startRequestId = startRequestId;
         this.scenarioId = scenarioId;
         this.scammerProfileId = scammerProfileId;
         this.victimProfileId = victimProfileId;
-        this.snapshotSchemaVersion = 1;
+        this.snapshotSchemaVersion = 2;
+        this.initialAvailableFundsYuan = initialAvailableFundsYuan;
+        this.availableBalanceYuan = initialAvailableFundsYuan;
         this.scenarioSnapshot = scenarioSnapshot;
         this.scammerSnapshot = scammerSnapshot;
         this.victimSnapshot = victimSnapshot;
@@ -105,6 +122,20 @@ public class SimulationSession {
         this.timingEvidence = timingEvidence;
         this.deadlineAt = startedAt.plusMillis(600_000);
         this.pausedTotalMs = 0;
+    }
+
+    public int getInitialAvailableFundsYuan() { return initialAvailableFundsYuan; }
+    public int getAvailableBalanceYuan() { return availableBalanceYuan; }
+    public int getTotalPaidYuan() { return totalPaidYuan; }
+    public int getTotalRefundedYuan() { return totalRefundedYuan; }
+    public int getActualLossYuan() { return actualLossYuan; }
+    public int getAdditionalPaymentCount() { return additionalPaymentCount; }
+    public int getReserveReleasedYuan() { return reserveReleasedYuan; }
+
+    public int getSnapshotSchemaVersion() { return snapshotSchemaVersion; }
+    public FundsSummary getFundsSummary() {
+        return new FundsSummary(initialAvailableFundsYuan, availableBalanceYuan, totalPaidYuan, totalRefundedYuan,
+                actualLossYuan, additionalPaymentCount, reserveReleasedYuan);
     }
 
     public Long getId() { return id; }

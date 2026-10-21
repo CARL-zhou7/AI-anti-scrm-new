@@ -47,14 +47,39 @@ public class SimulationRound {
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "datetime(3)")
     private Instant createdAt;
 
+    @Column(name = "round_paid_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int roundPaidYuan;
+    @Column(name = "round_refunded_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int roundRefundedYuan;
+    @Column(name = "round_reserve_released_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int roundReserveReleasedYuan;
+    @Column(name = "round_balance_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int roundBalanceYuan;
+    @Column(name = "round_actual_loss_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int roundActualLossYuan;
+    @Column(name = "additional_payment_count_total", nullable = false, columnDefinition = "smallint unsigned")
+    private int additionalPaymentCountTotal;
+
     protected SimulationRound() {}
 
     public SimulationRound(long sessionId, int roundNo, Instant now) {
+        this(sessionId, roundNo, now, 0);
+    }
+
+    public SimulationRound(long sessionId, int roundNo, Instant now, int availableBalanceYuan) {
+        this.roundBalanceYuan = availableBalanceYuan;
         this.sessionId = sessionId;
         this.roundNo = roundNo;
         this.phase = RoundPhase.SCAMMER_GENERATING;
         this.createdAt = now;
     }
+
+    public int getRoundPaidYuan() { return roundPaidYuan; }
+    public int getRoundRefundedYuan() { return roundRefundedYuan; }
+    public int getRoundReserveReleasedYuan() { return roundReserveReleasedYuan; }
+    public int getRoundBalanceYuan() { return roundBalanceYuan; }
+    public int getRoundActualLossYuan() { return roundActualLossYuan; }
+    public int getAdditionalPaymentCountTotal() { return additionalPaymentCountTotal; }
 
     public Long getId() { return id; }
     public long getSessionId() { return sessionId; }

@@ -36,6 +36,19 @@ onUnmounted(() => { version++ })
     <template v-else-if="detail">
       <header class="configuration-section"><span class="eyebrow">历史记录 · {{ statuses[detail.status] }}</span><h1>{{ detail.configuration.scenario.name }}</h1><p>开始时间：{{ formatShanghai(detail.startedAt) }}（北京时间）</p><p v-if="detail.endedAt">结束时间：{{ formatShanghai(detail.endedAt) }}</p></header>
       <HistoryConfiguration :configuration="detail.configuration" />
+      <section class="configuration-section" data-testid="history-funds">
+        <h2>本场资金</h2>
+        <p v-if="!detail.funds?.fundsRecorded">未记录</p>
+        <dl v-else>
+          <dt>初始可动用资金</dt><dd>{{ detail.funds.initialAvailableYuan == null ? '未记录' : `${detail.funds.initialAvailableYuan}元` }}</dd>
+          <dt>可动用余额</dt><dd>{{ detail.funds.availableBalanceYuan == null ? '未记录' : `${detail.funds.availableBalanceYuan}元` }}</dd>
+          <dt>累计支付</dt><dd>{{ detail.funds.totalPaidYuan == null ? '未记录' : `${detail.funds.totalPaidYuan}元` }}</dd>
+          <dt>累计返款</dt><dd>{{ detail.funds.totalRefundedYuan == null ? '未记录' : `${detail.funds.totalRefundedYuan}元` }}</dd>
+          <dt>实际亏损</dt><dd>{{ detail.funds.actualLossYuan == null ? '未记录' : `${detail.funds.actualLossYuan}元` }}</dd>
+          <dt>追加次数</dt><dd>{{ detail.funds.additionalPaymentCount == null ? '未记录' : `${detail.funds.additionalPaymentCount}次` }}</dd>
+          <dt>预留释放</dt><dd>{{ detail.funds.reserveReleasedYuan == null ? '未记录' : `${detail.funds.reserveReleasedYuan}元` }}</dd>
+        </dl>
+      </section>
       <section v-if="detail.status === 'FINISHED' && detail.outcome" class="configuration-section" data-testid="history-detail-outcome"><h2>{{ detail.outcome.displayText }}</h2><p>{{ detail.outcome.reason }}</p></section>
       <section v-if="detail.status === 'INTERRUPTED' && detail.interruption" class="configuration-section" data-testid="history-detail-interruption"><h2>本次演绎已中断</h2><p>{{ detail.interruption.message }}</p></section>
       <HistoryRounds :rounds="detail.rounds" />

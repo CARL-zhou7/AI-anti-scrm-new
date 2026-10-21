@@ -10,6 +10,7 @@ import com.aiscam.antiscam.report.service.ReportViewMapper;
 import com.aiscam.antiscam.simulation.domain.*;
 import com.aiscam.antiscam.simulation.service.SimulationStateAssembler;
 import com.aiscam.antiscam.simulation.snapshot.ConfigurationSnapshots;
+import com.aiscam.antiscam.simulation.web.dto.SimulationViews.Funds;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -64,11 +65,17 @@ public class HistoryAssembler {
                             format(m.getPresentationCompletedAt()), m.getPresentationErrorCode(), format(m.getCreatedAt())))
                     .toList();
             return new HistoryRound(r.getRoundNo(), r.getPhase().name(), list.size() == 2,
-                    r.getPhase() == RoundPhase.COMPLETE, list, state.analysis(r), format(r.getReadingUntil()));
+                    r.getPhase() == RoundPhase.COMPLETE, list, state.analysis(r), format(r.getReadingUntil()),
+                    s.getSnapshotSchemaVersion() < 2 ? null : new Funds(
+                            true, s.getInitialAvailableFundsYuan(), r.getRoundBalanceYuan(), r.getRoundPaidYuan(),
+                            r.getRoundRefundedYuan(), r.getRoundActualLossYuan(), r.getAdditionalPaymentCountTotal(),
+                            r.getRoundReserveReleasedYuan(), null));
         }).toList();
         return new HistoryDetail(s.getId().toString(), s.getStatus().name(), format(s.getStartedAt()),
                 format(s.getDeadlineAt()), format(s.getEndedAt()),
                 snapshots.toConfigurationView(s.getScenarioSnapshot(), s.getScammerSnapshot(), s.getVictimSnapshot()),
-                historyRounds, outcome(s), interruption(s), report);
+                historyRounds, outcome(s), interruption(s), report,
+                snapshots.read(s.getRuntimeSnapshot()).path("ruleset_version").asText(null),
+                Funds.from(s, true));
     }
 }

@@ -46,7 +46,8 @@ public class ConfigurationSnapshots {
         return write(m);
     }
 
-    public String victim(VictimProfile p) {
+    public String victim(VictimProfile p, ScenarioCode selected) {
+        VictimProfileValues.validateScenarios(p.getScenarioProfiles());
         Map<String, Object> m = common(p.getId(), p.getRowVersion(), p.getName(), p.getAvatarKey(), p.getSpeakingAvatarKey(),
                 p.getAge(), p.getGender(), p.getIdentity(), p.getDescription());
         m.put("anti_fraud_awareness", p.getAntiFraudAwareness().name());
@@ -56,6 +57,32 @@ public class ConfigurationSnapshots {
         m.put("context_place", p.getContextPlace());
         m.put("current_state", p.getCurrentState());
         m.put("is_enabled", p.isEnabled());
+        m.put("snapshot_schema_version", 2);
+        m.put("selected_scenario_code", selected.name());
+        m.put("family_status", p.getFamilyStatus());
+        m.put("income_description", p.getIncomeDescription());
+        m.put("monthly_expense_yuan", p.getMonthlyExpenseYuan());
+        m.put("initial_savings_yuan", p.getInitialSavingsYuan());
+        m.put("available_funds_yuan", p.getAvailableFundsYuan());
+        m.put("reserved_funds_yuan", p.getReservedFundsYuan());
+        m.put("reserved_funds_note", p.getReservedFundsNote());
+        m.put("general_decision_traits", p.getGeneralDecisionTraits());
+        m.put("victim_scenario_profiles", p.getScenarioProfiles().stream().map(profile -> {
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put("scenario_code", profile.scenarioCode());
+            fields.put("needs", profile.needs());
+            fields.put("relevant_experience", profile.relevantExperience());
+            fields.put("judgment_basis", profile.judgmentBasis());
+            fields.put("verification_habits", profile.verificationHabits());
+            fields.put("action_boundaries", profile.actionBoundaries());
+            fields.put("stop_conditions", profile.stopConditions());
+            fields.put("recent_events", profile.recentEvents());
+            fields.put("consultations_transactions", profile.consultationsTransactions());
+            fields.put("shared_experiences", profile.sharedExperiences());
+            fields.put("contact_background", profile.contactBackground());
+            fields.put("initial_trust_mode", profile.initialTrustMode());
+            return fields;
+        }).toList());
         return write(m);
     }
 
@@ -81,8 +108,31 @@ public class ConfigurationSnapshots {
                 v.path("gender").asText(), v.path("identity").asText(), v.path("description").asText(),
                 v.path("context_time").asText(), v.path("context_place").asText(), v.path("current_state").asText(),
                 Level.valueOf(v.path("anti_fraud_awareness").asText()), Level.valueOf(v.path("risk_tendency").asText()),
-                v.path("personality_traits").asText(), null, null, null, null, null, null, null, null, java.util.List.of(), 1);
+                v.path("personality_traits").asText(), text(v, "family_status"), text(v, "income_description"),
+                amount(v, "monthly_expense_yuan"), amount(v, "initial_savings_yuan"), amount(v, "available_funds_yuan"),
+                amount(v, "reserved_funds_yuan"), text(v, "reserved_funds_note"), text(v, "general_decision_traits"),
+                scenarioProfiles(v), v.path("snapshot_schema_version").asInt(1));
         return new ConfigurationView(scenario, scammer, victim);
+    }
+
+    private static String text(JsonNode node, String field) {
+        return node.hasNonNull(field) ? node.get(field).asText() : null;
+    }
+
+    private static Integer amount(JsonNode node, String field) {
+        return node.hasNonNull(field) ? node.get(field).intValue() : null;
+    }
+
+    private static java.util.List<VictimScenarioProfileValues> scenarioProfiles(JsonNode victim) {
+        var result = new java.util.ArrayList<VictimScenarioProfileValues>();
+        for (JsonNode p : victim.path("victim_scenario_profiles")) {
+            result.add(new VictimScenarioProfileValues(text(p, "scenario_code"), text(p, "needs"),
+                    text(p, "relevant_experience"), text(p, "judgment_basis"), text(p, "verification_habits"),
+                    text(p, "action_boundaries"), text(p, "stop_conditions"), text(p, "recent_events"),
+                    text(p, "consultations_transactions"), text(p, "shared_experiences"), text(p, "contact_background"),
+                    text(p, "initial_trust_mode")));
+        }
+        return result;
     }
 
     /** Profile text handed to the Agents. */

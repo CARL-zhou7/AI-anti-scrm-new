@@ -52,7 +52,11 @@ class HistoryRulesTest {
         when(rounds.findBySessionIdOrderByRoundNoAsc(1)).thenReturn(List.of(round));
         when(messages.findByRoundIdIn(List.of(10L))).thenReturn(List.of(msg));
         var detail = assembler.detail(s);
+        assertFalse(detail.funds().fundsRecorded());
+        assertNull(detail.funds().availableBalanceYuan());
+        assertEquals("PRD-V3.2", detail.rulesetVersion());
         var saved = detail.rounds().getFirst();
+        assertNull(saved.funds());
         assertFalse(saved.interactionComplete()); assertFalse(saved.presentationComplete()); assertNull(saved.analysis());
         assertEquals("当时台词", saved.messages().getFirst().content());
         assertEquals("发送链接", saved.messages().getFirst().actionText());
@@ -108,10 +112,31 @@ class HistoryRulesTest {
         assertEquals(400, assertThrows(ApiException.class, () -> service.detail(7, "007")).status);
     }
 
+    @Test
+    void newHistoryAndLiveStateUseRecordedZeroAndRoundBalance() {
+        var s = session(SimulationStatus.RUNNING);
+        when(s.getSnapshotSchemaVersion()).thenReturn(2);
+        when(s.getInitialAvailableFundsYuan()).thenReturn(10000);
+        when(s.getFundsSummary()).thenReturn(new FundsSummary(10000, 10000, 0, 0, 0, 0, 0));
+        var round = new SimulationRound(1, 1, T, 10000);
+        ReflectionTestUtils.setField(round, "id", 10L);
+        when(rounds.findBySessionIdOrderByRoundNoAsc(1)).thenReturn(List.of(round));
+        var detail = assembler.detail(s);
+        assertTrue(detail.funds().fundsRecorded());
+        assertEquals(10000, detail.funds().availableBalanceYuan());
+        assertEquals(0, detail.funds().totalPaidYuan());
+        assertTrue(detail.funds().flows().isEmpty());
+        assertEquals(10000, detail.rounds().getFirst().funds().availableBalanceYuan());
+        assertEquals("PRD-V3.2", detail.rulesetVersion());
+        assertEquals(10000, state.assemble(s).funds().availableBalanceYuan());
+        assertNull(state.assemble(s).funds().flows());
+    }
+
     private SimulationSession session(SimulationStatus status) {
         var s = mock(SimulationSession.class);
         when(s.getId()).thenReturn(1L); when(s.getStatus()).thenReturn(status); when(s.getStartedAt()).thenReturn(T);
         when(s.getDeadlineAt()).thenReturn(T.plusSeconds(600));
+        when(s.getRuntimeSnapshot()).thenReturn("{\"ruleset_version\":\"PRD-V3.2\"}");
         when(s.getOutcomeCode()).thenReturn(OutcomeCode.NOT_DEFRAUDED);
         when(s.getOutcomeReason()).thenReturn("核实后停止联系");
         when(s.getInterruptionCode()).thenReturn(InterruptionCode.USER_EXIT);

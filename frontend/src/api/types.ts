@@ -153,11 +153,22 @@ export interface ReportView {
   unavailableReason: 'SIMULATION_RUNNING' | 'SIMULATION_INTERRUPTED' | null
   outcome: Outcome | null; content: ReportContent | null; riskSeries: { roundNo: number; score: number }[]
 }
+export interface FundFlow {
+  sequenceNo: number; roundNo: number; messageId: string | null
+  type: 'PAYMENT' | 'REFUND' | 'RESERVE_RELEASE'
+  purpose: 'INITIAL_PAYMENT' | 'ADDITIONAL_PAYMENT' | 'INVESTMENT_PAYMENT' | 'EXTRA_FEE_PAYMENT' | 'LOAN_TRANSFER' | 'OTHER_PAYMENT' | 'REFUND' | 'RESERVE_RELEASE'
+  amountYuan: number; balanceAfterYuan: number; reason: string | null; occurredAt: string
+}
+export interface Funds {
+  fundsRecorded: boolean; initialAvailableYuan: number | null; availableBalanceYuan: number | null
+  totalPaidYuan: number | null; totalRefundedYuan: number | null; actualLossYuan: number | null
+  additionalPaymentCount: number | null; reserveReleasedYuan: number | null; flows: FundFlow[] | null
+}
 export interface SimulationState {
   sessionId: string; status: SimulationStatus; stateVersion: string; startedAt: string; deadlineAt: string; endedAt: string | null
   currentRoundNo: number; configuration: Configuration; currentRound: LiveRound | null; latestRiskScore: RiskScore | null
   outcome: Outcome | null; interruption: Interruption | null; readingUntil: string | null; nextAction: NextAction | null
-  paused: boolean; pausedAt: string | null; pausedCreditMs: number; report: ReportSummary | null
+  paused: boolean; pausedAt: string | null; pausedCreditMs: number; report: ReportSummary | null; funds: Funds
 }
 export interface PresentationReceipt { status: 'COMPLETED' | 'FAILED'; errorCode?: PresentationError }
 export interface EffectResult { effect: Effect; state: SimulationState }
@@ -186,9 +197,9 @@ export interface HistoryMessage {
 }
 export interface HistoryRound {
   roundNo: number; phase: RoundPhase; interactionComplete: boolean; presentationComplete: boolean
-  messages: HistoryMessage[]; analysis: Analysis | null; readingUntil: string | null
+  messages: HistoryMessage[]; analysis: Analysis | null; readingUntil: string | null; funds: Funds | null
 }
 export interface HistoryDetail {
   sessionId: string; status: SimulationStatus; startedAt: string; deadlineAt: string; endedAt: string | null
-  configuration: Configuration; rounds: HistoryRound[]; outcome: Outcome | null; interruption: Interruption | null; report: ReportSummary | null
+  rulesetVersion: string | null; funds: Funds; configuration: Configuration; rounds: HistoryRound[]; outcome: Outcome | null; interruption: Interruption | null; report: ReportSummary | null
 }

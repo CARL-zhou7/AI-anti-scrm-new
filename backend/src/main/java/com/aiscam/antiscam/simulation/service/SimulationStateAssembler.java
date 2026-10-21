@@ -48,7 +48,7 @@ public class SimulationStateAssembler {
                 snapshots.toConfigurationView(s.getScenarioSnapshot(), s.getScammerSnapshot(), s.getVictimSnapshot()),
                 current == null ? null : liveRound(s, current), latestRisk, outcome, interruption,
                 current == null ? null : format(current.getReadingUntil()), nextAction, s.isPaused(), format(s.getPausedAt()),
-                s.getPausedTotalMs(), report);
+                s.getPausedTotalMs(), report, Funds.from(s, false));
     }
 
     public SessionStateData sessionState(SimulationSession s) {

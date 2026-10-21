@@ -11,6 +11,33 @@ vi.mock('vue-router', async original => ({ ...(await original<typeof import('vue
 const global = { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } }
 afterEach(() => vi.restoreAllMocks())
 
+it('distinguishes unrecorded legacy money from recorded zero and displays round summaries', async () => {
+  const api = vi.spyOn(historyApi, 'detail')
+  for (const recorded of [false, true]) {
+    const data = detail()
+    data.rulesetVersion = 'PRD-V3.2'
+    data.funds = { fundsRecorded: recorded, initialAvailableYuan: recorded ? 10000 : null,
+      availableBalanceYuan: recorded ? 10000 : null, totalPaidYuan: recorded ? 0 : null,
+      totalRefundedYuan: recorded ? 0 : null, actualLossYuan: recorded ? 0 : null,
+      additionalPaymentCount: recorded ? 0 : null, reserveReleasedYuan: recorded ? 0 : null, flows: [] }
+    data.rounds[0]!.funds = recorded ? data.funds : null
+    api.mockResolvedValue(data)
+    const view = mount(HistoryDetailView, { global }); await flushPromises()
+    const funds = view.get('[data-testid=history-funds]')
+    if (recorded) {
+      expect(funds.text()).toContain('10000元')
+      expect(funds.text()).toContain('0元')
+      expect(funds.text()).not.toContain('未记录')
+      expect(view.get('[data-testid=history-round-funds]').text()).toContain('10000元')
+    } else {
+      expect(funds.text()).toContain('未记录')
+      expect(funds.text()).not.toContain('0元')
+      expect(view.get('[data-testid=history-round-funds]').text()).toContain('未记录')
+    }
+    view.unmount()
+  }
+})
+
 function item(id = '1'): HistoryItem {
   return { sessionId: id, startedAt: '2026-10-19T08:00:00.000Z', scenarioName: '冻结场景', scammerName: '当时骗子', victimName: '当时受害者',
     status: 'FINISHED', report: summary('SUCCEEDED'), outcome: null, interruption: null }
@@ -22,13 +49,13 @@ function summary(status: ReportSummary['status']): ReportSummary {
 function detail(): HistoryDetail {
   const common = { id: '1', age: 30, gender: '男', identity: '当时身份', description: '当时描述', contextTime: '晚上', contextPlace: '家中', currentState: '接听电话',
     avatar: { key: 'a', url: '/avatars/a' }, speakingAvatar: { key: 'b', url: '/avatars/b' } }
-  return { sessionId: '1', status: 'FINISHED', startedAt: item().startedAt, deadlineAt: '2026-10-19T08:10:00.000Z', endedAt: '2026-10-19T08:05:00.000Z',
+  return { rulesetVersion: 'PRD-V3.2', funds: { fundsRecorded: false, initialAvailableYuan: null, availableBalanceYuan: null, totalPaidYuan: null, totalRefundedYuan: null, actualLossYuan: null, additionalPaymentCount: null, reserveReleasedYuan: null, flows: [] }, sessionId: '1', status: 'FINISHED', startedAt: item().startedAt, deadlineAt: '2026-10-19T08:10:00.000Z', endedAt: '2026-10-19T08:05:00.000Z',
     configuration: {
       scenario: { id: '1', code: 'TASK_REBATE', name: '冻结场景', description: '当时场景简介', focus: '青年群体' },
       scammer: { ...common, name: '当时骗子', fraudExperience: 'HIGH', speechSkill: 'MEDIUM', manipulationSkill: 'LOW', behaviorTraits: '催促操作' },
       victim: { ...common, name: '当时受害者', antiFraudAwareness: 'HIGH', riskTendency: 'LOW', personalityTraits: '谨慎核实' },
     },
-    rounds: [1, 2, 3].map(roundNo => ({ roundNo, phase: 'COMPLETE', interactionComplete: roundNo !== 2, presentationComplete: roundNo !== 2,
+    rounds: [1, 2, 3].map(roundNo => ({ funds: null, roundNo, phase: 'COMPLETE', interactionComplete: roundNo !== 2, presentationComplete: roundNo !== 2,
       messages: (roundNo === 2 ? ['SCAMMER'] as const : ['SCAMMER', 'VICTIM'] as const).map(speaker => ({
         id: `${roundNo}-${speaker}`, roundNo, speaker, content: '保存的台词', actionText: '发送链接', presentationStatus: 'COMPLETED', presentationCompletedAt: null, presentationErrorCode: null, savedAt: item().startedAt })),
       analysis: roundNo === 2 ? null : { fraudStage: '诱导操作', speechAnalysis: '紧迫话术', methodAnalysis: '权威伪装', victimPsychology: '仍有疑虑', riskScore: roundNo === 1 ? 25 : 75, riskReason: '逐步增加投入', savedAt: item().startedAt, presentedAt: null }, readingUntil: null })),

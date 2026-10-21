@@ -13,8 +13,8 @@ public final class HistoryViews {
     public record HistoryMessage(String id, int roundNo, String speaker, String content, String actionText,
             String presentationStatus, String presentationCompletedAt, String presentationErrorCode, String savedAt) {}
     public record HistoryRound(int roundNo, String phase, boolean interactionComplete, boolean presentationComplete,
-            List<HistoryMessage> messages, Analysis analysis, String readingUntil) {}
+            List<HistoryMessage> messages, Analysis analysis, String readingUntil, Funds funds) {}
     public record HistoryDetail(String sessionId, String status, String startedAt, String deadlineAt, String endedAt,
             ConfigurationView configuration, List<HistoryRound> rounds, Outcome outcome,
-            Interruption interruption, ReportSummary report) {}
+            Interruption interruption, ReportSummary report, String rulesetVersion, Funds funds) {}
 }

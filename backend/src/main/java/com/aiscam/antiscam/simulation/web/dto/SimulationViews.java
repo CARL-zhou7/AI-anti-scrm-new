@@ -13,7 +13,24 @@ public final class SimulationViews {
     public record State(String sessionId, String status, String stateVersion, String startedAt, String deadlineAt,
             String endedAt, int currentRoundNo, ConfigurationView configuration, LiveRound currentRound,
             Integer latestRiskScore, Outcome outcome, Interruption interruption, String readingUntil, String nextAction,
-            boolean paused, String pausedAt, int pausedCreditMs, ReportSummary report) {}
+            boolean paused, String pausedAt, int pausedCreditMs, ReportSummary report, Funds funds) {}
+
+    public record Funds(boolean fundsRecorded, Integer initialAvailableYuan, Integer availableBalanceYuan,
+            Integer totalPaidYuan, Integer totalRefundedYuan, Integer actualLossYuan, Integer additionalPaymentCount,
+            Integer reserveReleasedYuan, List<FundFlow> flows) {
+        public static Funds from(com.aiscam.antiscam.simulation.domain.SimulationSession session, boolean history) {
+            if (session.getSnapshotSchemaVersion() < 2) {
+                return new Funds(false, null, null, null, null, null, null, null, history ? List.of() : null);
+            }
+            var f = session.getFundsSummary();
+            return new Funds(true, f.initialAvailableYuan(), f.availableBalanceYuan(), f.totalPaidYuan(),
+                    f.totalRefundedYuan(), f.actualLossYuan(), f.additionalPaymentCount(), f.reserveReleasedYuan(),
+                    history ? List.of() : null);
+        }
+    }
+
+    public record FundFlow(int sequenceNo, int roundNo, String messageId, String type, String purpose,
+            int amountYuan, int balanceAfterYuan, String reason, String occurredAt) {}
 
     public record LiveRound(int roundNo, String phase, boolean interactionComplete, boolean presentationComplete,
             List<LiveMessage> messages, Analysis analysis, String readingUntil) {}
