@@ -52,7 +52,7 @@ async function main() {
   const seed = (await admin.call('GET', '/admin/scammer-profiles')).data.items[0]
   const scripted = {}
   for (const script of REPORT_ONLY ? [] : ['precheck-regen-r3', 'tts-fail-r2']) {
-    const body = { name: '剧本:' + script, age: 30, gender: '男', identity: '诈骗团伙话务人员', description: '冒烟用', contextTime: '晚上',
+    const body = { name: '剧本:' + script, age: 30, gender: '男', identity: '诈骗团伙话务人员', description: '冒烟用',
       contextPlace: '房间', currentState: '准备联系', fraudExperience: 'HIGH', speechSkill: 'HIGH', manipulationSkill: 'HIGH',
       behaviorTraits: '冒烟用', avatarKey: seed.avatar.key, speakingAvatarKey: seed.speakingAvatar.key }
     scripted[script] = (await admin.call('POST', '/admin/scammer-profiles', body, 201)).data.id

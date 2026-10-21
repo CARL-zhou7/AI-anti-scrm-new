@@ -10,7 +10,6 @@ public record ScammerWriteRequest(
         @NotBlank(message = "此项不能为空") String gender,
         @NotBlank(message = "此项不能为空") String identity,
         @NotBlank(message = "此项不能为空") String description,
-        @NotBlank(message = "此项不能为空") String contextTime,
         @NotBlank(message = "此项不能为空") String contextPlace,
         @NotBlank(message = "此项不能为空") String currentState,
         @NotNull(message = "此项不能为空") Level fraudExperience,
@@ -24,12 +23,11 @@ public record ScammerWriteRequest(
         RequestContent.checkField("gender", gender, 16);
         RequestContent.checkField("identity", identity, 128);
         RequestContent.checkField("description", description, RequestContent.MAX_TEXT_CHARS);
-        RequestContent.checkField("contextTime", contextTime, 128);
         RequestContent.checkField("contextPlace", contextPlace, 128);
         RequestContent.checkField("currentState", currentState, RequestContent.MAX_TEXT_CHARS);
         RequestContent.checkField("behaviorTraits", behaviorTraits, RequestContent.MAX_TEXT_CHARS);
     }
     public ScammerProfileValues values(String storedAvatarKey, String storedSpeakingAvatarKey) {
-        return new ScammerProfileValues(name, age, gender, identity, description, contextTime, contextPlace, currentState, fraudExperience, speechSkill, manipulationSkill, behaviorTraits, storedAvatarKey, storedSpeakingAvatarKey);
+        return new ScammerProfileValues(name, age, gender, identity, description, "昨天20:00", contextPlace, currentState, fraudExperience, speechSkill, manipulationSkill, behaviorTraits, storedAvatarKey, storedSpeakingAvatarKey);
     }
 }

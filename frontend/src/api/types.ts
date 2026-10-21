@@ -45,7 +45,33 @@ export interface ScammerProfilePayload extends ProfilePayload {
   manipulationSkill: Level
   behaviorTraits: string
 }
-export interface VictimProfilePayload extends ProfilePayload {
+export interface VictimScenarioProfile {
+  scenarioCode: Scenario['code']
+  needs: string
+  relevantExperience: string
+  judgmentBasis: string
+  verificationHabits: string
+  actionBoundaries: string
+  stopConditions: string
+  recentEvents: string
+  consultationsTransactions: string
+  sharedExperiences: string
+  contactBackground: string
+  initialTrustMode: string
+}
+export interface VictimFacts {
+  familyStatus: string
+  incomeDescription: string
+  monthlyExpenseYuan: number
+  initialSavingsYuan: number
+  availableFundsYuan: number
+  reservedFundsYuan: number
+  reservedFundsNote: string
+  generalDecisionTraits: string
+}
+export interface VictimProfilePayload extends ProfilePayload, Partial<{ [K in keyof VictimFacts]: VictimFacts[K] | null }> {
+  scenarioProfiles?: VictimScenarioProfile[] | null
+  profileSchemaVersion?: number | null
   antiFraudAwareness: Level
   riskTendency: Level
   personalityTraits: string
@@ -61,14 +87,23 @@ export interface AdminScammerProfile extends ScammerProfilePayload, ContentVersi
 export interface AdminVictimProfile extends VictimProfilePayload, ContentVersion { enabled: boolean }
 export type AdminProfile = AdminScammerProfile | AdminVictimProfile
 export type ProfileKind = 'scammer' | 'victim'
-export type ScammerWrite = Omit<ScammerProfilePayload, 'id' | 'avatar' | 'speakingAvatar'> & { avatarKey: string; speakingAvatarKey: string }
-export type VictimWrite = Omit<VictimProfilePayload, 'id' | 'avatar' | 'speakingAvatar'> & { avatarKey: string; speakingAvatarKey: string }
+export type ScammerWrite = Omit<ScammerProfilePayload, 'id' | 'avatar' | 'speakingAvatar' | 'contextTime'> & { avatarKey: string; speakingAvatarKey: string }
+export type VictimWrite = Omit<ProfilePayload, 'id' | 'avatar' | 'speakingAvatar' | 'contextTime'> & VictimFacts & Pick<VictimProfilePayload, 'antiFraudAwareness' | 'riskTendency' | 'personalityTraits'> & { avatarKey: string; speakingAvatarKey: string; scenarioProfiles: VictimScenarioProfile[] }
 export interface AvatarUpload { key: string; previewUrl: string; mediaType: string; sizeBytes: number }
 export interface ProfileFormValues {
   name: string; age: number | ''; gender: string; identity: string; description: string
-  contextTime: string; contextPlace: string; currentState: string; avatarKey: string; speakingAvatarKey: string
+  contextPlace: string; currentState: string; avatarKey: string; speakingAvatarKey: string
   fraudExperience: Level; speechSkill: Level; manipulationSkill: Level; behaviorTraits: string
   antiFraudAwareness: Level; riskTendency: Level; personalityTraits: string
+  familyStatus: string
+  incomeDescription: string
+  monthlyExpenseYuan: number | ''
+  initialSavingsYuan: number | ''
+  availableFundsYuan: number | ''
+  reservedFundsYuan: number | ''
+  reservedFundsNote: string
+  generalDecisionTraits: string
+  scenarioProfiles: VictimScenarioProfile[]
 }
 
 // ---- AI simulation (interface spec V1.1, API-14~21, API-42~44)

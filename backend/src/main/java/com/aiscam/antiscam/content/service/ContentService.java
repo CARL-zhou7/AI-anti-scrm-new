@@ -89,7 +89,11 @@ public class ContentService {
         var v = victims.findByEnabled((byte) 1);
         if (s.isEmpty() || v.isEmpty()) throw ApiException.dataInconsistent("双方各须至少一个可用画像");
         s.forEach(p -> checkFrames(p.getName(), p.getAvatarKey(), p.getSpeakingAvatarKey()));
-        v.forEach(p -> checkFrames(p.getName(), p.getAvatarKey(), p.getSpeakingAvatarKey()));
+        v.forEach(p -> {
+            try { VictimProfileValues.validateScenarios(p.getScenarioProfiles()); }
+            catch (ApiException e) { throw ApiException.dataInconsistent("启用的受害者须有完整三套场景资料"); }
+            checkFrames(p.getName(), p.getAvatarKey(), p.getSpeakingAvatarKey());
+        });
     }
 
     private void checkFrames(String name, String closed, String speaking) {

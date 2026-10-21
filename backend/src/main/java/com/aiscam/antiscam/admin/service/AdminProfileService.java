@@ -144,6 +144,7 @@ public class AdminProfileService {
         long target = PageQuery.id(id);
         var rows = victims.lockAllByOrderByIdAsc();
         var row = rows.stream().filter(p -> p.getId() == target).findFirst().orElseThrow(ApiException::notFound);
+        if (enabled) VictimProfileValues.validateScenarios(row.getScenarioProfiles());
         if (row.isEnabled() == enabled) return AdminVictimView.from(row);
         if (!enabled && rows.stream().filter(VictimProfile::isEnabled).count() == 1) throw ApiException.lastEnabledProfile();
         if (row.getRowVersion() != request.version()) throw ApiException.versionConflict(row.getRowVersion());

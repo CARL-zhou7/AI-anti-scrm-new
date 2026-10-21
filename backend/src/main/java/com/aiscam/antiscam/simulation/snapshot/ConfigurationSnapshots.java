@@ -81,7 +81,7 @@ public class ConfigurationSnapshots {
                 v.path("gender").asText(), v.path("identity").asText(), v.path("description").asText(),
                 v.path("context_time").asText(), v.path("context_place").asText(), v.path("current_state").asText(),
                 Level.valueOf(v.path("anti_fraud_awareness").asText()), Level.valueOf(v.path("risk_tendency").asText()),
-                v.path("personality_traits").asText());
+                v.path("personality_traits").asText(), null, null, null, null, null, null, null, null, java.util.List.of(), 1);
         return new ConfigurationView(scenario, scammer, victim);
     }
 

@@ -12,7 +12,7 @@ defineEmits<{ avatarError: [key: string] }>()
     <p v-else class="field-help">尚未选择场景</p>
     <div class="profile-columns">
       <div><h3>骗子画像</h3><ProfileDetail v-if="scammer" :profile="scammer" @avatar-error="$emit('avatarError', $event)" /><p v-else>尚未选择</p></div>
-      <div><h3>受害者画像</h3><ProfileDetail v-if="victim" :profile="victim" @avatar-error="$emit('avatarError', $event)" /><p v-else>尚未选择</p></div>
+      <div><h3>受害者画像</h3><ProfileDetail v-if="victim" :profile="victim" :selected-scenario-code="scenario?.code" @avatar-error="$emit('avatarError', $event)" /><p v-else>尚未选择</p></div>
     </div>
   </section>
 </template>

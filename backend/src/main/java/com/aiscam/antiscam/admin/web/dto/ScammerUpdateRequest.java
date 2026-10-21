@@ -10,7 +10,6 @@ public record ScammerUpdateRequest(
         @NotBlank(message = "此项不能为空") String gender,
         @NotBlank(message = "此项不能为空") String identity,
         @NotBlank(message = "此项不能为空") String description,
-        @NotBlank(message = "此项不能为空") String contextTime,
         @NotBlank(message = "此项不能为空") String contextPlace,
         @NotBlank(message = "此项不能为空") String currentState,
         @NotNull(message = "此项不能为空") Level fraudExperience,
@@ -21,6 +20,6 @@ public record ScammerUpdateRequest(
         @NotBlank(message = "此项不能为空") @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "头像标识格式不正确") String speakingAvatarKey,
         @NotNull(message = "请提供内容版本") @Min(value = 0, message = "版本不能为负数") Integer version) {
     public ScammerWriteRequest content() {
-        return new ScammerWriteRequest(name, age, gender, identity, description, contextTime, contextPlace, currentState, fraudExperience, speechSkill, manipulationSkill, behaviorTraits, avatarKey, speakingAvatarKey);
+        return new ScammerWriteRequest(name, age, gender, identity, description, contextPlace, currentState, fraudExperience, speechSkill, manipulationSkill, behaviorTraits, avatarKey, speakingAvatarKey);
     }
 }

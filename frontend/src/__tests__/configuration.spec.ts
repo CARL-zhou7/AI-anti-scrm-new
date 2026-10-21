@@ -158,3 +158,24 @@ it('recommends by scenario and age boundaries without changing selections', asyn
   expect(wrapper.find('[data-testid=profile-recommended]').exists()).toBe(false)
   expect(cards[0]!.attributes('aria-pressed')).toBe('true')
 })
+import ProfileDetail from '../components/ProfileDetail.vue'
+
+it('shows only the selected scenario and distinguishes recorded zero from old missing facts', async () => {
+  const profile = { ...victim, profileSchemaVersion: 2, familyStatus: '家庭', incomeDescription: '收入', monthlyExpenseYuan: 0,
+    initialSavingsYuan: 2000, availableFundsYuan: 0, reservedFundsYuan: 2000, reservedFundsNote: '预留', generalDecisionTraits: '特点',
+    scenarioProfiles: ['TASK_REBATE', 'FAKE_INVESTMENT', 'IMPERSONATION_LOAN'].map(scenarioCode => ({ scenarioCode,
+      needs: `需求-${scenarioCode}`, relevantExperience: '经历', judgmentBasis: '依据', verificationHabits: '核实', actionBoundaries: '边界',
+      stopConditions: '停止', recentEvents: '昨天', consultationsTransactions: '咨询', sharedExperiences: '经历', contactBackground: '背景', initialTrustMode: '信任' })),
+  } as VictimProfilePayload
+  const wrapper = mount(ProfileDetail, { props: { profile, selectedScenarioCode: 'TASK_REBATE' } })
+  expect(wrapper.text()).toContain('需求-TASK_REBATE')
+  expect(wrapper.text()).not.toContain('需求-FAKE_INVESTMENT')
+  expect(wrapper.text()).toContain('0元')
+  await wrapper.setProps({ selectedScenarioCode: 'FAKE_INVESTMENT' })
+  expect(wrapper.text()).toContain('需求-FAKE_INVESTMENT')
+  expect(wrapper.text()).not.toContain('需求-TASK_REBATE')
+  await wrapper.setProps({ profile: { ...victim, availableFundsYuan: 0 } })
+  expect(wrapper.text()).toContain('未记录')
+  expect(wrapper.text()).not.toContain('0元')
+  wrapper.unmount()
+})

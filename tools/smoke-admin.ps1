@@ -148,7 +148,7 @@ try {
         $seed = if ($kind -eq 'scammer') { $scammers[0] } else { $victims[0] }
         $body = @{}
         foreach ($property in $seed.PSObject.Properties) {
-            if ($property.Name -notin @('id','avatar','speakingAvatar','enabled','version','createdAt','updatedAt')) { $body[$property.Name]=$property.Value }
+            if ($property.Name -notin @('id','avatar','speakingAvatar','enabled','version','createdAt','updatedAt','contextTime','profileSchemaVersion')) { $body[$property.Name]=$property.Value }
         }
         $body.name = "新增$kind"; $body.avatarKey = $uploaded.key; $body.speakingAvatarKey = $uploaded.key
         $created = (Api "/admin/$kind-profiles" 201 POST $body $token).data
@@ -180,7 +180,7 @@ try {
     }
     Write-Output 'PASS: both profile families create/edit/toggle, strict validation and USER visibility'
     $tables = "SELECT table_name FROM information_schema.tables WHERE table_schema='admin_smoke' ORDER BY table_name;" | & "$MySqlBin/mysql.exe" --no-defaults --host=127.0.0.1 --port=13309 --user=root --batch --skip-column-names
-    Assert-That (($tables -join ',') -eq 'agent_prompt,flyway_schema_history,fraud_scenario,scammer_profile,simulation_message,simulation_report,simulation_round,simulation_session,sys_user,victim_profile') 'Unexpected schema change'
+    Assert-That (($tables -join ',') -eq 'agent_prompt,flyway_schema_history,fraud_scenario,scammer_profile,simulation_message,simulation_report,simulation_round,simulation_session,sys_user,victim_profile,victim_scenario_profile') 'Unexpected schema change'
     'PASS: admin console smoke on isolated MySQL 8.0.45; no existing database touched.' | Tee-Object "$runDir/result.txt"
 
 } finally {

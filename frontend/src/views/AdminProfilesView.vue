@@ -20,9 +20,19 @@ const portraitsReady = computed(() => avatarReady.value && speakingReady.value &
 const expanded = ref<string | null>(null), failedAvatars = ref(new Set<string>())
 const busy = computed(() => loading.value || saving.value || uploading.value)
 function blank(): ProfileFormValues {
-  return { name: '', age: '', gender: '', identity: '', description: '', contextTime: '', contextPlace: '', currentState: '', avatarKey: '', speakingAvatarKey: '',
+  return { name: '', age: '', gender: '', identity: '', description: '', contextPlace: '', currentState: '', avatarKey: '', speakingAvatarKey: '',
     fraudExperience: 'MEDIUM', speechSkill: 'MEDIUM', manipulationSkill: 'MEDIUM', behaviorTraits: '',
-    antiFraudAwareness: 'MEDIUM', riskTendency: 'MEDIUM', personalityTraits: '' }
+    antiFraudAwareness: 'MEDIUM', riskTendency: 'MEDIUM', personalityTraits: '',
+    familyStatus: '',
+    incomeDescription: '',
+    monthlyExpenseYuan: '',
+    initialSavingsYuan: '',
+    availableFundsYuan: '',
+    reservedFundsYuan: '',
+    reservedFundsNote: '',
+    generalDecisionTraits: '',
+    scenarioProfiles: (['TASK_REBATE', 'FAKE_INVESTMENT', 'IMPERSONATION_LOAN'] as const).map(scenarioCode => ({ scenarioCode,
+      needs: '', relevantExperience: '', judgmentBasis: '', verificationHabits: '', actionBoundaries: '', stopConditions: '', recentEvents: '', consultationsTransactions: '', sharedExperiences: '', contactBackground: '', initialTrustMode: '' })) }
 }
 const form = ref<ProfileFormValues>(blank())
 function clearFeedback() { error.value = ''; success.value = ''; fields.value = []; conflict.value = false; currentVersion.value = null }
@@ -41,11 +51,20 @@ function fill(row?: AdminProfile) {
   editing.value = row ?? null; form.value = blank()
   if (row) {
     const common = { name: row.name, age: row.age, gender: row.gender, identity: row.identity, description: row.description,
-      contextTime: row.contextTime, contextPlace: row.contextPlace, currentState: row.currentState, avatarKey: row.avatar.key,
+      contextPlace: row.contextPlace, currentState: row.currentState, avatarKey: row.avatar.key,
       speakingAvatarKey: row.speakingAvatar.key }
     Object.assign(form.value, common, 'fraudExperience' in row
       ? { fraudExperience: row.fraudExperience, speechSkill: row.speechSkill, manipulationSkill: row.manipulationSkill, behaviorTraits: row.behaviorTraits }
-      : { antiFraudAwareness: row.antiFraudAwareness, riskTendency: row.riskTendency, personalityTraits: row.personalityTraits })
+      : { antiFraudAwareness: row.antiFraudAwareness, riskTendency: row.riskTendency, personalityTraits: row.personalityTraits,
+        familyStatus: row.familyStatus ?? '',
+        incomeDescription: row.incomeDescription ?? '',
+        monthlyExpenseYuan: row.monthlyExpenseYuan ?? '',
+        initialSavingsYuan: row.initialSavingsYuan ?? '',
+        availableFundsYuan: row.availableFundsYuan ?? '',
+        reservedFundsYuan: row.reservedFundsYuan ?? '',
+        reservedFundsNote: row.reservedFundsNote ?? '',
+        generalDecisionTraits: row.generalDecisionTraits ?? '',
+        scenarioProfiles: form.value.scenarioProfiles.map(empty => ({ ...empty, ...row.scenarioProfiles?.find(p => p.scenarioCode === empty.scenarioCode) })) })
   }
   previewUrl.value = row?.avatar.url ?? ''; avatarReady.value = false
   speakingPreviewUrl.value = row?.speakingAvatar.url ?? ''; speakingReady.value = false; formKey.value++; formOpen.value = true
@@ -76,14 +95,38 @@ function uploaded(value: AvatarUpload) { form.value.avatarKey = value.key; previ
 function speakingUploaded(value: AvatarUpload) { form.value.speakingAvatarKey = value.key; speakingPreviewUrl.value = value.previewUrl; speakingReady.value = false }
 async function save() {
   if (busy.value || !portraitsReady.value || conflict.value) return
-  saving.value = true; clearFeedback()
+  clearFeedback()
   const f = form.value
+  if (props.kind === 'victim') {
+    for (const [index, profile] of f.scenarioProfiles.entries()) {
+      for (const [key, value] of Object.entries(profile)) {
+        if (!value.trim()) fields.value.push({ field: `scenarioProfiles[${index}].${key}`, code: 'REQUIRED', message: '请完整填写此场景资料' })
+      }
+    }
+    for (const key of ['monthlyExpenseYuan', 'initialSavingsYuan', 'availableFundsYuan', 'reservedFundsYuan'] as const) {
+      const value = f[key]
+      if (value === '' || !Number.isSafeInteger(value) || value < 0 || value > 2147483647) fields.value.push({ field: key, code: 'VALUE_INVALID', message: '请填写有效的非负整数金额' })
+    }
+    if (f.availableFundsYuan !== '' && f.initialSavingsYuan !== '' && f.availableFundsYuan > f.initialSavingsYuan) fields.value.push({ field: 'availableFundsYuan', code: 'VALUE_INVALID', message: '不能超过初始存款' })
+    if (f.reservedFundsYuan !== '' && f.initialSavingsYuan !== '' && f.reservedFundsYuan > f.initialSavingsYuan) fields.value.push({ field: 'reservedFundsYuan', code: 'VALUE_INVALID', message: '不能超过初始存款' })
+    if (fields.value.length) { error.value = '请补齐三套场景资料并检查金额'; return }
+  }
+  saving.value = true
   const common = { name: f.name, age: Number(f.age), gender: f.gender, identity: f.identity, description: f.description,
-    contextTime: f.contextTime, contextPlace: f.contextPlace, currentState: f.currentState, avatarKey: f.avatarKey,
+    contextPlace: f.contextPlace, currentState: f.currentState, avatarKey: f.avatarKey,
     speakingAvatarKey: f.speakingAvatarKey }
   const body: ScammerWrite | VictimWrite = props.kind === 'scammer'
     ? { ...common, fraudExperience: f.fraudExperience, speechSkill: f.speechSkill, manipulationSkill: f.manipulationSkill, behaviorTraits: f.behaviorTraits }
-    : { ...common, antiFraudAwareness: f.antiFraudAwareness, riskTendency: f.riskTendency, personalityTraits: f.personalityTraits }
+    : { ...common, antiFraudAwareness: f.antiFraudAwareness, riskTendency: f.riskTendency, personalityTraits: f.personalityTraits,
+      familyStatus: f.familyStatus,
+      incomeDescription: f.incomeDescription,
+      monthlyExpenseYuan: Number(f.monthlyExpenseYuan),
+      initialSavingsYuan: Number(f.initialSavingsYuan),
+      availableFundsYuan: Number(f.availableFundsYuan),
+      reservedFundsYuan: Number(f.reservedFundsYuan),
+      reservedFundsNote: f.reservedFundsNote,
+      generalDecisionTraits: f.generalDecisionTraits,
+      scenarioProfiles: f.scenarioProfiles }
   try {
     const row = editing.value ? await adminApi.updateProfile(props.kind, editing.value.id, { ...body, version: editing.value.version })
       : await adminApi.createProfile(props.kind, body)

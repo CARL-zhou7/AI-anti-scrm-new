@@ -2,6 +2,8 @@ package com.aiscam.antiscam.content.domain;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "victim_profile")
@@ -46,6 +48,36 @@ public class VictimProfile {
     @Column(name = "updated_at", insertable = false, updatable = false, columnDefinition = "datetime(3)")
     private Instant updatedAt;
 
+    @Column(name = "family_status", nullable = false, columnDefinition = "text")
+    private String familyStatus;
+    @Column(name = "income_description", nullable = false, columnDefinition = "text")
+    private String incomeDescription;
+    @Column(name = "monthly_expense_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int monthlyExpenseYuan;
+    @Column(name = "initial_savings_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int initialSavingsYuan;
+    @Column(name = "available_funds_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int availableFundsYuan;
+    @Column(name = "reserved_funds_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int reservedFundsYuan;
+    @Column(name = "reserved_funds_note", nullable = false, columnDefinition = "text")
+    private String reservedFundsNote;
+    @Column(name = "general_decision_traits", nullable = false, columnDefinition = "text")
+    private String generalDecisionTraits;
+    @OneToMany(mappedBy = "victimProfile", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("scenarioCode ASC")
+    private List<VictimScenarioProfile> scenarioProfiles = new ArrayList<>();
+
+    public List<VictimScenarioProfileValues> getScenarioProfiles() { return scenarioProfiles.stream().map(VictimScenarioProfile::values).toList(); }
+    public String getFamilyStatus() { return familyStatus; }
+    public String getIncomeDescription() { return incomeDescription; }
+    public int getMonthlyExpenseYuan() { return monthlyExpenseYuan; }
+    public int getInitialSavingsYuan() { return initialSavingsYuan; }
+    public int getAvailableFundsYuan() { return availableFundsYuan; }
+    public int getReservedFundsYuan() { return reservedFundsYuan; }
+    public String getReservedFundsNote() { return reservedFundsNote; }
+    public String getGeneralDecisionTraits() { return generalDecisionTraits; }
+
     protected VictimProfile() {}
     public Long getId() { return id; }
     public String getName() { return name; }
@@ -69,12 +101,26 @@ public class VictimProfile {
     }
 
     public void apply(VictimProfileValues values) {
+        values.validate();
+        familyStatus = values.familyStatus();
+        incomeDescription = values.incomeDescription();
+        monthlyExpenseYuan = values.monthlyExpenseYuan();
+        initialSavingsYuan = values.initialSavingsYuan();
+        availableFundsYuan = values.availableFundsYuan();
+        reservedFundsYuan = values.reservedFundsYuan();
+        reservedFundsNote = values.reservedFundsNote();
+        generalDecisionTraits = values.generalDecisionTraits();
+        for (var value : values.scenarioProfiles()) {
+            var existing = scenarioProfiles.stream().filter(p -> p.getScenarioCode().equals(value.scenarioCode())).findFirst();
+            if (existing.isPresent()) existing.get().apply(value);
+            else scenarioProfiles.add(new VictimScenarioProfile(this, value));
+        }
         name = values.name();
         age = values.age();
         gender = values.gender();
         identity = values.identity();
         description = values.description();
-        contextTime = values.contextTime();
+        contextTime = "昨天20:00";
         contextPlace = values.contextPlace();
         currentState = values.currentState();
         antiFraudAwareness = values.antiFraudAwareness();
