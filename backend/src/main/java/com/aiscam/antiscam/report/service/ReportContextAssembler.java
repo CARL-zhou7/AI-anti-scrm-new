@@ -10,6 +10,29 @@ import java.util.Map;
 public final class ReportContextAssembler {
     private ReportContextAssembler() {}
 
+    public static Map<Integer, List<String>> quotes(List<SimulationRound> rounds, Map<Long, List<SimulationMessage>> messages) {
+        var result = new java.util.LinkedHashMap<Integer, List<String>>();
+        for (var round : rounds) result.put(round.getRoundNo(), messages.getOrDefault(round.getId(), List.of()).stream()
+                .flatMap(m -> java.util.stream.Stream.of(m.getContent(),m.getActionText())).filter(java.util.Objects::nonNull).toList());
+        return Map.copyOf(result);
+    }
+
+    public static Map<String, String> variablesV2(SimulationSession session, List<SimulationRound> rounds,
+            Map<Long, List<SimulationMessage>> messages, ConfigurationSnapshots snapshots, List<FundFlow> flows) {
+        var values = new java.util.LinkedHashMap<>(variables(session,rounds,messages,snapshots));
+        var fundText = new StringBuilder("权威资金摘要：totalPaidYuan=").append(session.getTotalPaidYuan())
+                .append("，totalRefundedYuan=").append(session.getTotalRefundedYuan())
+                .append("，actualLossYuan=").append(session.getActualLossYuan()).append('\n');
+        for (var flow : flows) fundText.append("顺序").append(flow.getSequenceNo()).append(' ')
+                .append(flow.getFlowType()).append(' ').append(flow.getPurpose()).append(' ')
+                .append(flow.getAmountYuan()).append("元，余额").append(flow.getBalanceAfterYuan()).append("元\n");
+        values.put("funds", fundText.toString());
+        values.put("key_facts", rounds.stream().filter(SimulationRound::hasAnalysis).map(r -> "第"+r.getRoundNo()
+                +"轮：已受骗="+r.isActualFraudOccurred()+"，目标达成="+r.isGoalAchieved()+"，停止配合="+r.isCooperationStopped())
+                .collect(java.util.stream.Collectors.joining("\n")));
+        return values;
+    }
+
     public static Map<String, String> variables(SimulationSession session, List<SimulationRound> rounds,
             Map<Long, List<SimulationMessage>> messagesByRound, ConfigurationSnapshots snapshots) {
         var scenario = snapshots.read(session.getScenarioSnapshot());

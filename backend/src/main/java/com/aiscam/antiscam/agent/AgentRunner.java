@@ -21,12 +21,14 @@ public class AgentRunner {
         this.config = config;
     }
 
-    public ReportContent report(ReportContext context, long timeoutMs) {
+    public ReportData report(ReportContext context, long timeoutMs) {
         long timeout = Math.max(1, Math.min(timeoutMs, config.getCallTimeoutMs()));
         String prompt = PromptRenderer.render(context.template(), context.variables());
         String raw = llm.completeJson(new LlmRequest(AgentRole.REPORT, prompt, config.getReportTemperature(),
-                config.getMaxTokens(), Duration.ofMillis(timeout), 0, 1, context.scriptKey()));
-        return AgentOutputValidator.report(AgentOutputParser.report(raw), context.roundCount(), context.outcomeDisplayText());
+                config.getMaxTokens(), Duration.ofMillis(timeout), 0, Math.max(0,context.attemptNo()-1), context.scriptKey()));
+        return context.contentSchemaVersion() == 2
+                ? AgentOutputValidator.reportV2(AgentOutputParser.reportV2(raw),context.outcomeDisplayText(),context.funds(),context.quotes())
+                : AgentOutputValidator.report(AgentOutputParser.report(raw), context.roundCount(), context.outcomeDisplayText());
     }
 
     public ScammerTurn scammer(AgentScene scene, List<DialogueLine> history, int roundNo, long remainingMs, int attempt, FundsContext funds) {

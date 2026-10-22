@@ -104,3 +104,20 @@ it('renders new and historical outcome names exactly as saved', async () => {
     wrapper.unmount()
   }
 })
+
+
+it('renders report v2 paragraphs, nodes, advice and authoritative funds without v1 sections', async () => {
+  const value: ReportView = { ...report(), contentSchemaVersion: 2, content: { contentSchemaVersion: 2,
+    result: { text: '已受骗：转账后停止', reason: '有实际付款' }, summary: '接触背景\n\n诈骗推进\n\n关键判断\n\n最终结果',
+    keyNodes: [{ roundNo: 1, quote: '已经付款', analysis: '发生实际转账' }],
+    preventionAdvice: ['独立核实', '拒绝陌生转账'], fundsSummary: { totalPaidYuan: 100, totalRefundedYuan: 50, actualLossYuan: 50 } } }
+  vi.spyOn(reportApi, 'view').mockResolvedValue(value)
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('[data-testid=report-summary]').findAll('p')).toHaveLength(4)
+  for (const text of ['已受骗：转账后停止', '已经付款', '独立核实', '累计支付', '实际返款', '实际亏损']) expect(wrapper.text()).toContain(text)
+  expect(wrapper.get('[data-testid=report-funds]').text()).toContain('100 元')
+  expect(wrapper.find('[data-testid=report-round-analyses]').exists()).toBe(false)
+  expect(wrapper.find('[data-testid=report-speech-analysis]').exists()).toBe(false)
+  expect(wrapper.find('[data-testid=report-retry]').exists()).toBe(false)
+  wrapper.unmount()
+})

@@ -47,6 +47,30 @@ public final class AgentOutputValidator {
         return content;
     }
 
+    public static ReportContentV2 reportV2(ReportContentV2 content, String outcome, ReportFundsSummary funds,
+            java.util.Map<Integer, List<String>> quotes) {
+        if (content == null || content.contentSchemaVersion() != 2 || content.result() == null
+                || content.keyNodes() == null || content.keyNodes().size() > 3
+                || content.preventionAdvice() == null || content.preventionAdvice().size() < 2
+                || content.preventionAdvice().size() > 3 || !java.util.Objects.equals(content.fundsSummary(),funds)) {
+            throw new ReportValidationException("invalid report structure or funds");
+        }
+        reportText(content.summary(),800);
+        if (content.summary().codePointCount(0,content.summary().length()) < 300) throw new ReportValidationException("summary too short");
+        reportText(content.result().text(),300); reportText(content.result().reason(),300);
+        if (outcome == null || !content.result().text().contains(outcome)) throw new ReportValidationException("outcome mismatch");
+        for (var node : content.keyNodes()) {
+            if (node == null || !quotes.containsKey(node.roundNo())) throw new ReportValidationException("missing key round");
+            reportText(node.analysis(),300);
+            if (node.quote() != null) {
+                reportText(node.quote(),120);
+                if (quotes.get(node.roundNo()).stream().noneMatch(line -> line.contains(node.quote()))) throw new ReportValidationException("quote not found");
+            }
+        }
+        for (var advice : content.preventionAdvice()) reportText(advice,300);
+        return content;
+    }
+
     private static void reportText(String text, int max) {
         // Defensive output limits, not product copy limits; count Unicode code points.
         if (text == null || text.isBlank() || text.codePointCount(0, text.length()) > max

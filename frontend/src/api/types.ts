@@ -144,11 +144,21 @@ export interface Outcome { code: 'DEFRAUDED' | 'IDENTIFIED' | 'LIMIT_REACHED' | 
 export interface Interruption { code: string; message: string }
 export interface ReportError { code: 'GENERATION_FAILED' | 'VALIDATION_FAILED' | 'PERSISTENCE_FAILED' | 'TIMEOUT' | 'SERVICE_RESTARTED'; message: string }
 export interface ReportSummary { status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; displayText: string; canRetry: boolean; attemptNo: number; updatedAt: string; error: ReportError | null }
-export interface ReportContent {
+export interface ReportContentV1 {
+  contentSchemaVersion?: 1
   summary: string; roundAnalyses: { roundNo: number; analysis: string }[]
   speechAnalysis: string; victimBehaviorAnalysis: string; outcomeAnalysis: string
 }
+export interface ReportContentV2 {
+  contentSchemaVersion: 2
+  result: { text: string; reason: string }; summary: string
+  keyNodes: { roundNo: number; quote: string | null; analysis: string }[]
+  preventionAdvice: string[]
+  fundsSummary: { totalPaidYuan: number; totalRefundedYuan: number; actualLossYuan: number }
+}
+export type ReportContent = ReportContentV1 | ReportContentV2
 export interface ReportView {
+  contentSchemaVersion?: 1 | 2 | null
   sessionId: string; simulationStatus: SimulationStatus; report: ReportSummary | null
   unavailableReason: 'SIMULATION_RUNNING' | 'SIMULATION_INTERRUPTED' | null
   outcome: Outcome | null; content: ReportContent | null; riskSeries: { roundNo: number; score: number }[]

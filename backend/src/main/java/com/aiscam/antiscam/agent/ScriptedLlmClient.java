@@ -41,6 +41,10 @@ public class ScriptedLlmClient implements LlmClient {
         JsonNode attempts = attempts(script, request.roundNo(), role);
         if (attempts == null) throw new AgentCallException(category, false, "no scripted output");
         JsonNode entry = attempts.get(Math.min(request.attempt(), attempts.size() - 1));
+        if (request.role() == AgentRole.REPORT && request.prompt().contains("\"contentSchemaVersion\":2")
+                && entry.has("output") && !entry.path("output").has("contentSchemaVersion")) {
+            entry = attempts(script("report-v2"),0,"report").get(0);
+        }
         sleep(entry.path("delayMs").asLong(script.path("delayMs").asLong(0)));
         if (entry.has("error")) throw new AgentCallException(category, true, "scripted " + entry.path("error").asText());
         try {
@@ -49,6 +53,16 @@ public class ScriptedLlmClient implements LlmClient {
                 var payment = java.util.regex.Pattern.compile("付款ID=([0-9]+)").matcher(request.prompt());
                 if (!payment.find()) throw new AgentCallException(category, false, "script requires an existing payment");
                 output = output.replace("\"{{payment_id}}\"", payment.group(1));
+            }
+            if (request.role() == AgentRole.REPORT && output.contains("{{outcome}}")) {
+                var outcome = java.util.regex.Pattern.compile("(已受骗|已识破|超限结束)（").matcher(request.prompt());
+                if (!outcome.find()) throw new AgentCallException(category,false,"script requires saved outcome");
+                output = output.replace("{{outcome}}",outcome.group(1));
+                for (String field : java.util.List.of("totalPaidYuan","totalRefundedYuan","actualLossYuan")) {
+                    var amount = java.util.regex.Pattern.compile(field+"=([0-9]+)").matcher(request.prompt());
+                    if (!amount.find()) throw new AgentCallException(category,false,"script requires saved funds");
+                    output = output.replace("\"{{"+field+"}}\"",amount.group(1));
+                }
             }
             return output;
         } catch (IOException e) {

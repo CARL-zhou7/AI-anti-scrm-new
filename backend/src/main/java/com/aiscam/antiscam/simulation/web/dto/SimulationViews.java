@@ -54,15 +54,10 @@ public final class SimulationViews {
 
     public record ReportError(String code, String message) {}
 
-    public record RoundAnalysis(int roundNo, String analysis) {}
-
-    public record ReportContent(String summary, List<RoundAnalysis> roundAnalyses, String speechAnalysis,
-            String victimBehaviorAnalysis, String outcomeAnalysis) {}
-
     public record RiskPoint(int roundNo, int score) {}
 
     public record ReportView(String sessionId, String simulationStatus, ReportSummary report, String unavailableReason,
-            Outcome outcome, ReportContent content, List<RiskPoint> riskSeries) {}
+            Outcome outcome, com.aiscam.antiscam.agent.AgentModels.ReportData content, List<RiskPoint> riskSeries, Integer contentSchemaVersion) {}
 
     public record SessionStateData(State state, ReportView reportView) {}
 

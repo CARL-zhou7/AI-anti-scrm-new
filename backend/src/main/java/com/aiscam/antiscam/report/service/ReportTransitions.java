@@ -23,9 +23,11 @@ public class ReportTransitions {
     private final SimulationStateAssembler assembler;
     private final SimulationEventHub hub;
     private final SimulationProperties properties;
+    private final com.aiscam.antiscam.simulation.snapshot.ConfigurationSnapshots snapshots;
 
     public ReportTransitions(SimulationReportRepository reports, SimulationSessionRepository sessions,
-            SimulationStateAssembler assembler, SimulationEventHub hub, SimulationProperties properties) {
+            SimulationStateAssembler assembler, SimulationEventHub hub, SimulationProperties properties, com.aiscam.antiscam.simulation.snapshot.ConfigurationSnapshots snapshots) {
+        this.snapshots = snapshots;
         this.reports = reports;
         this.sessions = sessions;
         this.assembler = assembler;
@@ -82,7 +84,7 @@ public class ReportTransitions {
             log.warn("report recovery skipped inconsistent sessionId={}", sessionId);
             return false;
         }
-        reports.saveAndFlush(SimulationReport.pending(sessionId, now));
+        reports.saveAndFlush(SimulationReport.pending(sessionId, now, snapshots.read(session.getRuntimeSnapshot()).path("report_content_schema_version").asInt(1)));
         log.warn("report recovery repaired missing row sessionId={}", sessionId);
         publish(session);
         return true;

@@ -37,15 +37,22 @@ public class SimulationReport {
     protected SimulationReport() {}
 
     public static SimulationReport pending(long sessionId, Instant now) {
+        return pending(sessionId, now, 1);
+    }
+
+    public static SimulationReport pending(long sessionId, Instant now, int contentSchemaVersion) {
+        if (contentSchemaVersion != 1 && contentSchemaVersion != 2) throw new IllegalArgumentException("Unsupported report version");
         var report = new SimulationReport();
         report.sessionId = sessionId;
         report.status = ReportStatus.PENDING;
         report.attemptNo = 0;
         report.queuedAt = now;
-        report.contentSchemaVersion = 1;
+        report.contentSchemaVersion = contentSchemaVersion;
         report.updatedAt = now;
         return report;
     }
+
+    public int getContentSchemaVersion() { return contentSchemaVersion; }
 
     public long getSessionId() { return sessionId; }
     public ReportStatus getStatus() { return status; }

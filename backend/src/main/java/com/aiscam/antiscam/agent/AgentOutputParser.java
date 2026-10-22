@@ -27,7 +27,12 @@ public final class AgentOutputParser {
                     .with(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
                     .with(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION).readTree(raw);
             if (n == null || !n.isObject()) throw fail(Category.REPORT, "object expected");
-            exactFields(n, Set.of("summary", "roundAnalyses", "speechAnalysis", "victimBehaviorAnalysis", "outcomeAnalysis"), Category.REPORT);
+            var fields = new HashSet<>(Set.of("summary", "roundAnalyses", "speechAnalysis", "victimBehaviorAnalysis", "outcomeAnalysis"));
+            if (n.has("contentSchemaVersion")) {
+                if (!n.get("contentSchemaVersion").isIntegralNumber() || !n.get("contentSchemaVersion").canConvertToInt() || n.get("contentSchemaVersion").intValue() != 1) throw fail(Category.REPORT, "wrong report version");
+                fields.add("contentSchemaVersion");
+            }
+            exactFields(n, fields, Category.REPORT);
             if (!n.get("roundAnalyses").isArray()) throw fail(Category.REPORT, "roundAnalyses must be an array");
             List<RoundAnalysis> rounds = new ArrayList<>();
             for (JsonNode r : n.get("roundAnalyses")) {
@@ -46,6 +51,42 @@ public final class AgentOutputParser {
         } catch (java.io.IOException | IllegalArgumentException e) {
             throw new ReportValidationException("output is not strict JSON");
         }
+    }
+
+    public static ReportContentV2 reportV2(String raw) {
+        var c = Category.REPORT;
+        try {
+            JsonNode n = MAPPER.reader().with(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                    .with(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION).readTree(raw);
+            if (n == null || !n.isObject()) throw fail(c, "object expected");
+            exactFields(n, Set.of("contentSchemaVersion", "result", "summary", "keyNodes", "preventionAdvice", "fundsSummary"), c);
+            if (reportInteger(n, "contentSchemaVersion") != 2) throw fail(c, "wrong report version");
+            var result = n.get("result");
+            exactFields(result, Set.of("text", "reason"), c);
+            var funds = n.get("fundsSummary");
+            exactFields(funds, Set.of("totalPaidYuan", "totalRefundedYuan", "actualLossYuan"), c);
+            if (!n.get("keyNodes").isArray() || !n.get("preventionAdvice").isArray()) throw fail(c, "arrays expected");
+            var nodes = new ArrayList<ReportKeyNode>();
+            for (JsonNode item : n.get("keyNodes")) {
+                exactFields(item, Set.of("roundNo", "quote", "analysis"), c);
+                nodes.add(new ReportKeyNode(reportInteger(item, "roundNo"), nullableText(item,"quote",c),text(item,"analysis",c)));
+            }
+            var advice = new ArrayList<String>();
+            for (JsonNode item : n.get("preventionAdvice")) {
+                if (!item.isTextual()) throw fail(c, "advice must be text");
+                advice.add(item.asText());
+            }
+            return new ReportContentV2(2, new ReportResult(text(result,"text",c),text(result,"reason",c)),
+                    text(n,"summary",c), List.copyOf(nodes), List.copyOf(advice), new ReportFundsSummary(
+                    reportInteger(funds,"totalPaidYuan"),reportInteger(funds,"totalRefundedYuan"),reportInteger(funds,"actualLossYuan")));
+        } catch (AgentCallException e) { throw new ReportValidationException(e.getMessage()); }
+        catch (java.io.IOException | IllegalArgumentException e) { throw new ReportValidationException("invalid report JSON"); }
+    }
+
+    private static int reportInteger(JsonNode n, String field) {
+        var v = n.get(field);
+        if (v == null || !v.isIntegralNumber() || !v.canConvertToInt()) throw fail(Category.REPORT,"integer expected");
+        return v.intValue();
     }
 
     public static ScammerTurn scammer(String raw) {
@@ -178,6 +219,7 @@ public final class AgentOutputParser {
     }
 
     private static void exactFields(JsonNode n, Set<String> fields, Category c) {
+        if (n == null || !n.isObject()) throw fail(c,"object expected");
         Set<String> names = new HashSet<>();
         n.fieldNames().forEachRemaining(names::add);
         if (!names.equals(fields)) throw fail(c, "unexpected field set");

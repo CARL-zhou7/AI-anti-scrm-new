@@ -65,13 +65,23 @@ public class SimulationStateAssembler {
             case INTERRUPTED -> "SIMULATION_INTERRUPTED";
             case FINISHED -> null;
         };
-        if (unavailable != null) return new ReportView(s.getId().toString(), s.getStatus().name(), null, unavailable, null, null, series);
+        if (unavailable != null) return new ReportView(s.getId().toString(), s.getStatus().name(), null, unavailable, null, null, series, null);
         var row = reports.findById(s.getId()).orElseThrow(() -> ApiException.dataInconsistent("记录状态异常，请稍后重试"));
         var report = ReportViewMapper.summary(row);
-        var content = row.getStatus() == ReportStatus.SUCCEEDED
-                ? ReportViewMapper.content(row.getContentJson(), rounds.findBySessionIdOrderByRoundNoAsc(s.getId()).size(),
-                        s.getOutcomeCode().displayText()) : null;
-        return new ReportView(s.getId().toString(), s.getStatus().name(), report, null, outcome(s), content, series);
+        com.aiscam.antiscam.agent.AgentModels.ReportData content = null;
+        if (row.getStatus() == ReportStatus.SUCCEEDED) {
+            if (row.getContentSchemaVersion() == 2) {
+                var savedRounds = rounds.findBySessionIdOrderByRoundNoAsc(s.getId());
+                var byRound = new java.util.HashMap<Long,List<SimulationMessage>>();
+                for (var round : savedRounds) byRound.put(round.getId(),messages.findByRoundId(round.getId()));
+                content = ReportViewMapper.contentV2(row.getContentJson(),s.getOutcomeCode().displayText(),
+                        com.aiscam.antiscam.agent.AgentModels.ReportFundsSummary.from(s),
+                        com.aiscam.antiscam.report.service.ReportContextAssembler.quotes(savedRounds,byRound));
+            } else {
+                content = ReportViewMapper.content(row.getContentJson(),rounds.findBySessionIdOrderByRoundNoAsc(s.getId()).size(),s.getOutcomeCode().displayText());
+            }
+        }
+        return new ReportView(s.getId().toString(), s.getStatus().name(), report, null, outcome(s), content, series, content == null ? null : row.getContentSchemaVersion());
     }
 
     public LiveMessage message(SimulationSession s, SimulationMessage m, int roundNo) {

@@ -28,8 +28,26 @@ public final class AgentModels {
 
     public record RoundAnalysis(int roundNo, String analysis) {}
 
+    public sealed interface ReportData permits ReportContent, ReportContentV2 {
+        String summary();
+        int contentSchemaVersion();
+    }
+
+    public record ReportResult(String text, String reason) {}
+    public record ReportKeyNode(int roundNo, String quote, String analysis) {}
+    public record ReportFundsSummary(int totalPaidYuan, int totalRefundedYuan, int actualLossYuan) {
+        public static ReportFundsSummary from(com.aiscam.antiscam.simulation.domain.SimulationSession session) {
+            return new ReportFundsSummary(session.getTotalPaidYuan(), session.getTotalRefundedYuan(), session.getActualLossYuan());
+        }
+    }
+    public record ReportContentV2(int contentSchemaVersion, ReportResult result, String summary,
+            List<ReportKeyNode> keyNodes, List<String> preventionAdvice, ReportFundsSummary fundsSummary) implements ReportData {}
+
     public record ReportContent(String summary, List<RoundAnalysis> roundAnalyses, String speechAnalysis,
-            String victimBehaviorAnalysis, String outcomeAnalysis) {}
+            String victimBehaviorAnalysis, String outcomeAnalysis) implements ReportData {
+        @com.fasterxml.jackson.annotation.JsonProperty("contentSchemaVersion")
+        public int contentSchemaVersion() { return 1; }
+    }
 
     public record EvidenceItem(FactCode factCode, SpeakerRole speaker, EvidenceSource source, int roundNo, String quote,
             int eventOrder) {}

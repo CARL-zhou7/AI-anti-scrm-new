@@ -11,6 +11,8 @@ const route = useRoute()
 const view = ref<ReportView | null>(null), state = ref<SimulationState | null>(null)
 const loading = ref(true), error = ref(''), retryError = ref(''), retrying = ref(false), exhausted = ref(false), notApplicable = ref(false)
 const generating = computed(() => view.value?.report?.status === 'PENDING' || view.value?.report?.status === 'RUNNING')
+const reportV2 = computed(() => view.value?.contentSchemaVersion === 2 && view.value.content?.contentSchemaVersion === 2 ? view.value.content : null)
+const reportV1 = computed(() => view.value?.content && 'roundAnalyses' in view.value.content ? view.value.content : null)
 let timer: ReturnType<typeof setTimeout> | undefined
 let version = 0, polls = 0
 
@@ -109,14 +111,29 @@ onUnmounted(() => { version++; clearTimeout(timer) })
         <p v-if="retryError">{{ retryError }}</p>
       </section>
       <template v-else-if="view.report?.status === 'SUCCEEDED' && view.content">
-        <section class="configuration-section" data-testid="report-summary"><h2>过程总结</h2><p>{{ view.content.summary }}</p></section>
+        <template v-if="reportV2">
+          <section class="configuration-section" data-testid="report-result"><h2>{{ reportV2.result.text }}</h2><p>{{ reportV2.result.reason }}</p></section>
+          <section class="configuration-section" data-testid="report-summary"><h2>过程总结</h2><p v-for="(paragraph, index) in reportV2.summary.split(/\n\s*\n/)" :key="index">{{ paragraph }}</p></section>
+          <section v-if="reportV2.keyNodes.length" class="configuration-section" data-testid="report-key-nodes">
+            <h2>关键节点</h2><article v-for="(node, index) in reportV2.keyNodes" :key="index"><h3>第{{ node.roundNo }}轮</h3><blockquote v-if="node.quote">{{ node.quote }}</blockquote><p>{{ node.analysis }}</p></article>
+          </section>
+          <section class="configuration-section" data-testid="report-advice"><h2>防范建议</h2><ul><li v-for="(advice, index) in reportV2.preventionAdvice" :key="index">{{ advice }}</li></ul></section>
+          <section class="configuration-section" data-testid="report-funds"><h2>资金摘要</h2><dl>
+            <dt>累计支付</dt><dd>{{ reportV2.fundsSummary.totalPaidYuan }} 元</dd>
+            <dt>实际返款</dt><dd>{{ reportV2.fundsSummary.totalRefundedYuan }} 元</dd>
+            <dt>实际亏损</dt><dd>{{ reportV2.fundsSummary.actualLossYuan }} 元</dd>
+          </dl></section>
+        </template>
+        <template v-else-if="reportV1">
+        <section class="configuration-section" data-testid="report-summary"><h2>过程总结</h2><p>{{ reportV1.summary }}</p></section>
         <section class="configuration-section" data-testid="report-round-analyses">
           <h2>逐轮分析</h2>
-          <article v-for="round in view.content.roundAnalyses" :key="round.roundNo"><h3>第{{ round.roundNo }}轮</h3><p>{{ round.analysis }}</p></article>
+          <article v-for="round in reportV1.roundAnalyses" :key="round.roundNo"><h3>第{{ round.roundNo }}轮</h3><p>{{ round.analysis }}</p></article>
         </section>
-        <section class="configuration-section" data-testid="report-speech-analysis"><h2>骗子话术分析</h2><p>{{ view.content.speechAnalysis }}</p></section>
-        <section class="configuration-section" data-testid="report-victim-behavior"><h2>受害者行为分析</h2><p>{{ view.content.victimBehaviorAnalysis }}</p></section>
-        <section class="configuration-section" data-testid="report-outcome-analysis"><h2>结局分析</h2><p>{{ view.content.outcomeAnalysis }}</p></section>
+        <section class="configuration-section" data-testid="report-speech-analysis"><h2>骗子话术分析</h2><p>{{ reportV1.speechAnalysis }}</p></section>
+        <section class="configuration-section" data-testid="report-victim-behavior"><h2>受害者行为分析</h2><p>{{ reportV1.victimBehaviorAnalysis }}</p></section>
+        <section class="configuration-section" data-testid="report-outcome-analysis"><h2>结局分析</h2><p>{{ reportV1.outcomeAnalysis }}</p></section>
+        </template>
       </template>
       <RiskChart v-if="view.simulationStatus === 'FINISHED'" :points="view.riskSeries" />
       <nav class="report-actions" aria-label="复盘导航">

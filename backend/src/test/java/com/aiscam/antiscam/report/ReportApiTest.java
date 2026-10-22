@@ -39,7 +39,7 @@ class ReportApiTest {
 
     @Test
     void readAndRetryUseEnvelopeNoStoreAndContractStatusCodes() throws Exception {
-        var view = new ReportView("1", "RUNNING", null, "SIMULATION_RUNNING", null, null, List.of());
+        var view = new ReportView("1", "RUNNING", null, "SIMULATION_RUNNING", null, null, List.of(), null);
         when(service.view(7, "1")).thenReturn(view);
         mvc.perform(get(PATH).with(authentication(auth(UserRole.USER)))).andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store")).andExpect(jsonPath("$.code").value("OK"))

@@ -130,7 +130,7 @@ public class SimulationTransitions {
                 snapshots.scenario(scenario), snapshots.scammer(scammer), snapshots.victim(victim, scenario.getScenarioCode()),
                 active.get(PromptType.SCAMMER).getId(), active.get(PromptType.VICTIM).getId(),
                 active.get(PromptType.NARRATOR).getId(), active.get(PromptType.REPORT).getId(),
-                snapshots.write(runtimeSnapshot(voicePair)), calibrated.startedAt(), calibrated.receivedAt(),
+                snapshots.write(runtimeSnapshot(voicePair, active.get(PromptType.REPORT).getVersionNo())), calibrated.startedAt(), calibrated.receivedAt(),
                 snapshots.write(calibrated.evidenceJson()), victim.getAvailableFundsYuan()));
         State state = assembler.assemble(session);
         hub.publishAfterCommit(new SimulationEvent("session.started", session.getId(), session.getStateVersion(), state));
@@ -139,14 +139,14 @@ public class SimulationTransitions {
         return new StartResult(true, state);
     }
 
-    private Map<String, Object> runtimeSnapshot(VoiceMapper.VoicePair voicePair) {
+    private Map<String, Object> runtimeSnapshot(VoiceMapper.VoicePair voicePair, int reportPromptVersion) {
         var llm = properties.getLlm();
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("schema_version", 2);
         m.put("v12_preview", false);
         m.put("fund_ruleset_version", "funds-v2");
-        m.put("report_content_schema_version", 1);
-        m.put("app_build", "0.1.0-v1.2-phase4");
+        m.put("report_content_schema_version", reportPromptVersion >= 2 ? 2 : 1);
+        m.put("app_build", "0.1.0-v1.2-phase5");
         m.put("ruleset_version", "PRD-V3.3");
         m.put("model_config", Map.of("provider", llm.getProvider(), "model", llm.getModel(),
                 "temperature", Map.of("scammer", llm.getScammerTemperature(), "victim", llm.getVictimTemperature(),
@@ -432,7 +432,7 @@ public class SimulationTransitions {
         s.settlePause(now);
         round.capReading(s.getDeadlineAt());
         s.finish(decision.outcome(), decision.reason(), decision.limitReason(), now);
-        em.persist(SimulationReport.pending(s.getId(), now));
+        em.persist(SimulationReport.pending(s.getId(), now, snapshots.read(s.getRuntimeSnapshot()).path("report_content_schema_version").asInt(1)));
         em.flush();
         State state = assembler.assemble(s);
         hub.publishAfterCommit(new SimulationEvent("session.finished", s.getId(), s.getStateVersion(), state));

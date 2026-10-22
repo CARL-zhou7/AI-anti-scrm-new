@@ -20,15 +20,19 @@ public final class ReportViewMapper {
                 row.getStatus() == ReportStatus.FAILED ? errorCode(row.getErrorCode()) : null);
     }
 
-    public static ReportContent content(String json, int rounds, String outcome) {
+    public static AgentModels.ReportContent content(String json, int rounds, String outcome) {
         try {
             AgentModels.ReportContent c = AgentOutputValidator.report(AgentOutputParser.report(json), rounds, outcome);
-            return new ReportContent(c.summary(), c.roundAnalyses().stream()
-                    .map(r -> new RoundAnalysis(r.roundNo(), r.analysis())).toList(),
-                    c.speechAnalysis(), c.victimBehaviorAnalysis(), c.outcomeAnalysis());
+            return c;
         } catch (ReportValidationException e) {
             throw ApiException.dataInconsistent("记录状态异常，请稍后重试");
         }
+    }
+
+    public static AgentModels.ReportContentV2 contentV2(String json, String outcome, AgentModels.ReportFundsSummary funds,
+            java.util.Map<Integer, java.util.List<String>> quotes) {
+        try { return AgentOutputValidator.reportV2(AgentOutputParser.reportV2(json),outcome,funds,quotes); }
+        catch (ReportValidationException e) { throw ApiException.dataInconsistent("记录状态异常，请稍后重试"); }
     }
 
     public static ReportError errorCode(String code) {
