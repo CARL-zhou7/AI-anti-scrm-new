@@ -1,0 +1,34 @@
+{
+  "extends": "default",
+  "delayMs": 40,
+  "rounds": {
+    "5": {
+      "victim": [
+        {
+          "output": {
+            "line": "我已经转账2000元",
+            "action": null,
+            "psychology": "INTERNAL-NOTE-SECRET 确认是骗局，坚决终止",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "坚定"
+            },
+            "fundActions": [
+              {
+                "type": "PAYMENT",
+                "purpose": "OTHER_PAYMENT",
+                "amountYuan": 2000,
+                "roundNo": 5,
+                "speaker": "VICTIM",
+                "quote": "我已经转账2000元",
+                "eventOrder": 1,
+                "reason": null,
+                "relatedPaymentId": null
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

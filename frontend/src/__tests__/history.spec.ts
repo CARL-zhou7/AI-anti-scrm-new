@@ -11,6 +11,23 @@ vi.mock('vue-router', async original => ({ ...(await original<typeof import('vue
 const global = { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } }
 afterEach(() => vi.restoreAllMocks())
 
+it('shows only the frozen selected scenario in historical victim details', async () => {
+  const data = detail()
+  data.configuration.victim.profileSchemaVersion = 2
+  data.configuration.victim.scenarioProfiles = ['TASK_REBATE', 'FAKE_INVESTMENT', 'IMPERSONATION_LOAN'].map(code => ({
+    scenarioCode: code as 'TASK_REBATE' | 'FAKE_INVESTMENT' | 'IMPERSONATION_LOAN', needs: `冻结需求-${code}`,
+    relevantExperience: '经历', judgmentBasis: '依据', verificationHabits: '核实', actionBoundaries: '边界',
+    stopConditions: '停止', recentEvents: '事件', consultationsTransactions: '咨询', sharedExperiences: '共同经历',
+    contactBackground: '背景', initialTrustMode: '信任',
+  }))
+  vi.spyOn(historyApi, 'detail').mockResolvedValue(data)
+  const view = mount(HistoryDetailView, { global }); await flushPromises()
+  expect(view.text()).toContain('冻结需求-TASK_REBATE')
+  expect(view.text()).not.toContain('冻结需求-FAKE_INVESTMENT')
+  expect(view.text()).not.toContain('冻结需求-IMPERSONATION_LOAN')
+  view.unmount()
+})
+
 it('distinguishes unrecorded legacy money from recorded zero and displays round summaries', async () => {
   const api = vi.spyOn(historyApi, 'detail')
   for (const recorded of [false, true]) {

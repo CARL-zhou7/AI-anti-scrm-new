@@ -4,6 +4,9 @@ import com.aiscam.antiscam.agent.AgentCallException.Category;
 import com.aiscam.antiscam.agent.AgentModels.*;
 import com.aiscam.antiscam.simulation.domain.OutcomeCode;
 import com.aiscam.antiscam.simulation.domain.SpeakerRole;
+import com.aiscam.antiscam.simulation.domain.FundAction;
+import com.aiscam.antiscam.simulation.domain.FundFlowType;
+import com.aiscam.antiscam.simulation.domain.FundPurpose;
 import com.aiscam.antiscam.simulation.rules.FactCode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,15 +49,64 @@ public final class AgentOutputParser {
     }
 
     public static ScammerTurn scammer(String raw) {
-        JsonNode n = object(raw, Category.DIALOGUE, Set.of("line", "action", "intent", "tone"));
+        JsonNode n = roleObject(raw, "intent", true);
         return new ScammerTurn(text(n, "line", Category.DIALOGUE), nullableText(n, "action", Category.DIALOGUE),
-                text(n, "intent", Category.DIALOGUE), tone(n.get("tone")));
+                text(n, "intent", Category.DIALOGUE), tone(n.get("tone")),
+                n.hasNonNull("claimedRefundYuan") ? integer(n, "claimedRefundYuan") : null, fundActions(n));
     }
 
     public static VictimTurn victim(String raw) {
-        JsonNode n = object(raw, Category.DIALOGUE, Set.of("line", "action", "psychology", "tone"));
+        JsonNode n = roleObject(raw, "psychology", false);
         return new VictimTurn(text(n, "line", Category.DIALOGUE), nullableText(n, "action", Category.DIALOGUE),
-                text(n, "psychology", Category.DIALOGUE), tone(n.get("tone")));
+                text(n, "psychology", Category.DIALOGUE), tone(n.get("tone")), fundActions(n));
+    }
+
+    private static JsonNode roleObject(String raw, String note, boolean scammer) {
+        JsonNode n;
+        try {
+            n = MAPPER.reader().with(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                    .with(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION).readTree(raw);
+        } catch (java.io.IOException e) { throw fail(Category.DIALOGUE, "output is not strict JSON"); }
+        if (n == null || !n.isObject()) throw fail(Category.DIALOGUE, "object expected");
+        var fields = new HashSet<>(Set.of("line", "action", note, "tone"));
+        if (n.has("fundActions")) fields.add("fundActions");
+        if (scammer && n.has("claimedRefundYuan")) fields.add("claimedRefundYuan");
+        exactFields(n, fields, Category.DIALOGUE);
+        return n;
+    }
+
+    private static List<FundAction> fundActions(JsonNode n) {
+        List<FundAction> actions = new ArrayList<>();
+        if (n.has("fundActions")) {
+            if (!n.get("fundActions").isArray()) throw fail(Category.DIALOGUE, "fundActions must be an array");
+            for (JsonNode a : n.get("fundActions")) actions.add(fundAction(a));
+        }
+        return List.copyOf(actions);
+    }
+
+    private static FundAction fundAction(JsonNode n) {
+        var c = Category.DIALOGUE;
+        if (!n.isObject()) throw fail(c, "fund action must be an object");
+        exactFields(n, Set.of("type", "purpose", "amountYuan", "roundNo", "speaker", "quote", "eventOrder",
+                "reason", "relatedPaymentId"), c);
+        try {
+            return new FundAction(FundFlowType.valueOf(text(n, "type", c)), FundPurpose.valueOf(text(n, "purpose", c)),
+                    integer(n, "amountYuan"), integer(n, "roundNo"), SpeakerRole.valueOf(text(n, "speaker", c)),
+                    text(n, "quote", c), integer(n, "eventOrder"), nullableText(n, "reason", c),
+                    n.get("relatedPaymentId").isNull() ? null : paymentId(n));
+        } catch (IllegalArgumentException e) { throw fail(c, "invalid fund action enum"); }
+    }
+
+    private static long paymentId(JsonNode n) {
+        var value = n.get("relatedPaymentId");
+        if (!value.isIntegralNumber() || !value.canConvertToLong() || value.longValue() <= 0) throw fail(Category.DIALOGUE, "invalid payment id");
+        return value.longValue();
+    }
+
+    private static int integer(JsonNode n, String field) {
+        var value = n.get(field);
+        if (!value.isIntegralNumber() || !value.canConvertToInt()) throw fail(Category.DIALOGUE, field + " must be an integer");
+        return value.intValue();
     }
 
     public static NarratorJudgement narrator(String raw) {

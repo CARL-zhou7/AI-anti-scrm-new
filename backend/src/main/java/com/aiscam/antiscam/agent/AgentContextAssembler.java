@@ -1,7 +1,7 @@
 package com.aiscam.antiscam.agent;
 
 import com.aiscam.antiscam.agent.AgentModels.*;
-import com.aiscam.antiscam.simulation.domain.SpeakerRole;
+import com.aiscam.antiscam.simulation.domain.*;
 import com.aiscam.antiscam.simulation.rules.ScenarioGoalRules;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -68,6 +68,31 @@ public final class AgentContextAssembler {
         v.put("previous_facts", facts(prior));
         v.put("analysis_target_chars", Integer.toString(ANALYSIS_TARGET_CHARS));
         return v;
+    }
+
+    public static String victimFunds(FundsContext f) {
+        return "当前可动用余额：" + f.availableBalanceYuan() + "元；尚可释放预留：" + f.releasableReserveYuan()
+                + "元。只记录本轮新执行付款/预留释放，不将旧转账复述作为新动作。";
+    }
+
+    public static String scammerFunds(FundsContext f) {
+        String payments = f.existingFlows().stream().filter(p -> p.getFlowType() == FundFlowType.PAYMENT)
+                .map(p -> {
+                    int refunded = f.existingFlows().stream().filter(r -> java.util.Objects.equals(r.getRelatedPaymentId(), p.getId()))
+                            .mapToInt(FundFlow::getAmountYuan).sum();
+                    return "付款ID=" + p.getId() + "，收款=" + p.getAmountYuan() + "元，尚可关联返款=" + (p.getAmountYuan() - refunded) + "元";
+                }).collect(Collectors.joining("\n"));
+        return "已收款：" + f.totalPaidYuan() + "元；已实际返款：" + f.totalRefundedYuan()
+                + "元；剩余可返额度：" + Math.max(0, Math.min(f.refundCapYuan(), f.totalPaidYuan()) - f.totalRefundedYuan())
+                + "元。" + (f.refundCapYuan() == 0 ? "本场禁止实际返款，claimedRefundYuan必须为null。" : "声称不入账，实际返款不得超过声称。") + "\n" + payments;
+    }
+
+    public static String narratorFunds(FundsContext f, Integer claimed, boolean candidate) {
+        String flows = f.existingFlows().stream().map(p -> "顺序" + p.getSequenceNo() + " " + p.getFlowType()
+                + " " + p.getAmountYuan() + "元，发生后余额" + p.getBalanceAfterYuan() + "元").collect(Collectors.joining("\n"));
+        return (candidate ? "候选预检：本轮受害者行为尚未保存，只作最低轮数筛查，不作为已入账事实。\n" : "正式分析，仅以下流水为已入账事实。\n")
+                + "本轮骗子声称返款：" + (claimed == null ? "未提供" : claimed + "元（不是实际到账）")
+                + "\n当前余额：" + f.availableBalanceYuan() + "元\n" + flows;
     }
 
     private static String publicHistory(List<DialogueLine> lines) {

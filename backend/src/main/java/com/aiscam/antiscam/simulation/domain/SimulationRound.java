@@ -63,11 +63,13 @@ public class SimulationRound {
     protected SimulationRound() {}
 
     public SimulationRound(long sessionId, int roundNo, Instant now) {
-        this(sessionId, roundNo, now, 0);
+        this(sessionId, roundNo, now, new FundsSummary(0, 0, 0, 0, 0, 0, 0));
     }
 
-    public SimulationRound(long sessionId, int roundNo, Instant now, int availableBalanceYuan) {
-        this.roundBalanceYuan = availableBalanceYuan;
+    public SimulationRound(long sessionId, int roundNo, Instant now, FundsSummary funds) {
+        this.roundBalanceYuan = funds.availableBalanceYuan();
+        this.roundActualLossYuan = funds.actualLossYuan();
+        this.additionalPaymentCountTotal = funds.additionalPaymentCount();
         this.sessionId = sessionId;
         this.roundNo = roundNo;
         this.phase = RoundPhase.SCAMMER_GENERATING;
@@ -102,6 +104,19 @@ public class SimulationRound {
     public Instant getReadingUntil() { return readingUntil; }
     public Instant getCreatedAt() { return createdAt; }
     public boolean hasAnalysis() { return analysisSavedAt != null; }
+
+    public void applyFunds(FundApplication application) {
+        for (var p : application.postings()) {
+            switch (p.type()) {
+                case PAYMENT -> roundPaidYuan += p.amountYuan();
+                case REFUND -> roundRefundedYuan += p.amountYuan();
+                case RESERVE_RELEASE -> roundReserveReleasedYuan += p.amountYuan();
+            }
+        }
+        roundBalanceYuan = application.after().availableBalanceYuan();
+        roundActualLossYuan = application.after().actualLossYuan();
+        additionalPaymentCountTotal = application.after().additionalPaymentCount();
+    }
 
     public void setPhase(RoundPhase phase) { this.phase = phase; }
 

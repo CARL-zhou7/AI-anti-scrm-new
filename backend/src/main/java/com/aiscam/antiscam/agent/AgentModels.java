@@ -3,6 +3,7 @@ package com.aiscam.antiscam.agent;
 import com.aiscam.antiscam.content.domain.ScenarioCode;
 import com.aiscam.antiscam.simulation.domain.OutcomeCode;
 import com.aiscam.antiscam.simulation.domain.SpeakerRole;
+import com.aiscam.antiscam.simulation.domain.FundAction;
 import com.aiscam.antiscam.simulation.rules.FactCode;
 import java.util.List;
 
@@ -21,9 +22,9 @@ public final class AgentModels {
         public double ttsSpeed() { return speed == Speed.SLOW ? 0.9 : speed == Speed.FAST ? 1.1 : 1.0; }
     }
 
-    public record ScammerTurn(String line, String action, String intent, ToneHint tone) {}
+    public record ScammerTurn(String line, String action, String intent, ToneHint tone, Integer claimedRefundYuan, List<FundAction> fundActions) {}
 
-    public record VictimTurn(String line, String action, String psychology, ToneHint tone) {}
+    public record VictimTurn(String line, String action, String psychology, ToneHint tone, List<FundAction> fundActions) {}
 
     public record RoundAnalysis(int roundNo, String analysis) {}
 
@@ -52,5 +53,5 @@ public final class AgentModels {
     /** Per-session constant inputs: frozen snapshots (rendered as text) and the pinned prompt versions. */
     public record AgentScene(ScenarioCode scenarioCode, String scenarioName, String scenarioDescription,
             String scammerProfile, String victimProfile, String scriptKey, String scammerTemplate,
-            String victimTemplate, String narratorTemplate) {}
+            String victimTemplate, String narratorTemplate, String victimPublicProfile) {}
 }

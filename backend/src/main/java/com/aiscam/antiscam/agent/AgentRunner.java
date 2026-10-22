@@ -5,6 +5,7 @@ import com.aiscam.antiscam.agent.LlmClient.LlmRequest;
 import com.aiscam.antiscam.config.SimulationProperties;
 import com.aiscam.antiscam.report.service.ReportContext;
 import java.time.Duration;
+import com.aiscam.antiscam.simulation.domain.*;
 import java.util.List;
 
 /**
@@ -28,24 +29,35 @@ public class AgentRunner {
         return AgentOutputValidator.report(AgentOutputParser.report(raw), context.roundCount(), context.outcomeDisplayText());
     }
 
-    public ScammerTurn scammer(AgentScene scene, List<DialogueLine> history, int roundNo, long remainingMs, int attempt) {
-        String prompt = PromptRenderer.render(scene.scammerTemplate(),
-                AgentContextAssembler.scammer(scene, history, roundNo, remainingMs / 1000));
+    public ScammerTurn scammer(AgentScene scene, List<DialogueLine> history, int roundNo, long remainingMs, int attempt, FundsContext funds) {
+        var variables = AgentContextAssembler.scammer(scene, history, roundNo, remainingMs / 1000);
+        if (funds != null) {
+            variables.put("funds_context", AgentContextAssembler.scammerFunds(funds));
+            variables.put("victim_public_profile", scene.victimPublicProfile());
+        }
+        String prompt = PromptRenderer.render(scene.scammerTemplate(), variables);
         String raw = llm.completeJson(request(AgentRole.SCAMMER, prompt, config.getScammerTemperature(), remainingMs, roundNo, attempt, scene));
-        return AgentOutputValidator.validate(AgentOutputParser.scammer(raw));
+        var turn = AgentOutputValidator.validate(AgentOutputParser.scammer(raw));
+        AgentOutputValidator.funds(SpeakerRole.SCAMMER, turn.line(), turn.action(), turn.claimedRefundYuan(), turn.fundActions(), roundNo, funds, history);
+        return turn;
     }
 
     public VictimTurn victim(AgentScene scene, List<DialogueLine> history, DialogueLine scammerLine, int roundNo,
-            long remainingMs, boolean regeneration, int attempt) {
-        String prompt = PromptRenderer.render(scene.victimTemplate(),
-                AgentContextAssembler.victim(scene, history, scammerLine, roundNo, remainingMs / 1000, regeneration));
+            long remainingMs, boolean regeneration, int attempt, FundsContext funds) {
+        var variables = AgentContextAssembler.victim(scene, history, scammerLine, roundNo, remainingMs / 1000, regeneration);
+        if (funds != null) variables.put("funds_context", AgentContextAssembler.victimFunds(funds));
+        String prompt = PromptRenderer.render(scene.victimTemplate(), variables);
         String raw = llm.completeJson(request(AgentRole.VICTIM, prompt, config.getVictimTemperature(), remainingMs, roundNo, attempt, scene));
-        return AgentOutputValidator.validate(AgentOutputParser.victim(raw));
+        var turn = AgentOutputValidator.validate(AgentOutputParser.victim(raw));
+        AgentOutputValidator.funds(SpeakerRole.VICTIM, turn.line(), turn.action(), null, turn.fundActions(), roundNo, funds, history);
+        return turn;
     }
 
     public ValidatedJudgement narrator(AgentScene scene, List<DialogueLine> lines, int roundNo, PriorFacts prior,
-            long remainingMs, int attempt) {
-        String prompt = PromptRenderer.render(scene.narratorTemplate(), AgentContextAssembler.narrator(scene, lines, roundNo, prior));
+            long remainingMs, int attempt, FundsContext funds, Integer claimed, boolean candidate) {
+        var variables = AgentContextAssembler.narrator(scene, lines, roundNo, prior);
+        if (funds != null) variables.put("funds_context", AgentContextAssembler.narratorFunds(funds, claimed, candidate));
+        String prompt = PromptRenderer.render(scene.narratorTemplate(), variables);
         String raw = llm.completeJson(request(AgentRole.NARRATOR, prompt, config.getNarratorTemperature(), remainingMs, roundNo, attempt, scene));
         return AgentOutputValidator.validate(AgentOutputParser.narrator(raw), scene.scenarioCode(), roundNo, lines, prior);
     }

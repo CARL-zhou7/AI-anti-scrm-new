@@ -41,7 +41,13 @@ public class ScriptedLlmClient implements LlmClient {
         sleep(entry.path("delayMs").asLong(script.path("delayMs").asLong(0)));
         if (entry.has("error")) throw new AgentCallException(category, true, "scripted " + entry.path("error").asText());
         try {
-            return mapper.writeValueAsString(entry.path("output")).replace("{{round}}", Integer.toString(request.roundNo()));
+            String output = mapper.writeValueAsString(entry.path("output")).replace("{{round}}", Integer.toString(request.roundNo()));
+            if (output.contains("{{payment_id}}")) {
+                var payment = java.util.regex.Pattern.compile("付款ID=([0-9]+)").matcher(request.prompt());
+                if (!payment.find()) throw new AgentCallException(category, false, "script requires an existing payment");
+                output = output.replace("\"{{payment_id}}\"", payment.group(1));
+            }
+            return output;
         } catch (IOException e) {
             throw new AgentCallException(category, false, "invalid script");
         }

@@ -25,7 +25,7 @@ class HistoryRulesTest {
     private final SimulationReportRepository reports = mock(SimulationReportRepository.class);
     private final ConfigurationSnapshots snapshots = new ConfigurationSnapshots(new ObjectMapper());
     private final SimulationStateAssembler state = new SimulationStateAssembler(rounds, messages, reports, snapshots, mock(TempAudioStore.class));
-    private final HistoryAssembler assembler = new HistoryAssembler(snapshots, state, rounds, messages, reports);
+    private final HistoryAssembler assembler = new HistoryAssembler(snapshots, state, rounds, messages, reports, mock(FundFlowRepository.class));
 
     @Test
     void cursorPreservesMillisecondsAndRejectsTamperingOtherAccountsAndOtherUses() {
@@ -118,7 +118,7 @@ class HistoryRulesTest {
         when(s.getSnapshotSchemaVersion()).thenReturn(2);
         when(s.getInitialAvailableFundsYuan()).thenReturn(10000);
         when(s.getFundsSummary()).thenReturn(new FundsSummary(10000, 10000, 0, 0, 0, 0, 0));
-        var round = new SimulationRound(1, 1, T, 10000);
+        var round = new SimulationRound(1, 1, T, s.getFundsSummary());
         ReflectionTestUtils.setField(round, "id", 10L);
         when(rounds.findBySessionIdOrderByRoundNoAsc(1)).thenReturn(List.of(round));
         var detail = assembler.detail(s);

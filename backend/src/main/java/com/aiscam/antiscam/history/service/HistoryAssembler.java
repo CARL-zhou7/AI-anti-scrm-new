@@ -26,9 +26,11 @@ public class HistoryAssembler {
     private final SimulationRoundRepository rounds;
     private final SimulationMessageRepository messages;
     private final SimulationReportRepository reports;
+    private final FundFlowRepository funds;
 
     public HistoryAssembler(ConfigurationSnapshots snapshots, SimulationStateAssembler state,
-            SimulationRoundRepository rounds, SimulationMessageRepository messages, SimulationReportRepository reports) {
+            SimulationRoundRepository rounds, SimulationMessageRepository messages, SimulationReportRepository reports, FundFlowRepository funds) {
+        this.funds = funds;
         this.snapshots = snapshots;
         this.state = state;
         this.rounds = rounds;
@@ -47,6 +49,19 @@ public class HistoryAssembler {
 
     public HistoryPage page(List<HistoryItem> items, String nextCursor, boolean hasMore) {
         return new HistoryPage(items, nextCursor, hasMore);
+    }
+
+    private Funds historyFunds(SimulationSession s, List<SimulationRound> savedRounds) {
+        var f = Funds.from(s, true);
+        if (!f.fundsRecorded()) return f;
+        var roundNumbers = savedRounds.stream().collect(Collectors.toMap(SimulationRound::getId, SimulationRound::getRoundNo));
+        var flows = funds.findBySessionIdOrderBySequenceNoAsc(s.getId()).stream()
+                .map(p -> new com.aiscam.antiscam.simulation.web.dto.SimulationViews.FundFlow(p.getSequenceNo(),
+                        roundNumbers.get(p.getRoundId()), p.getMessageId() == null ? null : p.getMessageId().toString(),
+                        p.getFlowType().name(), p.getPurpose().name(), p.getAmountYuan(), p.getBalanceAfterYuan(),
+                        p.getReason(), format(p.getOccurredAt()))).toList();
+        return new Funds(true, f.initialAvailableYuan(), f.availableBalanceYuan(), f.totalPaidYuan(), f.totalRefundedYuan(),
+                f.actualLossYuan(), f.additionalPaymentCount(), f.reserveReleasedYuan(), flows);
     }
 
     public HistoryDetail detail(SimulationSession s) {
@@ -75,7 +90,7 @@ public class HistoryAssembler {
                 format(s.getDeadlineAt()), format(s.getEndedAt()),
                 snapshots.toConfigurationView(s.getScenarioSnapshot(), s.getScammerSnapshot(), s.getVictimSnapshot()),
                 historyRounds, outcome(s), interruption(s), report,
-                snapshots.read(s.getRuntimeSnapshot()).path("ruleset_version").asText(null),
-                Funds.from(s, true));
+                snapshots.read(s.getRuntimeSnapshot()).path("ruleset_version").asText("PRD-V3.2"),
+                historyFunds(s, savedRounds));
     }
 }

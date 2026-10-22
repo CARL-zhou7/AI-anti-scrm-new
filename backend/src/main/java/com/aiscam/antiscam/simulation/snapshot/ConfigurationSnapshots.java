@@ -146,7 +146,36 @@ public class ConfigurationSnapshots {
     public String victimText(String json) {
         JsonNode v = read(json);
         return base(v) + "\n防骗意识：" + level(v.path("anti_fraud_awareness").asText()) + "\n风险倾向：" + level(v.path("risk_tendency").asText())
-                + "\n性格特点：" + v.path("personality_traits").asText() + situation(v);
+                + "\n性格特点：" + v.path("personality_traits").asText() + situation(v) + victimFacts(v);
+    }
+
+    public String victimPublicText(String json) {
+        JsonNode v = read(json);
+        StringBuilder text = new StringBuilder(base(v));
+        for (String field : java.util.List.of("family_status", "income_description", "monthly_expense_yuan")) {
+            if (v.hasNonNull(field)) text.append("\n").append(field).append("：").append(v.get(field).asText());
+        }
+        for (JsonNode profile : v.path("victim_scenario_profiles")) {
+            if (!profile.path("scenario_code").asText().equals(v.path("selected_scenario_code").asText())) continue;
+            for (String field : java.util.List.of("relevant_experience", "recent_events", "consultations_transactions", "shared_experiences", "contact_background")) {
+                text.append("\n").append(field).append("：").append(profile.path(field).asText());
+            }
+        }
+        return text.toString();
+    }
+
+    private static String victimFacts(JsonNode v) {
+        if (v.path("snapshot_schema_version").asInt(1) < 2) return "";
+        StringBuilder text = new StringBuilder();
+        for (String field : java.util.List.of("family_status", "income_description", "monthly_expense_yuan", "initial_savings_yuan",
+                "reserved_funds_note", "general_decision_traits")) text.append("\n").append(field).append("：").append(v.path(field).asText());
+        for (JsonNode profile : v.path("victim_scenario_profiles")) {
+            if (!profile.path("scenario_code").asText().equals(v.path("selected_scenario_code").asText())) continue;
+            profile.fields().forEachRemaining(field -> {
+                if (!field.getKey().equals("scenario_code")) text.append("\n").append(field.getKey()).append("：").append(field.getValue().asText());
+            });
+        }
+        return text.toString();
     }
 
     public JsonNode read(String json) {

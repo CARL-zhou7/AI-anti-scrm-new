@@ -168,6 +168,15 @@ public class SimulationSession {
     public InterruptionCode getInterruptionCode() { return interruptionCode; }
     public String getInterruptionDetail() { return interruptionDetail; }
 
+    public void applyFunds(FundsSummary f) {
+        availableBalanceYuan = f.availableBalanceYuan();
+        totalPaidYuan = f.totalPaidYuan();
+        totalRefundedYuan = f.totalRefundedYuan();
+        actualLossYuan = f.actualLossYuan();
+        additionalPaymentCount = f.additionalPaymentCount();
+        reserveReleasedYuan = f.reserveReleasedYuan();
+    }
+
     public void bumpVersion() { stateVersion++; }
     public void enterRound(int roundNo) { currentRoundNo = roundNo; bumpVersion(); }
     public void pause(Instant now) { pausedAt = now; bumpVersion(); }

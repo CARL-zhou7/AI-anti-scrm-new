@@ -29,6 +29,11 @@ class SnapshotRulesTest {
         assertEquals("家庭", v.path("family_status").asText());
         assertEquals(10000, v.path("available_funds_yuan").asInt());
         assertEquals("昨天20:00", v.path("context_time").asText());
+        String publicFacts = snapshots.victimPublicText(json);
+        assertTrue(publicFacts.contains("家庭"));
+        for (String privateFact : java.util.List.of("available_funds", "reserved_funds", "10000", "40000", "initial_trust_mode", "general_decision_traits")) {
+            assertFalse(publicFacts.contains(privateFact));
+        }
         String scenario = "{\"id\":\"1\",\"scenario_code\":\"FAKE_INVESTMENT\"}";
         String scammer = json.replace("\"anti_fraud_awareness\"", "\"fraud_experience\"")
                 .replace("\"risk_tendency\"", "\"speech_skill\"").replace("\"personality_traits\":\"性格\"", "\"manipulation_skill\":\"LOW\"");

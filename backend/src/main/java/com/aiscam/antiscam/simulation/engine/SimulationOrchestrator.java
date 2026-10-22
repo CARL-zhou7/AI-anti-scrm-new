@@ -84,8 +84,9 @@ public class SimulationOrchestrator implements SimulationSignals {
     }
 
     /** Prepared role line; {@code audio == null} with a line means synthesis failed (text is still saved). */
-    record PreparedLine(String line, String action, String note, SynthesizedAudio audio, InterruptionCode failure) {
-        static PreparedLine failed(InterruptionCode code) { return new PreparedLine(null, null, null, null, code); }
+    record PreparedLine(String line, String action, String note, SynthesizedAudio audio, InterruptionCode failure,
+            Integer claimedRefundYuan, List<FundAction> fundActions) {
+        static PreparedLine failed(InterruptionCode code) { return new PreparedLine(null, null, null, null, code, null, List.of()); }
     }
 
     record PreparedAnalysis(ValidatedJudgement judgement, InterruptionCode failure) {}
@@ -95,6 +96,7 @@ public class SimulationOrchestrator implements SimulationSignals {
         final long id;
         volatile boolean alive = true;
         AgentScene scene;
+        boolean fundsV2;
         String scammerVoice, victimVoice;
         final Map<Integer, CompletableFuture<PreparedLine>> scammer = new ConcurrentHashMap<>();
         final Map<Integer, CompletableFuture<PreparedLine>> victim = new ConcurrentHashMap<>();
@@ -226,8 +228,27 @@ public class SimulationOrchestrator implements SimulationSignals {
     /** Saves a prepared line, writes its temp audio and marks it PRESENTING; handles failures per category. */
     private boolean savePresent(Live live, int n, SpeakerRole role, PreparedLine prepared) {
         if (prepared.line() == null) { transitions.interrupt(live.id, prepared.failure()); return false; }
-        Long messageId = transitions.saveMessage(live.id, n, role, prepared.line(), prepared.action(), prepared.note());
+        Long messageId;
+        try {
+            messageId = transitions.saveMessage(live.id, n, role, prepared.line(), prepared.action(), prepared.note(),
+                    prepared.claimedRefundYuan(), prepared.fundActions());
+        } catch (AgentCallException e) {
+            var agentRole = role == SpeakerRole.SCAMMER ? AgentRole.SCAMMER : AgentRole.VICTIM;
+            if (live.attempts.get(agentRole + ":" + n).get() > MAX_REGENERATIONS) {
+                transitions.interrupt(live.id, InterruptionCode.DIALOGUE_FAILED);
+            } else {
+                if (role == SpeakerRole.SCAMMER) live.scammer.remove(n);
+                else {
+                    live.victim.remove(n);
+                    var oldAnalysis = live.analysis.remove(n);
+                    if (oldAnalysis != null) oldAnalysis.complete(new PreparedAnalysis(null, InterruptionCode.DIALOGUE_FAILED));
+                }
+                changed(live.id);
+            }
+            return false;
+        }
         if (messageId == null) return false;
+        if (role == SpeakerRole.VICTIM && live.fundsV2) prepareFinalAnalysis(live, n);
         return present(live, messageId, prepared);
     }
 
@@ -257,12 +278,12 @@ public class SimulationOrchestrator implements SimulationSignals {
         var future = CompletableFuture.supplyAsync(() -> {
             ScammerTurn turn;
             try {
-                turn = retry(live, () -> runner.scammer(live.scene, history, n, remaining(live), live.nextAttempt(AgentRole.SCAMMER, n)));
+                turn = retry(live, () -> runner.scammer(live.scene, history, n, remaining(live), live.nextAttempt(AgentRole.SCAMMER, n), transitions.fundsContext(live.id)));
             } catch (AgentCallException e) {
                 return PreparedLine.failed(InterruptionCode.DIALOGUE_FAILED);
             }
             return new PreparedLine(turn.line(), turn.action(), turn.intent(),
-                    synthesize(live, live.scammerVoice, turn.tone(), turn.line()), null);
+                    synthesize(live, live.scammerVoice, turn.tone(), turn.line()), null, turn.claimedRefundYuan(), turn.fundActions());
         }, io);
         live.scammer.put(n, future);
         future.whenComplete((r, e) -> changed(live.id));
@@ -318,7 +339,7 @@ public class SimulationOrchestrator implements SimulationSignals {
             VictimTurn candidate;
             try {
                 candidate = retry(live, () -> runner.victim(live.scene, history, scammerLine, n, remaining(live), regenerate,
-                        live.nextAttempt(AgentRole.VICTIM, n)));
+                        live.nextAttempt(AgentRole.VICTIM, n), transitions.fundsContext(live.id)));
             } catch (AgentCallException e) {
                 victimFuture.complete(PreparedLine.failed(InterruptionCode.DIALOGUE_FAILED));
                 analysisFuture.complete(new PreparedAnalysis(null, InterruptionCode.DIALOGUE_FAILED));
@@ -328,7 +349,7 @@ public class SimulationOrchestrator implements SimulationSignals {
             // Rounds 1-4: judge the candidate first; a decisive outcome means discard and regenerate (BR-P12).
             List<DialogueLine> lines = withVictim(history, scammerLine, n, candidate);
             try {
-                judged = retry(live, () -> runner.narrator(live.scene, lines, n, prior, remaining(live), live.nextAttempt(AgentRole.NARRATOR, n)));
+                judged = retry(live, () -> runner.narrator(live.scene, lines, n, prior, remaining(live), live.nextAttempt(AgentRole.NARRATOR, n), transitions.fundsContext(live.id), claimed(live, n), true));
             } catch (AgentCallException e) {
                 victimFuture.complete(PreparedLine.failed(InterruptionCode.ANALYSIS_FAILED));
                 analysisFuture.complete(new PreparedAnalysis(null, InterruptionCode.ANALYSIS_FAILED));
@@ -348,13 +369,15 @@ public class SimulationOrchestrator implements SimulationSignals {
             return;
         }
         VictimTurn victim = accepted;
-        if (judged != null) {
+        if (live.fundsV2) {
+            // Final narration starts only after the victim message and its ledger entries commit.
+        } else if (judged != null) {
             analysisFuture.complete(new PreparedAnalysis(judged, null));
         } else {
             List<DialogueLine> lines = withVictim(history, scammerLine, n, victim);
             io.execute(() -> {
                 try {
-                    var j = retry(live, () -> runner.narrator(live.scene, lines, n, prior, remaining(live), live.nextAttempt(AgentRole.NARRATOR, n)));
+                    var j = retry(live, () -> runner.narrator(live.scene, lines, n, prior, remaining(live), live.nextAttempt(AgentRole.NARRATOR, n), transitions.fundsContext(live.id), claimed(live, n), true));
                     analysisFuture.complete(new PreparedAnalysis(j, null));
                 } catch (RuntimeException e) {
                     analysisFuture.complete(new PreparedAnalysis(null, InterruptionCode.ANALYSIS_FAILED));
@@ -362,7 +385,25 @@ public class SimulationOrchestrator implements SimulationSignals {
             });
         }
         victimFuture.complete(new PreparedLine(victim.line(), victim.action(), victim.psychology(),
-                synthesize(live, live.victimVoice, victim.tone(), victim.line()), null));
+                synthesize(live, live.victimVoice, victim.tone(), victim.line()), null, null, victim.fundActions()));
+    }
+
+    private Integer claimed(Live live, int n) {
+        var future = live.scammer.get(n);
+        return future != null && future.isDone() ? future.join().claimedRefundYuan() : null;
+    }
+
+    private void prepareFinalAnalysis(Live live, int n) {
+        var future = live.analysis.get(n);
+        io.execute(() -> {
+            try {
+                var judgement = retry(live, () -> runner.narrator(live.scene, dbLines(live.id), n, priorFacts(live.id, n),
+                        remaining(live), live.nextAttempt(AgentRole.NARRATOR, n), transitions.fundsContext(live.id), claimed(live, n), false));
+                future.complete(new PreparedAnalysis(judgement, null));
+            } catch (RuntimeException e) {
+                future.complete(new PreparedAnalysis(null, InterruptionCode.ANALYSIS_FAILED));
+            }
+        });
     }
 
     private static List<DialogueLine> withVictim(List<DialogueLine> history, DialogueLine scammerLine, int n, VictimTurn v) {
@@ -416,7 +457,8 @@ public class SimulationOrchestrator implements SimulationSignals {
                 scenario.path("description").asText(), snapshots.scammerText(session.getScammerSnapshot()),
                 snapshots.victimText(session.getVictimSnapshot()), scammer.path("name").asText(),
                 templates.get(session.getScammerPromptId()), templates.get(session.getVictimPromptId()),
-                templates.get(session.getNarratorPromptId()));
+                templates.get(session.getNarratorPromptId()), snapshots.victimPublicText(session.getVictimSnapshot()));
+        live.fundsV2 = "funds-v2".equals(snapshots.read(session.getRuntimeSnapshot()).path("fund_ruleset_version").asText());
         var media = snapshots.read(session.getRuntimeSnapshot()).path("media_config");
         live.scammerVoice = media.path("scammer_voice").asText();
         live.victimVoice = media.path("victim_voice").asText();

@@ -46,6 +46,7 @@ public class HistoryService {
         return assembler.page(items, more ? cursors.encode(account, last.getStartedAt(), last.getId()) : null, more);
     }
 
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public HistoryDetail detail(long userId, String id) {
         var session = sessions.findById(PageQuery.id(id)).filter(s -> s.getUserId() == userId)
                 .orElseThrow(ApiException::notFound);

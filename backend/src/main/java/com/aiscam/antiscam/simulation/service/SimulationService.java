@@ -79,12 +79,12 @@ public class SimulationService {
         }
     }
 
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public State state(long userId, String id) {
         return assembler.assemble(owned(userId, id));
     }
 
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public SessionStateData sessionState(long userId, long sessionId) {
         return assembler.sessionState(owned(userId, Long.toString(sessionId)));
     }

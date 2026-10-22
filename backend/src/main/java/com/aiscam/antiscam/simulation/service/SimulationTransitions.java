@@ -1,6 +1,10 @@
 package com.aiscam.antiscam.simulation.service;
 
 import com.aiscam.antiscam.agent.AgentModels.ValidatedJudgement;
+import com.aiscam.antiscam.agent.AgentModels.DialogueLine;
+import com.aiscam.antiscam.agent.AgentOutputValidator;
+import com.aiscam.antiscam.simulation.rules.FundRules;
+import java.util.List;
 import com.aiscam.antiscam.auth.domain.UserRepository;
 import com.aiscam.antiscam.common.error.ApiException;
 import com.aiscam.antiscam.config.SimulationProperties;
@@ -47,6 +51,7 @@ public class SimulationTransitions {
     private final SimulationRoundRepository rounds;
     private final SimulationMessageRepository messages;
     private final AgentPromptRepository prompts;
+    private final FundFlowRepository funds;
     private final UserRepository users;
     private final FraudScenarioRepository scenarios;
     private final ScammerProfileRepository scammers;
@@ -67,7 +72,8 @@ public class SimulationTransitions {
             FraudScenarioRepository scenarios, ScammerProfileRepository scammers, VictimProfileRepository victims,
             AvatarStore avatars, ConfigurationSnapshots snapshots, SimulationStateAssembler assembler,
             SimulationEventHub hub, TimingCalibrator calibrator, VoiceMapper voices, SimulationProperties properties,
-            ObjectProvider<SimulationSignals> signals, EntityManager em, Clock clock) {
+            ObjectProvider<SimulationSignals> signals, EntityManager em, Clock clock, FundFlowRepository funds) {
+        this.funds = funds;
         this.sessions = sessions;
         this.rounds = rounds;
         this.messages = messages;
@@ -138,7 +144,7 @@ public class SimulationTransitions {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("schema_version", 2);
         m.put("v12_preview", true);
-        m.put("fund_ruleset_version", "funds-v1");
+        m.put("fund_ruleset_version", "funds-v2");
         m.put("report_content_schema_version", 1);
         m.put("app_build", "0.1.0-phase4");
         m.put("ruleset_version", "PRD-V3.2");
@@ -173,7 +179,7 @@ public class SimulationTransitions {
         Instant now = now();
         if (DeadlineCalculator.isExpired(s, now)) { convergeDeadline(s, now); return result(IGNORED_TERMINAL, s); }
         if (!completed) { interruptLocked(s, InterruptionCode.MEDIA_FAILED, now); return result(APPLIED, s); }
-        var round = rounds.saveAndFlush(new SimulationRound(s.getId(), 1, now, s.getAvailableBalanceYuan()));
+        var round = rounds.saveAndFlush(new SimulationRound(s.getId(), 1, now, s.getFundsSummary()));
         s.enterRound(1);
         if (!s.isPaused()) {
             hub.publishAfterCommit(new SimulationEvent("round.started", s.getId(), s.getStateVersion(), assembler.roundStarted(s, round)));
@@ -253,7 +259,7 @@ public class SimulationTransitions {
         if (!runnable(s, now) || s.getCurrentRoundNo() != roundNo || roundNo >= OutcomeRules.MAX_ROUNDS) return false;
         var round = rounds.findBySessionIdAndRoundNo(sessionId, roundNo).orElseThrow();
         if (round.getPhase() != RoundPhase.COMPLETE || round.getReadingUntil() == null || round.getReadingUntil().isAfter(now)) return false;
-        var next = rounds.saveAndFlush(new SimulationRound(sessionId, roundNo + 1, now, s.getAvailableBalanceYuan()));
+        var next = rounds.saveAndFlush(new SimulationRound(sessionId, roundNo + 1, now, s.getFundsSummary()));
         s.enterRound(roundNo + 1);
         hub.publishAfterCommit(new SimulationEvent("round.started", sessionId, s.getStateVersion(), assembler.roundStarted(s, next)));
         afterCommitChanged(sessionId);
@@ -261,17 +267,44 @@ public class SimulationTransitions {
     }
 
     /** Saves a validated role line as PENDING (audio not ready yet). Returns the message id, or null if stale. */
-    public Long saveMessage(long sessionId, int roundNo, SpeakerRole role, String content, String action, String internalNote) {
+    public Long saveMessage(long sessionId, int roundNo, SpeakerRole role, String content, String action, String internalNote, Integer claimedRefundYuan, List<FundAction> fundActions) {
         var s = sessions.lockById(sessionId).orElse(null);
         Instant now = now();
         if (!runnable(s, now) || s.getCurrentRoundNo() != roundNo) return null;
         var round = rounds.findBySessionIdAndRoundNo(sessionId, roundNo).orElseThrow();
         RoundPhase expected = role == SpeakerRole.SCAMMER ? RoundPhase.SCAMMER_GENERATING : RoundPhase.VICTIM_GENERATING;
         if (round.getPhase() != expected || messages.findByRoundIdAndSpeakerRole(round.getId(), role).isPresent()) return null;
+        var context = fundsContext(s);
+        var priorLines = rounds.findBySessionIdOrderByRoundNoAsc(sessionId).stream().filter(r -> r.getRoundNo() < roundNo)
+                .flatMap(r -> messages.findByRoundId(r.getId()).stream().map(m -> new DialogueLine(r.getRoundNo(),
+                        m.getSpeakerRole(), m.getContent(), m.getActionText(), null))).toList();
+        AgentOutputValidator.funds(role, content, action, claimedRefundYuan, fundActions, roundNo, context, priorLines);
         var message = messages.saveAndFlush(new SimulationMessage(round.getId(), role, content, action, internalNote, now));
+        if (context != null) {
+            var existing = context.existingFlows();
+            int nextSequence = existing.isEmpty() ? 1 : existing.getLast().getSequenceNo() + 1;
+            var application = FundRules.apply(s.getFundsSummary(), context.scenarioCode(), context.reservedFundsTotalYuan(),
+                    roundNo, nextSequence, fundActions, existing);
+            for (var posting : application.postings()) funds.save(new com.aiscam.antiscam.simulation.domain.FundFlow(sessionId, round.getId(), message.getId(), posting, now));
+            s.applyFunds(application.after());
+            round.applyFunds(application);
+        }
         round.setPhase(role == SpeakerRole.SCAMMER ? RoundPhase.SCAMMER_PRESENTING : RoundPhase.VICTIM_PRESENTING);
         s.bumpVersion();
         return message.getId();
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public FundsContext fundsContext(long sessionId) {
+        return fundsContext(sessions.findById(sessionId).orElseThrow());
+    }
+
+    private FundsContext fundsContext(SimulationSession s) {
+        if (!"funds-v2".equals(snapshots.read(s.getRuntimeSnapshot()).path("fund_ruleset_version").asText())) return null;
+        return new FundsContext(ScenarioCode.valueOf(snapshots.read(s.getScenarioSnapshot()).path("scenario_code").asText()),
+                s.getAvailableBalanceYuan(), snapshots.read(s.getVictimSnapshot()).path("reserved_funds_yuan").asInt(),
+                s.getReserveReleasedYuan(), s.getTotalPaidYuan(), s.getTotalRefundedYuan(),
+                funds.findBySessionIdOrderBySequenceNoAsc(s.getId()));
     }
 
     /** Temp audio is written: PENDING → PRESENTING, then publish {@code message.saved}. */

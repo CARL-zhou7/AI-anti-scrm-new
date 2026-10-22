@@ -4,7 +4,8 @@ import com.aiscam.antiscam.agent.AgentCallException.Category;
 import com.aiscam.antiscam.agent.AgentModels.*;
 import com.aiscam.antiscam.content.domain.ScenarioCode;
 import com.aiscam.antiscam.simulation.domain.OutcomeCode;
-import com.aiscam.antiscam.simulation.domain.SpeakerRole;
+import com.aiscam.antiscam.simulation.domain.*;
+import com.aiscam.antiscam.simulation.rules.FundRules;
 import com.aiscam.antiscam.simulation.rules.FactCode;
 import com.aiscam.antiscam.simulation.rules.OutcomeRules;
 import com.aiscam.antiscam.simulation.rules.ScenarioGoalRules;
@@ -55,11 +56,50 @@ public final class AgentOutputValidator {
     }
 
     public static ScammerTurn validate(ScammerTurn turn) {
-        return new ScammerTurn(line(turn.line()), action(turn.action()), required(turn.intent(), Category.DIALOGUE), turn.tone());
+        return new ScammerTurn(line(turn.line()), action(turn.action()), required(turn.intent(), Category.DIALOGUE), turn.tone(), turn.claimedRefundYuan(), turn.fundActions());
     }
 
     public static VictimTurn validate(VictimTurn turn) {
-        return new VictimTurn(line(turn.line()), action(turn.action()), required(turn.psychology(), Category.DIALOGUE), turn.tone());
+        return new VictimTurn(line(turn.line()), action(turn.action()), required(turn.psychology(), Category.DIALOGUE), turn.tone(), turn.fundActions());
+    }
+
+    public static void funds(SpeakerRole role, String line, String action, Integer claimed, List<FundAction> actions,
+            int roundNo, FundsContext context, List<DialogueLine> history) {
+        if (context == null) {
+            if (claimed != null || !actions.isEmpty()) throw fail(Category.DIALOGUE, "legacy session cannot post funds");
+            return;
+        }
+        if (role == SpeakerRole.VICTIM && claimed != null) throw fail(Category.DIALOGUE, "victim cannot claim refunds");
+        if (claimed != null && claimed < 0) throw fail(Category.DIALOGUE, "negative refund claim");
+        if (role == SpeakerRole.SCAMMER && context.scenarioCode() == ScenarioCode.IMPERSONATION_LOAN
+                && (claimed != null || !actions.isEmpty())) throw fail(Category.DIALOGUE, "loan cannot refund or claim structured refund");
+        long refund = 0;
+        for (var a : actions) {
+            if (a.speaker() != role || a.roundNo() != roundNo || a.quote() == null || a.quote().isBlank()
+                    || !(line.contains(a.quote()) || (action != null && action.contains(a.quote())))) {
+                throw fail(Category.DIALOGUE, "fund quote must belong to current speaker message");
+            }
+            if ((role == SpeakerRole.SCAMMER) != (a.type() == FundFlowType.REFUND)) throw fail(Category.DIALOGUE, "wrong fund action role");
+            // shortcut: lexical execution checks cannot resolve every paraphrase; extend with real-model regression cases when observed.
+            var amount = Pattern.compile("(?<![0-9.])" + a.amountYuan() + "(?![0-9.])");
+            boolean executed = java.util.Arrays.stream(a.quote().split("[，。；,;！!？?]"))
+                    .anyMatch(clause -> amount.matcher(clause).find()
+                            && clause.matches(".*(转|付|返|到账|释放|动用).*" )
+                            && !clause.matches(".*(之前|上轮|上次|昨天|曾经|先前|未|没|准备|打算|将|稍后|以后|承诺|如果|等会|不会|不要|会[给返转退付]|要[给返转退付]).*"));
+            if (!executed || a.quote().matches(".*(之前|上轮|上次|昨天|曾经|先前).*")
+                    || history.stream().anyMatch(l -> l.roundNo() < roundNo && l.speaker() == role
+                    && (l.content().contains(a.quote()) || (l.action() != null && l.action().contains(a.quote()))))) {
+                throw fail(Category.DIALOGUE, "fund quote is not a new executed action");
+            }
+            if (a.type() == FundFlowType.REFUND) refund += a.amountYuan();
+        }
+        if (refund > 0 && (claimed == null || refund > claimed)) throw fail(Category.DIALOGUE, "actual refund exceeds claim");
+        try {
+            FundRules.apply(new FundsSummary(0, context.availableBalanceYuan(), context.totalPaidYuan(),
+                    context.totalRefundedYuan(), FundRules.actualLoss(context.totalPaidYuan(), context.totalRefundedYuan()),
+                    0, context.reserveReleasedYuan()), context.scenarioCode(), context.reservedFundsTotalYuan(), roundNo,
+                    context.existingFlows().size() + 1, actions, context.existingFlows());
+        } catch (IllegalArgumentException e) { throw fail(Category.DIALOGUE, e.getMessage()); }
     }
 
     /**

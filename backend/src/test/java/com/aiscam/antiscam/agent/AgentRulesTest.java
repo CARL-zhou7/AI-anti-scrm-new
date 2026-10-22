@@ -7,6 +7,9 @@ import com.aiscam.antiscam.content.domain.ScenarioCode;
 import com.aiscam.antiscam.media.SentenceSegmenter;
 import com.aiscam.antiscam.media.SilentTtsClient;
 import com.aiscam.antiscam.simulation.domain.SpeakerRole;
+import com.aiscam.antiscam.simulation.domain.*;
+import org.springframework.test.util.ReflectionTestUtils;
+import java.time.Instant;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
@@ -22,7 +25,7 @@ class AgentRulesTest {
 
     private static AgentScene scene() {
         return new AgentScene(ScenarioCode.TASK_REBATE, "刷单返利诈骗", "简介", "骗子画像", "受害者画像", "x",
-                read("scammer"), read("victim"), read("narrator"));
+                read("scammer"), read("victim"), read("narrator"), "公开经历");
     }
 
     private static String read(String name) {
@@ -34,6 +37,52 @@ class AgentRulesTest {
     private final List<DialogueLine> lines = List.of(
             new DialogueLine(5, SpeakerRole.SCAMMER, "快转账吧", null, "SCAMMER-INTENT-XYZ"),
             new DialogueLine(5, SpeakerRole.VICTIM, "我不会再理你了", "已经拉黑了对方", "VICTIM-MIND-XYZ"));
+
+    @Test
+    void victimFundsParsingKeepsLegacyAndRejectsMalformedAmounts() {
+        String old = "{\"line\":\"已转100元\",\"action\":null,\"psychology\":\"试试看\",\"tone\":{\"speed\":\"NORMAL\",\"style\":\"\"}}";
+        assertTrue(AgentOutputParser.victim(old).fundActions().isEmpty());
+        String action = "{\"type\":\"PAYMENT\",\"purpose\":\"INITIAL_PAYMENT\",\"amountYuan\":100,\"roundNo\":1,\"speaker\":\"VICTIM\",\"quote\":\"已转100元\",\"eventOrder\":1,\"reason\":null,\"relatedPaymentId\":null}";
+        String current = old.substring(0, old.length() - 1) + ",\"fundActions\":[" + action + "]}";
+        var turn = AgentOutputValidator.validate(AgentOutputParser.victim(current));
+        assertEquals(1, turn.fundActions().size());
+        assertEquals(100, turn.fundActions().getFirst().amountYuan());
+        for (String amount : List.of("1.5", "2147483648", "\"100\"", "null")) {
+            assertThrows(AgentCallException.class, () -> AgentOutputParser.victim(current.replace("\"amountYuan\":100", "\"amountYuan\":" + amount)));
+        }
+        assertThrows(AgentCallException.class, () -> AgentOutputParser.victim(current.replace("INITIAL_PAYMENT", "UNKNOWN")));
+        assertThrows(AgentCallException.class, () -> AgentOutputParser.victim(current + "{}"));
+        assertThrows(AgentCallException.class, () -> AgentOutputParser.victim(current.replace("\"amountYuan\":100", "\"amountYuan\":100,\"amountYuan\":200")));
+    }
+
+    @Test
+    void refundClaimsQuotesRolesAndContextBoundariesAreValidated() {
+        var payment = new FundFlow(1, 1, 1L, new FundPosting(FundFlowType.PAYMENT, FundPurpose.INITIAL_PAYMENT, 100, 1, 900, null, null), Instant.EPOCH);
+        ReflectionTestUtils.setField(payment, "id", 772L);
+        var funds = new FundsContext(ScenarioCode.TASK_REBATE, 900, 400, 0, 100, 0, List.of(payment));
+        String quote = "先返你50元，剩下的稍后到账";
+        var refund = new FundAction(FundFlowType.REFUND, FundPurpose.REFUND, 50, 3, SpeakerRole.SCAMMER, quote, 1, null, 772L);
+        assertDoesNotThrow(() -> AgentOutputValidator.funds(SpeakerRole.SCAMMER, quote, null, 500, List.of(refund), 3, funds, List.of()));
+        for (Integer claim : java.util.Arrays.asList(null, 49)) assertThrows(AgentCallException.class,
+                () -> AgentOutputValidator.funds(SpeakerRole.SCAMMER, quote, null, claim, List.of(refund), 3, funds, List.of()));
+        assertDoesNotThrow(() -> AgentOutputValidator.funds(SpeakerRole.SCAMMER, "会返你500元", null, 500, List.of(), 3, funds, List.of()));
+        assertThrows(AgentCallException.class, () -> AgentOutputValidator.funds(SpeakerRole.VICTIM, quote, null, null, List.of(refund), 3, funds, List.of()));
+        assertThrows(AgentCallException.class, () -> AgentOutputValidator.funds(SpeakerRole.SCAMMER, "已经返了款", null, 500, List.of(refund), 3, funds, List.of()));
+        for (String promise : List.of("我会返你50元", "尚未转账50元", "以后返50元")) {
+            var unexecuted = new FundAction(FundFlowType.REFUND, FundPurpose.REFUND, 50, 3, SpeakerRole.SCAMMER, promise, 1, null, 772L);
+            assertThrows(AgentCallException.class, () -> AgentOutputValidator.funds(SpeakerRole.SCAMMER, promise, null, 500, List.of(unexecuted), 3, funds, List.of()));
+        }
+        var loan = new FundsContext(ScenarioCode.IMPERSONATION_LOAN, 900, 400, 0, 100, 0, List.of(payment));
+        assertThrows(AgentCallException.class, () -> AgentOutputValidator.funds(SpeakerRole.SCAMMER, quote, null, 500, List.of(), 3, loan, List.of()));
+        for (String old : List.of("之前转了100元", "准备转账100元")) {
+            var a = new FundAction(FundFlowType.PAYMENT, FundPurpose.OTHER_PAYMENT, 100, 3, SpeakerRole.VICTIM, old, 1, null, null);
+            assertThrows(AgentCallException.class, () -> AgentOutputValidator.funds(SpeakerRole.VICTIM, old, null, null, List.of(a), 3, funds, List.of()));
+        }
+        String scammer = AgentContextAssembler.scammerFunds(funds), victim = AgentContextAssembler.victimFunds(funds);
+        assertFalse(scammer.contains("900")); assertFalse(scammer.contains("400")); assertFalse(scammer.contains("亏损"));
+        assertFalse(victim.contains("772")); assertFalse(victim.contains("追加")); assertFalse(victim.contains("亏损"));
+        assertTrue(scammer.contains("772")); assertTrue(victim.contains("900"));
+    }
 
     @Test
     void riskScore10IsRejectedNotRounded() {

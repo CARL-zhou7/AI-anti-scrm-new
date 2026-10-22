@@ -1,0 +1,6 @@
+package com.aiscam.antiscam.simulation.domain;
+
+public enum FundPurpose {
+    INITIAL_PAYMENT, ADDITIONAL_PAYMENT, INVESTMENT_PAYMENT, EXTRA_FEE_PAYMENT,
+    LOAN_TRANSFER, OTHER_PAYMENT, REFUND, RESERVE_RELEASE
+}
