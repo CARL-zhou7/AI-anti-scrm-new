@@ -2,7 +2,6 @@ package com.aiscam.antiscam.history.service;
 
 import static com.aiscam.antiscam.common.time.UtcTime.format;
 import static com.aiscam.antiscam.simulation.service.SimulationStateAssembler.interruption;
-import static com.aiscam.antiscam.simulation.service.SimulationStateAssembler.outcome;
 
 import com.aiscam.antiscam.common.error.ApiException;
 import com.aiscam.antiscam.history.web.dto.HistoryViews.*;
@@ -44,7 +43,7 @@ public class HistoryAssembler {
         if (finished && row == null) log.warn("History report missing: sessionId={}", s.getId());
         return new HistoryItem(s.getId().toString(), format(s.getStartedAt()), names.scenario(), names.scammer(),
                 names.victim(), s.getStatus().name(), finished && row != null ? ReportViewMapper.summary(row) : null,
-                outcome(s), interruption(s));
+                state.outcome(s), interruption(s));
     }
 
     public HistoryPage page(List<HistoryItem> items, String nextCursor, boolean hasMore) {
@@ -89,7 +88,7 @@ public class HistoryAssembler {
         return new HistoryDetail(s.getId().toString(), s.getStatus().name(), format(s.getStartedAt()),
                 format(s.getDeadlineAt()), format(s.getEndedAt()),
                 snapshots.toConfigurationView(s.getScenarioSnapshot(), s.getScammerSnapshot(), s.getVictimSnapshot()),
-                historyRounds, outcome(s), interruption(s), report,
+                historyRounds, state.outcome(s), interruption(s), report,
                 snapshots.read(s.getRuntimeSnapshot()).path("ruleset_version").asText("PRD-V3.2"),
                 historyFunds(s, savedRounds));
     }

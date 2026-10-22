@@ -140,7 +140,7 @@ export interface LiveRound {
   roundNo: number; phase: RoundPhase; interactionComplete: boolean; presentationComplete: boolean
   messages: LiveMessage[]; analysis: Analysis | null; readingUntil: string | null
 }
-export interface Outcome { code: 'GOAL_ACHIEVED' | 'LOSS_STOPPED' | 'NOT_DEFRAUDED' | 'UNDETERMINED'; displayText: string; reason: string; limitReason: 'ROUND_LIMIT' | 'TIME_LIMIT' | 'BOTH' | null }
+export interface Outcome { code: 'DEFRAUDED' | 'IDENTIFIED' | 'LIMIT_REACHED' | 'GOAL_ACHIEVED' | 'LOSS_STOPPED' | 'NOT_DEFRAUDED' | 'UNDETERMINED'; displayText: string; reason: string; limitReason: 'ROUND_LIMIT' | 'TIME_LIMIT' | 'BOTH' | null; goalAchieved?: boolean | null; stoppedAfterFraud?: boolean | null; actualLossYuan?: number | null }
 export interface Interruption { code: string; message: string }
 export interface ReportError { code: 'GENERATION_FAILED' | 'VALIDATION_FAILED' | 'PERSISTENCE_FAILED' | 'TIMEOUT' | 'SERVICE_RESTARTED'; message: string }
 export interface ReportSummary { status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'; displayText: string; canRetry: boolean; attemptNo: number; updatedAt: string; error: ReportError | null }

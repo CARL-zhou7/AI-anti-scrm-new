@@ -59,7 +59,7 @@ public final class AgentContextAssembler {
         Map<String, String> v = new LinkedHashMap<>();
         v.put("scenario_name", scene.scenarioName());
         v.put("scenario_code", scene.scenarioCode().name());
-        v.put("scenario_goal", ScenarioGoalRules.description(scene.scenarioCode()));
+        v.put("scenario_goal", ScenarioGoalRules.description(scene.scenarioCode(), scene.v12()));
         v.put("scammer_profile", scene.scammerProfile());
         v.put("victim_profile", scene.victimProfile());
         v.put("dialogue_history", fullHistory(lines.stream().filter(l -> l.roundNo() < roundNo).toList()));

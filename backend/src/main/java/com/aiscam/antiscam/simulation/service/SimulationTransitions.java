@@ -143,11 +143,11 @@ public class SimulationTransitions {
         var llm = properties.getLlm();
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("schema_version", 2);
-        m.put("v12_preview", true);
+        m.put("v12_preview", false);
         m.put("fund_ruleset_version", "funds-v2");
         m.put("report_content_schema_version", 1);
-        m.put("app_build", "0.1.0-phase4");
-        m.put("ruleset_version", "PRD-V3.2");
+        m.put("app_build", "0.1.0-v1.2-phase4");
+        m.put("ruleset_version", "PRD-V3.3");
         m.put("model_config", Map.of("provider", llm.getProvider(), "model", llm.getModel(),
                 "temperature", Map.of("scammer", llm.getScammerTemperature(), "victim", llm.getVictimTemperature(),
                         "narrator", llm.getNarratorTemperature(), "report", llm.getReportTemperature()),
@@ -239,7 +239,7 @@ public class SimulationTransitions {
         Instant readingUntil = min(now.plusMillis(READING_MS), DeadlineCalculator.effectiveDeadline(s, now));
         round.completePresentation(now, readingUntil);
         s.bumpVersion();
-        var decision = OutcomeRules.decide(roundNo, round.getCandidateOutcome(), round.getCandidateReason(), false);
+        var decision = decide(s, round, false);
         if (decision != null) {
             finishLocked(s, round, decision, now);
         } else {
@@ -278,7 +278,7 @@ public class SimulationTransitions {
         var priorLines = rounds.findBySessionIdOrderByRoundNoAsc(sessionId).stream().filter(r -> r.getRoundNo() < roundNo)
                 .flatMap(r -> messages.findByRoundId(r.getId()).stream().map(m -> new DialogueLine(r.getRoundNo(),
                         m.getSpeakerRole(), m.getContent(), m.getActionText(), null))).toList();
-        AgentOutputValidator.funds(role, content, action, claimedRefundYuan, fundActions, roundNo, context, priorLines);
+        AgentOutputValidator.funds(role, content, action, claimedRefundYuan, fundActions, roundNo, context, priorLines, isV12(s));
         var message = messages.saveAndFlush(new SimulationMessage(round.getId(), role, content, action, internalNote, now));
         if (context != null) {
             var existing = context.existingFlows();
@@ -407,11 +407,21 @@ public class SimulationTransitions {
 
     // ------------------------------------------------------------------ internals
 
+    private boolean isV12(SimulationSession s) {
+        return "PRD-V3.3".equals(snapshots.read(s.getRuntimeSnapshot()).path("ruleset_version").asText());
+    }
+
+    private OutcomeRules.Decision decide(SimulationSession s, SimulationRound round, boolean expired) {
+        return isV12(s) ? OutcomeRules.decide(round.getRoundNo(), round.getCandidateOutcome(), round.getCandidateReason(),
+                expired, round.isActualFraudOccurred())
+                : OutcomeRules.decide(round.getRoundNo(), round.getCandidateOutcome(), round.getCandidateReason(), expired);
+    }
+
     private void convergeDeadline(SimulationSession s, Instant now) {
         var round = s.getCurrentRoundNo() == 0 ? null
                 : rounds.findBySessionIdAndRoundNo(s.getId(), s.getCurrentRoundNo()).orElse(null);
         if (round != null && round.getPhase() == RoundPhase.COMPLETE) {
-            finishLocked(s, round, OutcomeRules.decide(round.getRoundNo(), round.getCandidateOutcome(), round.getCandidateReason(), true), now);
+            finishLocked(s, round, decide(s, round, true), now);
         } else {
             interruptLocked(s, InterruptionCode.TIME_LIMIT, now);
         }

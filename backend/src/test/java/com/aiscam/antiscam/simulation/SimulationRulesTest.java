@@ -51,10 +51,10 @@ class SimulationRulesTest {
 
     @Test
     void outcomePriorityAndLimits() {
-        assertEquals(OutcomeCode.GOAL_ACHIEVED, OutcomeRules.expected(true, true, true));
-        assertEquals(OutcomeCode.LOSS_STOPPED, OutcomeRules.expected(false, true, true));
-        assertEquals(OutcomeCode.NOT_DEFRAUDED, OutcomeRules.expected(false, false, true));
-        assertNull(OutcomeRules.expected(false, true, false));
+        assertEquals(OutcomeCode.GOAL_ACHIEVED, OutcomeRules.expectedLegacy(true, true, true));
+        assertEquals(OutcomeCode.LOSS_STOPPED, OutcomeRules.expectedLegacy(false, true, true));
+        assertEquals(OutcomeCode.NOT_DEFRAUDED, OutcomeRules.expectedLegacy(false, false, true));
+        assertNull(OutcomeRules.expectedLegacy(false, true, false));
         assertEquals(LimitReason.ROUND_LIMIT, OutcomeRules.decide(20, null, null, false).limitReason());
         assertEquals(LimitReason.TIME_LIMIT, OutcomeRules.decide(4, null, null, true).limitReason());
         assertNull(OutcomeRules.decide(7, null, null, false));

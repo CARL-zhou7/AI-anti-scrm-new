@@ -28,6 +28,20 @@ public final class ScenarioGoalRules {
         };
     }
 
+    public static boolean goalAchieved(ScenarioCode scenario, List<Fact> facts,
+            com.aiscam.antiscam.simulation.domain.FundsSummary funds) {
+        if (!goalAchieved(scenario, facts) || funds.totalPaidYuan() == 0) return false;
+        if (scenario == ScenarioCode.FAKE_INVESTMENT && funds.additionalPaymentCount() < 1) return false;
+        return scenario != ScenarioCode.TASK_REBATE || (funds.additionalPaymentCount() >= 1
+                && (funds.additionalPaymentCount() >= 3 || funds.actualLossYuan() >= 1000));
+    }
+
+    public static String description(ScenarioCode scenario, boolean v12) {
+        return v12 && scenario == ScenarioCode.TASK_REBATE
+                ? "首笔垫付后至少追加1次，且追加累计3次或累计净亏损达到1000元；已形成结果不回退"
+                : description(scenario);
+    }
+
     /** Goal description given to the narrator prompt; deliberately never shown to the victim role. */
     public static String description(ScenarioCode scenario) {
         return switch (scenario) {

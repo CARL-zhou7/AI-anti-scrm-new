@@ -90,7 +90,7 @@ onUnmounted(() => { version++; clearTimeout(timer) })
         <p v-if="view.report">复盘报告：<strong data-testid="report-status">{{ view.report.displayText }}</strong></p>
       </header>
       <section v-if="view.unavailableReason === 'SIMULATION_INTERRUPTED'" class="configuration-section" data-testid="report-interrupted">
-        <h2>本次演绎已中断，不生成正式复盘</h2>
+        <h2>{{ state?.interruption?.code === 'FUNDS_EXHAUSTED' || state?.interruption?.code === 'CHARACTER_EXIT' ? '本次演绎提前终止，不生成正式复盘' : '本次演绎已中断，不生成正式复盘' }}</h2>
         <p>{{ state?.interruption?.message }}</p>
       </section>
       <section v-else-if="view.unavailableReason === 'SIMULATION_RUNNING'" class="configuration-section" data-testid="report-unavailable">

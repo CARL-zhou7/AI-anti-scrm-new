@@ -1,0 +1,68 @@
+{
+  "extends": "default",
+  "rounds": {
+    "5": {
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "阻止核实",
+            "speechAnalysis": "以反问否认嫌疑，并继续催促，试图打断核实。",
+            "methodAnalysis": "阻挠独立核实、持续施压，是诈骗收网前的典型做法。",
+            "victimPsychology": "通过官方渠道得到确认，识破骗局后果断终止联系。",
+            "riskScore": 0,
+            "riskReason": "受害者完成独立核实并拉黑对方，明确停止配合。",
+            "actualFraudOccurred": false,
+            "goalAchieved": false,
+            "cooperationStopped": true,
+            "evidence": [
+              {
+                "factCode": "COOPERATION_STOPPED",
+                "speaker": "VICTIM",
+                "source": "ACTION",
+                "roundNo": 5,
+                "quote": "已经把对方拉黑",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": "IDENTIFIED",
+            "candidateReason": "受害者未实际受骗，第5轮通过官方渠道核实后拉黑对方，明确终止配合。"
+          }
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "report": [
+      {
+        "output": {
+          "summary": "骗子以机会和利益吸引受害者，并反复催促操作。受害者逐渐起疑，通过官方渠道核实后终止联系。",
+          "roundAnalyses": [
+            {
+              "roundNo": 1,
+              "analysis": "陌生人以机会开场，受害者先追问身份。"
+            },
+            {
+              "roundNo": 2,
+              "analysis": "骗子借朋友推荐建立信任，受害者要求解释具体内容。"
+            },
+            {
+              "roundNo": 3,
+              "analysis": "骗子制造稀缺感，受害者对不合理的承诺产生怀疑。"
+            },
+            {
+              "roundNo": 4,
+              "analysis": "催促操作反而引发警觉，受害者选择通过官方渠道核实。"
+            },
+            {
+              "roundNo": 5,
+              "analysis": "受害者核实骗局并拉黑对方，明确停止配合。"
+            }
+          ],
+          "speechAnalysis": "虚构熟人背书、强调机会难得并制造时间压力，试图阻止受害者独立核实。",
+          "victimBehaviorAnalysis": "受害者先追问，再质疑，最终独立核实并终止联系，没有执行危险操作。",
+          "outcomeAnalysis": "已识破：受害者核实后明确停止配合。"
+        }
+      }
+    ]
+  }
+}

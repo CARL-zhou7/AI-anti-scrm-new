@@ -1,0 +1,27 @@
+{
+  "extends": "default",
+  "rounds": {
+    "3": {
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "诱导操作",
+            "speechAnalysis": "用“简单步骤”“名额不多”降低门槛并制造稀缺。",
+            "methodAnalysis": "稀缺性与轻松获利暗示，催促尽快行动。",
+            "victimPsychology": "察觉“好得不真实”，产生怀疑并选择拖延。",
+            "riskScore": 50,
+            "riskReason": "仍在考虑是否配合，没有承诺或执行危险操作。",
+            "actualFraudOccurred": false,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [],
+            "candidateOutcome": null,
+            "candidateReason": null,
+            "characterExit": true,
+            "characterExitReason": "临时有事离开"
+          }
+        }
+      ]
+    }
+  }
+}

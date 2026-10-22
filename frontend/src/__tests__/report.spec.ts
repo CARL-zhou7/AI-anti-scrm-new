@@ -92,3 +92,15 @@ it('plots only stored points, handles a single point and displays missing scores
   expect(empty.find('[data-testid=report-risk-empty]').exists()).toBe(true)
   empty.unmount()
 })
+
+
+it('renders new and historical outcome names exactly as saved', async () => {
+  for (const [code, displayText] of [['DEFRAUDED', '已受骗'], ['IDENTIFIED', '已识破'], ['LIMIT_REACHED', '超限结束'], ['NOT_DEFRAUDED', '未受骗结束'], ['UNDETERMINED', '结局未定']] as const) {
+    const value = report()
+    value.outcome = { code, displayText, reason: '已保存依据', limitReason: null }
+    vi.spyOn(reportApi, 'view').mockResolvedValue(value)
+    const wrapper = render(); await flushPromises()
+    expect(wrapper.text()).toContain(displayText)
+    wrapper.unmount()
+  }
+})

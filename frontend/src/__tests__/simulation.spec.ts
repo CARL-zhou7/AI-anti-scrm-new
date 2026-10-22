@@ -96,3 +96,15 @@ it('muting keeps the same timeline and still completes on ended', () => {
   audios[0]!.finish()
   expect(deps.receipts.message).toHaveBeenCalledWith('11', { status: 'COMPLETED' })
 })
+
+
+it('labels early termination separately and offers no report action', async () => {
+  const { mount } = await import('@vue/test-utils')
+  const { default: TerminalNotice } = await import('../components/simulation/TerminalNotice.vue')
+  for (const code of ['FUNDS_EXHAUSTED', 'CHARACTER_EXIT', 'USER_EXIT', 'TIME_LIMIT']) {
+    const wrapper = mount(TerminalNotice, { props: { code, message: '原因' }, global: { stubs: { RouterLink: true } } })
+    expect(wrapper.get('h2').text()).toBe(['FUNDS_EXHAUSTED', 'CHARACTER_EXIT'].includes(code) ? '演绎提前终止' : '演绎已中断')
+    expect(wrapper.findAll('router-link-stub').map(link => link.attributes('to'))).toEqual(['/configuration', '/home'])
+    wrapper.unmount()
+  }
+})

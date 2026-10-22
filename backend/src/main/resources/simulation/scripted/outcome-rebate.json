@@ -1,0 +1,280 @@
+{
+  "extends": "default",
+  "delayMs": 10,
+  "rounds": {
+    "1": {
+      "victim": [
+        {
+          "output": {
+            "line": "我已经转账100元",
+            "action": null,
+            "psychology": "INTERNAL-NOTE-SECRET 对陌生人有些警惕",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "疑惑"
+            },
+            "fundActions": [
+              {
+                "type": "PAYMENT",
+                "purpose": "INITIAL_PAYMENT",
+                "amountYuan": 100,
+                "roundNo": 1,
+                "speaker": "VICTIM",
+                "quote": "我已经转账100元",
+                "eventOrder": 1,
+                "reason": null,
+                "relatedPaymentId": null
+              }
+            ]
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "接触与建立联系",
+            "speechAnalysis": "以“机会”开场，激发好奇心，同时用礼貌降低戒备。",
+            "methodAnalysis": "陌生来电或消息主动搭讪，为后续诱导铺垫。",
+            "victimPsychology": "对陌生身份保持本能警惕，先追问对方来历。",
+            "riskScore": 25,
+            "riskReason": "尚未建立信任，受害者主动追问身份，保持警惕。",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [
+              {
+                "factCode": "INITIAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 1,
+                "quote": "我已经转账100元",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "2": {
+      "victim": [
+        {
+          "output": {
+            "line": "我已经转账20元",
+            "action": null,
+            "psychology": "INTERNAL-NOTE-SECRET 有些好奇，但仍想弄清楚",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "好奇"
+            },
+            "fundActions": [
+              {
+                "type": "PAYMENT",
+                "purpose": "ADDITIONAL_PAYMENT",
+                "amountYuan": 20,
+                "roundNo": 2,
+                "speaker": "VICTIM",
+                "quote": "我已经转账20元",
+                "eventOrder": 1,
+                "reason": null,
+                "relatedPaymentId": null
+              }
+            ]
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "建立信任",
+            "speechAnalysis": "借“朋友推荐”虚构熟人背书，弱化陌生感。",
+            "methodAnalysis": "利用人际信任与利益诱惑引起兴趣。",
+            "victimPsychology": "被“好处”吸引产生好奇，但仍要求说明细节。",
+            "riskScore": 50,
+            "riskReason": "受害者开始表现兴趣并继续交流，但尚未承诺任何操作。",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [
+              {
+                "factCode": "ADDITIONAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 2,
+                "quote": "我已经转账20元",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "3": {
+      "victim": [
+        {
+          "output": {
+            "line": "我已经转账30元",
+            "action": null,
+            "psychology": "INTERNAL-NOTE-SECRET 觉得可疑，开始犹豫",
+            "tone": {
+              "speed": "SLOW",
+              "style": "犹豫"
+            },
+            "fundActions": [
+              {
+                "type": "PAYMENT",
+                "purpose": "ADDITIONAL_PAYMENT",
+                "amountYuan": 30,
+                "roundNo": 3,
+                "speaker": "VICTIM",
+                "quote": "我已经转账30元",
+                "eventOrder": 1,
+                "reason": null,
+                "relatedPaymentId": null
+              }
+            ]
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "诱导操作",
+            "speechAnalysis": "用“简单步骤”“名额不多”降低门槛并制造稀缺。",
+            "methodAnalysis": "稀缺性与轻松获利暗示，催促尽快行动。",
+            "victimPsychology": "察觉“好得不真实”，产生怀疑并选择拖延。",
+            "riskScore": 50,
+            "riskReason": "仍在考虑是否配合，没有承诺或执行危险操作。",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [
+              {
+                "factCode": "ADDITIONAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 3,
+                "quote": "我已经转账30元",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "4": {
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "施加压力",
+            "speechAnalysis": "以“过了今天就没机会”制造紧迫感，阻止思考。",
+            "methodAnalysis": "时间压力是典型操控手段，意在跳过核实环节。",
+            "victimPsychology": "紧迫要求引发不安，决定先通过官方渠道核实。",
+            "riskScore": 25,
+            "riskReason": "受害者暂停配合并着手独立核实，风险回落。",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "5": {
+      "victim": [
+        {
+          "output": {
+            "line": "我已经转账40元",
+            "action": null,
+            "psychology": "INTERNAL-NOTE-SECRET 确认是骗局，坚决终止",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "坚定"
+            },
+            "fundActions": [
+              {
+                "type": "PAYMENT",
+                "purpose": "ADDITIONAL_PAYMENT",
+                "amountYuan": 40,
+                "roundNo": 5,
+                "speaker": "VICTIM",
+                "quote": "我已经转账40元",
+                "eventOrder": 1,
+                "reason": null,
+                "relatedPaymentId": null
+              }
+            ]
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "阻止核实",
+            "speechAnalysis": "以反问否认嫌疑，并继续催促，试图打断核实。",
+            "methodAnalysis": "阻挠独立核实、持续施压，是诈骗收网前的典型做法。",
+            "victimPsychology": "通过官方渠道得到确认，识破骗局后果断终止联系。",
+            "riskScore": 0,
+            "riskReason": "受害者完成独立核实并拉黑对方，明确停止配合。",
+            "actualFraudOccurred": true,
+            "goalAchieved": true,
+            "cooperationStopped": false,
+            "evidence": [
+              {
+                "factCode": "ADDITIONAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 5,
+                "quote": "我已经转账40元",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": "DEFRAUDED",
+            "candidateReason": "追加累计三次"
+          }
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "report": [
+      {
+        "output": {
+          "summary": "骗子以机会和利益吸引受害者，并反复催促操作。受害者逐渐起疑，通过官方渠道核实后终止联系。",
+          "roundAnalyses": [
+            {
+              "roundNo": 1,
+              "analysis": "陌生人以机会开场，受害者先追问身份。"
+            },
+            {
+              "roundNo": 2,
+              "analysis": "骗子借朋友推荐建立信任，受害者要求解释具体内容。"
+            },
+            {
+              "roundNo": 3,
+              "analysis": "骗子制造稀缺感，受害者对不合理的承诺产生怀疑。"
+            },
+            {
+              "roundNo": 4,
+              "analysis": "催促操作反而引发警觉，受害者选择通过官方渠道核实。"
+            },
+            {
+              "roundNo": 5,
+              "analysis": "受害者核实骗局并拉黑对方，明确停止配合。"
+            }
+          ],
+          "speechAnalysis": "虚构熟人背书、强调机会难得并制造时间压力，试图阻止受害者独立核实。",
+          "victimBehaviorAnalysis": "受害者先追问，再质疑，最终独立核实并终止联系，没有执行危险操作。",
+          "outcomeAnalysis": "已受骗：首笔之后已追加三次。"
+        }
+      }
+    ]
+  }
+}

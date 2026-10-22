@@ -268,7 +268,7 @@ onBeforeUnmount(() => {
 
       <SettingsOverlay v-if="settingsOpen" :muted="view.muted" :finished="status === 'FINISHED'" :busy="settingsBusy" :error="settingsError"
         @toggle-mute="toggleMute" @resume="resume" @exit="exitRun" />
-      <TerminalNotice v-if="view.stage === 'TERMINAL' && view.terminal?.status === 'INTERRUPTED'" :message="view.terminal.interruption?.message ?? '本次演绎已中断'" />
+      <TerminalNotice v-if="view.stage === 'TERMINAL' && view.terminal?.status === 'INTERRUPTED'" :code="view.terminal.interruption?.code" :message="view.terminal.interruption?.message ?? '本次演绎已中断'" />
     </main>
   </div>
 </template>

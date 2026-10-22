@@ -44,7 +44,8 @@ public final class SimulationViews {
     public record Analysis(String fraudStage, String speechAnalysis, String methodAnalysis, String victimPsychology,
             int riskScore, String riskReason, String savedAt, String presentedAt) {}
 
-    public record Outcome(String code, String displayText, String reason, String limitReason) {}
+    public record Outcome(String code, String displayText, String reason, String limitReason,
+            Boolean goalAchieved, Boolean stoppedAfterFraud, Integer actualLossYuan) {}
 
     public record Interruption(String code, String message) {}
 

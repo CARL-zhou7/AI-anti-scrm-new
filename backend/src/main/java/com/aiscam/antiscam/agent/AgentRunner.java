@@ -38,7 +38,7 @@ public class AgentRunner {
         String prompt = PromptRenderer.render(scene.scammerTemplate(), variables);
         String raw = llm.completeJson(request(AgentRole.SCAMMER, prompt, config.getScammerTemperature(), remainingMs, roundNo, attempt, scene));
         var turn = AgentOutputValidator.validate(AgentOutputParser.scammer(raw));
-        AgentOutputValidator.funds(SpeakerRole.SCAMMER, turn.line(), turn.action(), turn.claimedRefundYuan(), turn.fundActions(), roundNo, funds, history);
+        AgentOutputValidator.funds(SpeakerRole.SCAMMER, turn.line(), turn.action(), turn.claimedRefundYuan(), turn.fundActions(), roundNo, funds, history, scene.v12());
         return turn;
     }
 
@@ -49,17 +49,24 @@ public class AgentRunner {
         String prompt = PromptRenderer.render(scene.victimTemplate(), variables);
         String raw = llm.completeJson(request(AgentRole.VICTIM, prompt, config.getVictimTemperature(), remainingMs, roundNo, attempt, scene));
         var turn = AgentOutputValidator.validate(AgentOutputParser.victim(raw));
-        AgentOutputValidator.funds(SpeakerRole.VICTIM, turn.line(), turn.action(), null, turn.fundActions(), roundNo, funds, history);
+        AgentOutputValidator.funds(SpeakerRole.VICTIM, turn.line(), turn.action(), null, turn.fundActions(), roundNo, funds, history, scene.v12());
         return turn;
     }
 
     public ValidatedJudgement narrator(AgentScene scene, List<DialogueLine> lines, int roundNo, PriorFacts prior,
-            long remainingMs, int attempt, FundsContext funds, Integer claimed, boolean candidate) {
+            long remainingMs, int attempt, FundsContext funds, Integer claimed, boolean candidate, java.util.List<com.aiscam.antiscam.simulation.domain.FundAction> candidateActions) {
         var variables = AgentContextAssembler.narrator(scene, lines, roundNo, prior);
         if (funds != null) variables.put("funds_context", AgentContextAssembler.narratorFunds(funds, claimed, candidate));
+        var summary = funds == null ? null : funds.summary();
+        if (scene.v12() && candidate) summary = com.aiscam.antiscam.simulation.rules.FundRules.apply(summary,
+                funds.scenarioCode(), funds.reservedFundsTotalYuan(), roundNo, funds.existingFlows().size() + 1,
+                candidateActions, funds.existingFlows()).after();
+        if (scene.v12()) variables.put("funds_context", variables.get("funds_context")
+                + "\n" + (candidate ? "候选执行后的预检值（尚未入账）" : "正式轮末摘要")
+                + "：累计净亏损=" + summary.actualLossYuan() + "元，累计追加次数=" + summary.additionalPaymentCount());
         String prompt = PromptRenderer.render(scene.narratorTemplate(), variables);
         String raw = llm.completeJson(request(AgentRole.NARRATOR, prompt, config.getNarratorTemperature(), remainingMs, roundNo, attempt, scene));
-        return AgentOutputValidator.validate(AgentOutputParser.narrator(raw), scene.scenarioCode(), roundNo, lines, prior);
+        return AgentOutputValidator.validate(AgentOutputParser.narrator(raw), scene.scenarioCode(), roundNo, lines, prior, scene.v12() ? summary : null);
     }
 
     private LlmRequest request(AgentRole role, String prompt, double temperature, long remainingMs, int roundNo, int attempt,

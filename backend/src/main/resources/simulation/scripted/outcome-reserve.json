@@ -1,0 +1,33 @@
+{
+  "extends": "default-v12",
+  "rounds": {
+    "1": {
+      "victim": [
+        {
+          "output": {
+            "line": "我已释放预留100元",
+            "action": null,
+            "psychology": "INTERNAL-NOTE-SECRET 对陌生人有些警惕",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "疑惑"
+            },
+            "fundActions": [
+              {
+                "type": "RESERVE_RELEASE",
+                "purpose": "RESERVE_RELEASE",
+                "amountYuan": 100,
+                "roundNo": 1,
+                "speaker": "VICTIM",
+                "quote": "我已释放预留100元",
+                "eventOrder": 1,
+                "reason": "调整计划",
+                "relatedPaymentId": null
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

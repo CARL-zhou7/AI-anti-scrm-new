@@ -2,6 +2,8 @@ package com.aiscam.antiscam.simulation.domain;
 
 /** Server-decided interruption causes; the user-visible text is fixed here and never taken from a client. */
 public enum InterruptionCode {
+    FUNDS_EXHAUSTED("可用资金不足且无其他可用来源，本次演绎提前终止"),
+    CHARACTER_EXIT("角色因其他原因退出，本次演绎提前终止"),
     USER_EXIT("你已离开演绎页面，本次演绎已中断"),
     DIALOGUE_FAILED("角色对话生成失败，本次演绎已中断"),
     ANALYSIS_FAILED("解说与风险分析生成失败，本次演绎已中断"),

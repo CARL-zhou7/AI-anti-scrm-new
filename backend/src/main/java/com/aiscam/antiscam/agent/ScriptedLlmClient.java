@@ -33,7 +33,10 @@ public class ScriptedLlmClient implements LlmClient {
             case REPORT -> Category.REPORT;
             default -> Category.DIALOGUE;
         };
-        JsonNode script = script(scriptName(request.scriptKey()));
+        String name = scriptName(request.scriptKey());
+        if (name.equals("default") && ((request.role() == AgentRole.NARRATOR && request.prompt().contains("\"IDENTIFIED\""))
+                || (request.role() == AgentRole.REPORT && request.prompt().contains("IDENTIFIED")))) name = "default-v12";
+        JsonNode script = script(name);
         String role = request.role().name().toLowerCase(Locale.ROOT);
         JsonNode attempts = attempts(script, request.roundNo(), role);
         if (attempts == null) throw new AgentCallException(category, false, "no scripted output");

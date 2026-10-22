@@ -110,10 +110,14 @@ public class SimulationStateAssembler {
                 analysis(r), format(r.getReadingUntil()));
     }
 
-    public static Outcome outcome(SimulationSession s) {
+    public Outcome outcome(SimulationSession s) {
         if (s.getStatus() != SimulationStatus.FINISHED) return null;
+        var round = s.getOutcomeCode().isV12() ? rounds.findBySessionIdAndRoundNo(s.getId(), s.getCurrentRoundNo()).orElse(null) : null;
         return new Outcome(s.getOutcomeCode().name(), s.getOutcomeCode().displayText(), s.getOutcomeReason(),
-                s.getLimitReason() == null ? null : s.getLimitReason().name());
+                s.getLimitReason() == null ? null : s.getLimitReason().name(),
+                round == null ? null : round.isGoalAchieved(),
+                round == null ? null : round.isActualFraudOccurred() && round.isCooperationStopped(),
+                s.getOutcomeCode().isV12() ? s.getActualLossYuan() : null);
     }
 
     public static Interruption interruption(SimulationSession s) {

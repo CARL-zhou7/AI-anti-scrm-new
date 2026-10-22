@@ -1,0 +1,146 @@
+{
+  "extends": "outcome-rebate",
+  "rounds": {
+    "2": {
+      "victim": [
+        {
+          "output": {
+            "line": "什么好处？你先说清楚是怎么回事。",
+            "action": null,
+            "psychology": "INTERNAL-NOTE-SECRET 有些好奇，但仍想弄清楚",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "好奇"
+            }
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "建立信任",
+            "speechAnalysis": "借“朋友推荐”虚构熟人背书，弱化陌生感。",
+            "methodAnalysis": "利用人际信任与利益诱惑引起兴趣。",
+            "victimPsychology": "被“好处”吸引产生好奇，但仍要求说明细节。",
+            "riskScore": 50,
+            "riskReason": "受害者开始表现兴趣并继续交流，但尚未承诺任何操作。",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "3": {
+      "victim": [
+        {
+          "output": {
+            "line": "听起来有点太好了，我得想一想。",
+            "action": null,
+            "psychology": "INTERNAL-NOTE-SECRET 觉得可疑，开始犹豫",
+            "tone": {
+              "speed": "SLOW",
+              "style": "犹豫"
+            }
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "诱导操作",
+            "speechAnalysis": "用“简单步骤”“名额不多”降低门槛并制造稀缺。",
+            "methodAnalysis": "稀缺性与轻松获利暗示，催促尽快行动。",
+            "victimPsychology": "察觉“好得不真实”，产生怀疑并选择拖延。",
+            "riskScore": 50,
+            "riskReason": "仍在考虑是否配合，没有承诺或执行危险操作。",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "4": {
+      "victim": [
+        {
+          "output": {
+            "line": "这么着急让我有点不放心，我先去核实一下。",
+            "action": "正在拨打官方客服电话核实",
+            "psychology": "INTERNAL-NOTE-SECRET 时间压力反而引起警觉",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "谨慎"
+            }
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "施加压力",
+            "speechAnalysis": "以“过了今天就没机会”制造紧迫感，阻止思考。",
+            "methodAnalysis": "时间压力是典型操控手段，意在跳过核实环节。",
+            "victimPsychology": "紧迫要求引发不安，决定先通过官方渠道核实。",
+            "riskScore": 25,
+            "riskReason": "受害者暂停配合并着手独立核实，风险回落。",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "5": {
+      "victim": [
+        {
+          "output": {
+            "line": "我已经问过官方了，根本没有这回事，我不会再理你了。",
+            "action": "已经把对方拉黑并删除了聊天记录",
+            "psychology": "INTERNAL-NOTE-SECRET 确认是骗局，坚决终止",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "坚定"
+            }
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "阻止核实",
+            "speechAnalysis": "以反问否认嫌疑，并继续催促，试图打断核实。",
+            "methodAnalysis": "阻挠独立核实、持续施压，是诈骗收网前的典型做法。",
+            "victimPsychology": "通过官方渠道得到确认，识破骗局后果断终止联系。",
+            "riskScore": 0,
+            "riskReason": "受害者完成独立核实并拉黑对方，明确停止配合。",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": true,
+            "evidence": [
+              {
+                "factCode": "COOPERATION_STOPPED",
+                "speaker": "VICTIM",
+                "source": "ACTION",
+                "roundNo": 5,
+                "quote": "已经把对方拉黑",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": "DEFRAUDED",
+            "candidateReason": "受骗后停止"
+          }
+        }
+      ]
+    }
+  }
+}

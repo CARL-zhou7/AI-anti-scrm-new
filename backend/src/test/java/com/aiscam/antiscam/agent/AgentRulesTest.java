@@ -25,7 +25,7 @@ class AgentRulesTest {
 
     private static AgentScene scene() {
         return new AgentScene(ScenarioCode.TASK_REBATE, "刷单返利诈骗", "简介", "骗子画像", "受害者画像", "x",
-                read("scammer"), read("victim"), read("narrator"), "公开经历");
+                read("scammer"), read("victim"), read("narrator"), "公开经历", false);
     }
 
     private static String read(String name) {

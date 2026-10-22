@@ -1,0 +1,51 @@
+{
+  "delayMs": 10,
+  "defaults": {
+    "scammer": [
+      {
+        "output": {
+          "line": "别紧张，我是通过朋友推荐找到你的，这件事对你很有好处。",
+          "action": null,
+          "intent": "INTERNAL-NOTE-SECRET 借熟人关系建立信任",
+          "tone": {
+            "speed": "NORMAL",
+            "style": "亲切"
+          }
+        }
+      }
+    ],
+    "victim": [
+      {
+        "output": {
+          "line": "什么好处？你先说清楚是怎么回事。",
+          "action": null,
+          "psychology": "INTERNAL-NOTE-SECRET 有些好奇，但仍想弄清楚",
+          "tone": {
+            "speed": "NORMAL",
+            "style": "好奇"
+          }
+        }
+      }
+    ],
+    "narrator": [
+      {
+        "output": {
+          "fraudStage": "建立信任",
+          "speechAnalysis": "借“朋友推荐”虚构熟人背书，弱化陌生感。",
+          "methodAnalysis": "利用人际信任与利益诱惑引起兴趣。",
+          "victimPsychology": "被“好处”吸引产生好奇，但仍要求说明细节。",
+          "riskScore": 50,
+          "riskReason": "受害者开始表现兴趣并继续交流，但尚未承诺任何操作。",
+          "actualFraudOccurred": false,
+          "goalAchieved": false,
+          "cooperationStopped": false,
+          "evidence": [],
+          "candidateOutcome": null,
+          "candidateReason": null,
+          "characterExit": false,
+          "characterExitReason": null
+        }
+      }
+    ]
+  }
+}

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // Interrupted runs end here: no resume, replay or download. Content already shown stays on the stage behind.
-defineProps<{ message: string }>()
+defineProps<{ message: string; code?: string }>()
 </script>
 
 <template>
   <div class="terminal" role="alertdialog" aria-labelledby="terminal-title" data-testid="terminal-notice">
     <div class="panel">
-      <h2 id="terminal-title">演绎已中断</h2>
+      <h2 id="terminal-title">{{ code === 'FUNDS_EXHAUSTED' || code === 'CHARACTER_EXIT' ? '演绎提前终止' : '演绎已中断' }}</h2>
       <p>{{ message }}</p>
       <p class="hint">中断的演绎不生成正式复盘，已保存的内容仍可在个人记录中查看。再次体验会创建新的记录。</p>
       <RouterLink class="primary" to="/configuration">重新开始体验</RouterLink>

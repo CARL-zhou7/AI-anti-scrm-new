@@ -1,0 +1,82 @@
+{
+  "extends": "outcome-limit",
+  "rounds": {
+    "1": {
+      "victim": [
+        {
+          "output": {
+            "line": "我已经转账100元",
+            "action": null,
+            "psychology": "INTERNAL-NOTE-SECRET 对陌生人有些警惕",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "疑惑"
+            },
+            "fundActions": [
+              {
+                "type": "PAYMENT",
+                "purpose": "INITIAL_PAYMENT",
+                "amountYuan": 100,
+                "roundNo": 1,
+                "speaker": "VICTIM",
+                "quote": "我已经转账100元",
+                "eventOrder": 1,
+                "reason": null,
+                "relatedPaymentId": null
+              }
+            ]
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "接触与建立联系",
+            "speechAnalysis": "以“机会”开场，激发好奇心，同时用礼貌降低戒备。",
+            "methodAnalysis": "陌生来电或消息主动搭讪，为后续诱导铺垫。",
+            "victimPsychology": "对陌生身份保持本能警惕，先追问对方来历。",
+            "riskScore": 25,
+            "riskReason": "尚未建立信任，受害者主动追问身份，保持警惕。",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [
+              {
+                "factCode": "INITIAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 1,
+                "quote": "我已经转账100元",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "narrator": [
+      {
+        "output": {
+          "fraudStage": "建立信任",
+          "speechAnalysis": "借“朋友推荐”虚构熟人背书，弱化陌生感。",
+          "methodAnalysis": "利用人际信任与利益诱惑引起兴趣。",
+          "victimPsychology": "被“好处”吸引产生好奇，但仍要求说明细节。",
+          "riskScore": 50,
+          "riskReason": "受害者开始表现兴趣并继续交流，但尚未承诺任何操作。",
+          "actualFraudOccurred": true,
+          "goalAchieved": false,
+          "cooperationStopped": false,
+          "evidence": [],
+          "candidateOutcome": null,
+          "candidateReason": null,
+          "characterExit": false,
+          "characterExitReason": null
+        }
+      }
+    ]
+  }
+}

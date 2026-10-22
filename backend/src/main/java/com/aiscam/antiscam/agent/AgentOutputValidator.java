@@ -65,6 +65,11 @@ public final class AgentOutputValidator {
 
     public static void funds(SpeakerRole role, String line, String action, Integer claimed, List<FundAction> actions,
             int roundNo, FundsContext context, List<DialogueLine> history) {
+        funds(role, line, action, claimed, actions, roundNo, context, history, false);
+    }
+
+    public static void funds(SpeakerRole role, String line, String action, Integer claimed, List<FundAction> actions,
+            int roundNo, FundsContext context, List<DialogueLine> history, boolean v12) {
         if (context == null) {
             if (claimed != null || !actions.isEmpty()) throw fail(Category.DIALOGUE, "legacy session cannot post funds");
             return;
@@ -99,7 +104,14 @@ public final class AgentOutputValidator {
                     context.totalRefundedYuan(), FundRules.actualLoss(context.totalPaidYuan(), context.totalRefundedYuan()),
                     0, context.reserveReleasedYuan()), context.scenarioCode(), context.reservedFundsTotalYuan(), roundNo,
                     context.existingFlows().size() + 1, actions, context.existingFlows());
-        } catch (IllegalArgumentException e) { throw fail(Category.DIALOGUE, e.getMessage()); }
+        } catch (IllegalArgumentException e) {
+            long payments = actions.stream().filter(a -> a.type() == FundFlowType.PAYMENT).mapToLong(FundAction::amountYuan).sum();
+            if (v12 && "payment exceeds balance".equals(e.getMessage())
+                    && payments > (long) context.availableBalanceYuan() + context.releasableReserveYuan()) {
+                throw new FundsUnavailableException();
+            }
+            throw fail(Category.DIALOGUE, e.getMessage());
+        }
     }
 
     /**
@@ -108,7 +120,16 @@ public final class AgentOutputValidator {
      */
     public static ValidatedJudgement validate(NarratorJudgement j, ScenarioCode scenario, int roundNo,
             List<DialogueLine> lines, PriorFacts prior) {
+        return validate(j, scenario, roundNo, lines, prior, null);
+    }
+
+    public static ValidatedJudgement validate(NarratorJudgement j, ScenarioCode scenario, int roundNo,
+            List<DialogueLine> lines, PriorFacts prior, FundsSummary funds) {
+        boolean v12 = funds != null;
         var c = Category.ANALYSIS;
+        if (j.characterExit() && (!v12 || j.candidateOutcome() != null || j.cooperationStopped()
+                || j.characterExitReason() == null || j.characterExitReason().isBlank())) throw fail(c, "invalid character exit");
+        if (!j.characterExit() && j.characterExitReason() != null) throw fail(c, "unexpected exit reason");
         for (String text : List.of(j.fraudStage(), j.speechAnalysis(), j.methodAnalysis(), j.victimPsychology(), j.riskReason())) {
             if (text.isBlank() || text.codePointCount(0, text.length()) > MAX_CODE_POINTS) throw fail(c, "analysis text length");
         }
@@ -119,13 +140,19 @@ public final class AgentOutputValidator {
         }
         List<EvidenceItem> merged = EvidenceValidator.validateAndMerge(j.evidence(), prior.evidence(), roundNo, lines);
         boolean hasFraudFact = merged.stream().anyMatch(e -> e.factCode().isActualFraud());
+        if (v12 && funds.totalPaidYuan() > 0 && !j.actualFraudOccurred()) throw fail(c, "saved payments are actual fraud");
+        boolean monetaryFact = merged.stream().anyMatch(e -> switch (e.factCode()) {
+            case INITIAL_PAYMENT_COMPLETED, ADDITIONAL_PAYMENT_COMPLETED, INVESTMENT_COMPLETED, EXTRA_FEE_PAID, LOAN_TRANSFER_COMPLETED -> true;
+            default -> false;
+        });
+        if (v12 && monetaryFact && funds.totalPaidYuan() == 0) throw fail(c, "payment evidence requires posted funds");
         if (j.actualFraudOccurred() != hasFraudFact) throw fail(c, "actual fraud flag disagrees with evidence");
         var facts = merged.stream().map(e -> new ScenarioGoalRules.Fact(e.factCode(), e.roundNo(), e.eventOrder())).toList();
-        if (j.goalAchieved() != ScenarioGoalRules.goalAchieved(scenario, facts)) throw fail(c, "goal flag disagrees with scenario rule");
+        if (j.goalAchieved() != (v12 ? prior.goalAchieved() || ScenarioGoalRules.goalAchieved(scenario, facts, funds) : ScenarioGoalRules.goalAchieved(scenario, facts))) throw fail(c, "goal flag disagrees with scenario rule");
         boolean stopEvidence = j.evidence().stream().anyMatch(e -> e.factCode() == FactCode.COOPERATION_STOPPED && e.roundNo() == roundNo);
         if (j.cooperationStopped() && !stopEvidence) throw fail(c, "stop needs victim evidence in this round");
-        if (j.candidateOutcome() == OutcomeCode.UNDETERMINED) throw fail(c, "UNDETERMINED is never a candidate");
-        if (j.candidateOutcome() != OutcomeRules.expected(j.goalAchieved(), j.actualFraudOccurred(), j.cooperationStopped())) {
+        if (j.candidateOutcome() == OutcomeCode.UNDETERMINED || j.candidateOutcome() == OutcomeCode.LIMIT_REACHED) throw fail(c, "UNDETERMINED is never a candidate");
+        if (j.candidateOutcome() != (v12 ? OutcomeRules.expected(j.goalAchieved(), j.actualFraudOccurred(), j.cooperationStopped()) : OutcomeRules.expectedLegacy(j.goalAchieved(), j.actualFraudOccurred(), j.cooperationStopped()))) {
             throw fail(c, "candidate outcome disagrees with outcome rules");
         }
         if ((j.candidateOutcome() == null) != (j.candidateReason() == null || j.candidateReason().isBlank())) {

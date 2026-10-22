@@ -111,7 +111,7 @@ public final class AgentOutputParser {
 
     public static NarratorJudgement narrator(String raw) {
         var c = Category.ANALYSIS;
-        JsonNode n = object(raw, c, Set.of("fraudStage", "speechAnalysis", "methodAnalysis", "victimPsychology",
+        JsonNode n = narratorObject(raw, c, Set.of("fraudStage", "speechAnalysis", "methodAnalysis", "victimPsychology",
                 "riskScore", "riskReason", "actualFraudOccurred", "goalAchieved", "cooperationStopped", "evidence",
                 "candidateOutcome", "candidateReason"));
         JsonNode risk = n.get("riskScore");
@@ -127,7 +127,21 @@ public final class AgentOutputParser {
         return new NarratorJudgement(text(n, "fraudStage", c), text(n, "speechAnalysis", c), text(n, "methodAnalysis", c),
                 text(n, "victimPsychology", c), risk.asInt(), text(n, "riskReason", c), bool(n, "actualFraudOccurred"),
                 bool(n, "goalAchieved"), bool(n, "cooperationStopped"), List.copyOf(evidence), outcome,
-                nullableText(n, "candidateReason", c));
+                nullableText(n, "candidateReason", c), n.has("characterExit") && bool(n, "characterExit"),
+                n.has("characterExitReason") ? nullableText(n, "characterExitReason", c) : null);
+    }
+
+    private static JsonNode narratorObject(String raw, Category c, Set<String> required) {
+        JsonNode n;
+        try { n = MAPPER.reader().with(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                .with(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION).readTree(raw); }
+        catch (java.io.IOException e) { throw fail(c, "output is not strict JSON"); }
+        if (n == null || !n.isObject()) throw fail(c, "object expected");
+        var fields = new HashSet<>(required);
+        if (n.has("characterExit")) fields.add("characterExit");
+        if (n.has("characterExitReason")) fields.add("characterExitReason");
+        exactFields(n, fields, c);
+        return n;
     }
 
     private static EvidenceItem evidence(JsonNode e) {

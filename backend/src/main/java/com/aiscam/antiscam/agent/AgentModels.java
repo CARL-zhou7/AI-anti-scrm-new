@@ -37,7 +37,7 @@ public final class AgentModels {
     public record NarratorJudgement(String fraudStage, String speechAnalysis, String methodAnalysis,
             String victimPsychology, int riskScore, String riskReason, boolean actualFraudOccurred,
             boolean goalAchieved, boolean cooperationStopped, List<EvidenceItem> evidence,
-            OutcomeCode candidateOutcome, String candidateReason) {}
+            OutcomeCode candidateOutcome, String candidateReason, boolean characterExit, String characterExitReason) {}
 
     /** A judgement that passed validation, with the evidence carried forward from earlier rounds merged in. */
     public record ValidatedJudgement(NarratorJudgement judgement, List<EvidenceItem> mergedEvidence) {}
@@ -53,5 +53,5 @@ public final class AgentModels {
     /** Per-session constant inputs: frozen snapshots (rendered as text) and the pinned prompt versions. */
     public record AgentScene(ScenarioCode scenarioCode, String scenarioName, String scenarioDescription,
             String scammerProfile, String victimProfile, String scriptKey, String scammerTemplate,
-            String victimTemplate, String narratorTemplate, String victimPublicProfile) {}
+            String victimTemplate, String narratorTemplate, String victimPublicProfile, boolean v12) {}
 }

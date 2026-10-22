@@ -214,6 +214,12 @@ public class SimulationOrchestrator implements SimulationSignals {
             }
             case ANALYSIS_PRESENTING -> { /* waiting for the analysis receipt */ }
             case COMPLETE -> {
+                var analysis = live.analysis.get(n);
+                if (live.scene.v12() && analysis != null && analysis.isDone() && analysis.join().failure() == null
+                        && analysis.join().judgement().judgement().characterExit()) {
+                    transitions.interrupt(sessionId, InterruptionCode.CHARACTER_EXIT);
+                    return;
+                }
                 Instant now = clock.instant();
                 if (round.getReadingUntil() != null && round.getReadingUntil().isAfter(now)) {
                     if (live.readingTimer != null) live.readingTimer.cancel(false);
@@ -232,6 +238,9 @@ public class SimulationOrchestrator implements SimulationSignals {
         try {
             messageId = transitions.saveMessage(live.id, n, role, prepared.line(), prepared.action(), prepared.note(),
                     prepared.claimedRefundYuan(), prepared.fundActions());
+        } catch (com.aiscam.antiscam.agent.FundsUnavailableException e) {
+            transitions.interrupt(live.id, InterruptionCode.FUNDS_EXHAUSTED);
+            return false;
         } catch (AgentCallException e) {
             var agentRole = role == SpeakerRole.SCAMMER ? AgentRole.SCAMMER : AgentRole.VICTIM;
             if (live.attempts.get(agentRole + ":" + n).get() > MAX_REGENERATIONS) {
@@ -315,7 +324,7 @@ public class SimulationOrchestrator implements SimulationSignals {
         CompletableFuture.allOf(victimFuture, analysisFuture).whenComplete((ignored, e) -> {
             if (e != null) return;
             PreparedAnalysis r = analysisFuture.join();
-            if (r.failure() == null && r.judgement().judgement().candidateOutcome() == null && n < OutcomeRules.MAX_ROUNDS) {
+            if (r.failure() == null && r.judgement().judgement().candidateOutcome() == null && !r.judgement().judgement().characterExit() && n < OutcomeRules.MAX_ROUNDS) {
                 PreparedLine v = victimFuture.join();
                 if (v.line() == null) return;
                 lanes.run(live.id, () -> {
@@ -332,6 +341,12 @@ public class SimulationOrchestrator implements SimulationSignals {
 
     private void prepareVictim(Live live, int n, List<DialogueLine> history, DialogueLine scammerLine, PriorFacts prior,
             CompletableFuture<PreparedLine> victimFuture, CompletableFuture<PreparedAnalysis> analysisFuture) {
+        var currentFunds = transitions.fundsContext(live.id);
+        if (live.scene.v12() && currentFunds.availableBalanceYuan() == 0 && currentFunds.releasableReserveYuan() == 0) {
+            victimFuture.complete(PreparedLine.failed(InterruptionCode.FUNDS_EXHAUSTED));
+            analysisFuture.complete(new PreparedAnalysis(null, InterruptionCode.FUNDS_EXHAUSTED));
+            return;
+        }
         VictimTurn accepted = null;
         ValidatedJudgement judged = null;
         for (int regeneration = 0; regeneration <= MAX_REGENERATIONS && accepted == null; regeneration++) {
@@ -340,6 +355,10 @@ public class SimulationOrchestrator implements SimulationSignals {
             try {
                 candidate = retry(live, () -> runner.victim(live.scene, history, scammerLine, n, remaining(live), regenerate,
                         live.nextAttempt(AgentRole.VICTIM, n), transitions.fundsContext(live.id)));
+            } catch (com.aiscam.antiscam.agent.FundsUnavailableException e) {
+                victimFuture.complete(PreparedLine.failed(InterruptionCode.FUNDS_EXHAUSTED));
+                analysisFuture.complete(new PreparedAnalysis(null, InterruptionCode.FUNDS_EXHAUSTED));
+                return;
             } catch (AgentCallException e) {
                 victimFuture.complete(PreparedLine.failed(InterruptionCode.DIALOGUE_FAILED));
                 analysisFuture.complete(new PreparedAnalysis(null, InterruptionCode.DIALOGUE_FAILED));
@@ -349,7 +368,7 @@ public class SimulationOrchestrator implements SimulationSignals {
             // Rounds 1-4: judge the candidate first; a decisive outcome means discard and regenerate (BR-P12).
             List<DialogueLine> lines = withVictim(history, scammerLine, n, candidate);
             try {
-                judged = retry(live, () -> runner.narrator(live.scene, lines, n, prior, remaining(live), live.nextAttempt(AgentRole.NARRATOR, n), transitions.fundsContext(live.id), claimed(live, n), true));
+                judged = retry(live, () -> runner.narrator(live.scene, lines, n, prior, remaining(live), live.nextAttempt(AgentRole.NARRATOR, n), transitions.fundsContext(live.id), claimed(live, n), true, candidate.fundActions()));
             } catch (AgentCallException e) {
                 victimFuture.complete(PreparedLine.failed(InterruptionCode.ANALYSIS_FAILED));
                 analysisFuture.complete(new PreparedAnalysis(null, InterruptionCode.ANALYSIS_FAILED));
@@ -377,7 +396,7 @@ public class SimulationOrchestrator implements SimulationSignals {
             List<DialogueLine> lines = withVictim(history, scammerLine, n, victim);
             io.execute(() -> {
                 try {
-                    var j = retry(live, () -> runner.narrator(live.scene, lines, n, prior, remaining(live), live.nextAttempt(AgentRole.NARRATOR, n), transitions.fundsContext(live.id), claimed(live, n), true));
+                    var j = retry(live, () -> runner.narrator(live.scene, lines, n, prior, remaining(live), live.nextAttempt(AgentRole.NARRATOR, n), transitions.fundsContext(live.id), claimed(live, n), true, victim.fundActions()));
                     analysisFuture.complete(new PreparedAnalysis(j, null));
                 } catch (RuntimeException e) {
                     analysisFuture.complete(new PreparedAnalysis(null, InterruptionCode.ANALYSIS_FAILED));
@@ -398,7 +417,7 @@ public class SimulationOrchestrator implements SimulationSignals {
         io.execute(() -> {
             try {
                 var judgement = retry(live, () -> runner.narrator(live.scene, dbLines(live.id), n, priorFacts(live.id, n),
-                        remaining(live), live.nextAttempt(AgentRole.NARRATOR, n), transitions.fundsContext(live.id), claimed(live, n), false));
+                        remaining(live), live.nextAttempt(AgentRole.NARRATOR, n), transitions.fundsContext(live.id), claimed(live, n), false, List.of()));
                 future.complete(new PreparedAnalysis(judgement, null));
             } catch (RuntimeException e) {
                 future.complete(new PreparedAnalysis(null, InterruptionCode.ANALYSIS_FAILED));
@@ -457,7 +476,8 @@ public class SimulationOrchestrator implements SimulationSignals {
                 scenario.path("description").asText(), snapshots.scammerText(session.getScammerSnapshot()),
                 snapshots.victimText(session.getVictimSnapshot()), scammer.path("name").asText(),
                 templates.get(session.getScammerPromptId()), templates.get(session.getVictimPromptId()),
-                templates.get(session.getNarratorPromptId()), snapshots.victimPublicText(session.getVictimSnapshot()));
+                templates.get(session.getNarratorPromptId()), snapshots.victimPublicText(session.getVictimSnapshot()),
+                "PRD-V3.3".equals(snapshots.read(session.getRuntimeSnapshot()).path("ruleset_version").asText()));
         live.fundsV2 = "funds-v2".equals(snapshots.read(session.getRuntimeSnapshot()).path("fund_ruleset_version").asText());
         var media = snapshots.read(session.getRuntimeSnapshot()).path("media_config");
         live.scammerVoice = media.path("scammer_voice").asText();
