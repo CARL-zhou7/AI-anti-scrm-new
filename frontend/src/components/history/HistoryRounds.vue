@@ -1,14 +1,19 @@
 <script setup lang="ts">
+import { ref, watch, nextTick } from 'vue'
+import { riskColor, riskClass } from '../../utils/risk'
 import type { HistoryRound, PresentationStatus } from '../../api/types'
-defineProps<{ rounds: HistoryRound[] }>()
+const props = defineProps<{ rounds: HistoryRound[] }>()
+const scrollRegion = ref<HTMLElement | null>(null)
+watch(() => props.rounds, async () => { await nextTick(); if (scrollRegion.value) scrollRegion.value.scrollTop = 0 })
 const presentations: Record<PresentationStatus, string> = { PENDING: '尚未呈现', PRESENTING: '呈现未确认完成', COMPLETED: '呈现已完成', FAILED: '呈现失败' }
 </script>
 
 <template>
   <section class="configuration-section" data-testid="history-rounds">
     <h2>已保存的演绎过程</h2><p v-if="!rounds.length">暂无已保存轮次</p>
-    <article v-for="round in rounds" :key="round.roundNo" class="history-round" data-testid="history-round">
-      <h3>第{{ round.roundNo }}轮</h3>
+    <div v-else ref="scrollRegion" class="history-rounds-scroll" data-testid="history-rounds-scroll" tabindex="0" role="region" aria-label="已保存的各轮对话与分析">
+    <article v-for="round in rounds" :key="round.roundNo" :class="['history-round', riskClass(round.analysis?.riskScore)]" :style="{ '--risk-color': riskColor(round.analysis?.riskScore) }" data-testid="history-round">
+      <h3>第{{ round.roundNo }}轮</h3><p v-if="!round.analysis" class="field-help">未评分</p>
       <div data-testid="history-round-funds">
         <p v-if="!round.funds?.fundsRecorded">本轮资金：未记录</p>
         <p v-else>本轮支付：{{ round.funds.totalPaidYuan ?? '未记录' }}元 · 本轮返款：{{ round.funds.totalRefundedYuan ?? '未记录' }}元 · 本轮预留释放：{{ round.funds.reserveReleasedYuan ?? '未记录' }}元<br />
@@ -25,15 +30,19 @@ const presentations: Record<PresentationStatus, string> = { PENDING: '尚未呈�
         <dt>话术分析</dt><dd>{{ round.analysis.speechAnalysis }}</dd>
         <dt>手段分析</dt><dd>{{ round.analysis.methodAnalysis }}</dd>
         <dt>受害者心理</dt><dd>{{ round.analysis.victimPsychology }}</dd>
-        <dt>风险分</dt><dd>{{ round.analysis.riskScore }}分</dd>
         <dt>风险依据</dt><dd>{{ round.analysis.riskReason }}</dd>
       </dl>
     </article>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.history-round + .history-round { border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: 1rem; }
+.history-rounds-scroll { height: 560px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding: .25rem .75rem .25rem .25rem; }
+.history-rounds-scroll:focus-visible { outline: 3px solid var(--green); outline-offset: 4px; }
+.history-round { border-left: 5px solid var(--risk-color); padding: .75rem 1rem; background: white; min-width: 0; overflow-wrap: anywhere; }
+.history-round + .history-round { border-top: 1px solid var(--border); margin-top: 1.5rem; }
+@media (max-width: 700px) { .history-rounds-scroll { height: 440px; padding-right: .25rem; } .history-round { padding: .75rem; } }
 .history-message { padding: .5rem 1rem; border-left: 3px solid var(--border); margin: .75rem 0; }
 .history-message h4 { margin: .5rem 0; }
 .history-message small { color: var(--muted); font-weight: 400; }

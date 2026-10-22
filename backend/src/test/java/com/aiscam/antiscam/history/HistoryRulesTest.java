@@ -25,7 +25,8 @@ class HistoryRulesTest {
     private final SimulationReportRepository reports = mock(SimulationReportRepository.class);
     private final ConfigurationSnapshots snapshots = new ConfigurationSnapshots(new ObjectMapper());
     private final SimulationStateAssembler state = new SimulationStateAssembler(rounds, messages, reports, snapshots, mock(TempAudioStore.class));
-    private final HistoryAssembler assembler = new HistoryAssembler(snapshots, state, rounds, messages, reports, mock(FundFlowRepository.class));
+    private final FundFlowRepository funds = mock(FundFlowRepository.class);
+    private final HistoryAssembler assembler = new HistoryAssembler(snapshots, state, rounds, messages, reports, funds);
 
     @Test
     void cursorPreservesMillisecondsAndRejectsTamperingOtherAccountsAndOtherUses() {
@@ -130,6 +131,42 @@ class HistoryRulesTest {
         assertEquals("PRD-V3.2", detail.rulesetVersion());
         assertEquals(10000, state.assemble(s).funds().availableBalanceYuan());
         assertNull(state.assemble(s).funds().flows());
+    }
+
+    @Test
+    void ledgerProjectsOrderedFlowsAndPerRoundSummariesWithoutInternalRefundLinks() throws Exception {
+        var session = session(SimulationStatus.INTERRUPTED);
+        when(session.getSnapshotSchemaVersion()).thenReturn(2);
+        when(session.getRuntimeSnapshot()).thenReturn("{\"ruleset_version\":\"PRD-V3.3\"}");
+        var firstSummary = new FundsSummary(1000,900,100,0,100,0,0);
+        var finalSummary = new FundsSummary(1000,850,300,50,250,1,100);
+        when(session.getInitialAvailableFundsYuan()).thenReturn(1000);
+        when(session.getFundsSummary()).thenReturn(finalSummary);
+        var first = new SimulationRound(1,1,T,new FundsSummary(1000,1000,0,0,0,0,0));
+        var second = new SimulationRound(1,2,T,firstSummary);
+        ReflectionTestUtils.setField(first,"id",10L); ReflectionTestUtils.setField(second,"id",20L);
+        var payment = new FundPosting(FundFlowType.PAYMENT,FundPurpose.INITIAL_PAYMENT,100,1,900,null,null);
+        var additional = new FundPosting(FundFlowType.PAYMENT,FundPurpose.ADDITIONAL_PAYMENT,200,2,700,null,null);
+        var refund = new FundPosting(FundFlowType.REFUND,FundPurpose.REFUND,50,3,750,null,100L);
+        var reserve = new FundPosting(FundFlowType.RESERVE_RELEASE,FundPurpose.RESERVE_RELEASE,100,4,850,"调整安排",null);
+        first.applyFunds(new FundApplication(List.of(payment),firstSummary));
+        second.applyFunds(new FundApplication(List.of(additional,refund,reserve),finalSummary));
+        when(rounds.findBySessionIdOrderByRoundNoAsc(1)).thenReturn(List.of(first,second));
+        when(funds.findBySessionIdOrderBySequenceNoAsc(1)).thenReturn(List.of(new FundFlow(1,10,11L,payment,T),
+                new FundFlow(1,20,21L,additional,T),new FundFlow(1,20,22L,refund,T),new FundFlow(1,20,23L,reserve,T)));
+        var detail = assembler.detail(session);
+        assertEquals("PRD-V3.3",detail.rulesetVersion());
+        assertEquals(List.of(1,2,3,4),detail.funds().flows().stream().map(f -> f.sequenceNo()).toList());
+        assertEquals(List.of(900,700,750,850),detail.funds().flows().stream().map(f -> f.balanceAfterYuan()).toList());
+        assertEquals(List.of(1,2,2,2),detail.funds().flows().stream().map(f -> f.roundNo()).toList());
+        assertEquals("22",detail.funds().flows().get(2).messageId());
+        assertEquals(100,detail.rounds().getFirst().funds().totalPaidYuan());
+        assertEquals(200,detail.rounds().get(1).funds().totalPaidYuan());
+        assertEquals(50,detail.rounds().get(1).funds().totalRefundedYuan());
+        assertEquals(100,detail.rounds().get(1).funds().reserveReleasedYuan());
+        assertEquals(250,detail.rounds().get(1).funds().actualLossYuan());
+        String json = new ObjectMapper().writeValueAsString(detail);
+        for (String hidden : List.of("relatedPaymentId","related_payment_id","runtime_snapshot","internalNote","prompt")) assertFalse(json.contains(hidden));
     }
 
     private SimulationSession session(SimulationStatus status) {

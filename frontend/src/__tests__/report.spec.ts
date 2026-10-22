@@ -118,6 +118,17 @@ it('renders report v2 paragraphs, nodes, advice and authoritative funds without 
   expect(wrapper.get('[data-testid=report-funds]').text()).toContain('100 元')
   expect(wrapper.find('[data-testid=report-round-analyses]').exists()).toBe(false)
   expect(wrapper.find('[data-testid=report-speech-analysis]').exists()).toBe(false)
+  expect(wrapper.get('[data-testid=report-key-nodes] article').classes()).toContain('risk-level-25')
   expect(wrapper.find('[data-testid=report-retry]').exists()).toBe(false)
+  wrapper.unmount()
+})
+
+
+it('uses the shared risk colors and hides visible score labels in charts', () => {
+  const wrapper = mount(RiskChart, { props: { points: [0,25,50,75,100].map((score,index) => ({ roundNo:index+1,score })) } })
+  expect(wrapper.findAll('[data-testid=report-risk-point]').map(point => point.attributes('fill')))
+    .toEqual(['#3f8f6f','#3978b8','#d9a23a','#d9733a','#c43d33'])
+  expect(wrapper.find('.risk-values').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('25分')
   wrapper.unmount()
 })

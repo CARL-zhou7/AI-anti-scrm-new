@@ -3,7 +3,7 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { historyApi } from '../api/history'
 import { ApiError } from '../api/http'
-import type { HistoryDetail } from '../api/types'
+import type { HistoryDetail, FundFlow } from '../api/types'
 import { formatShanghai } from '../utils/time'
 import HistoryConfiguration from '../components/history/HistoryConfiguration.vue'
 import HistoryRounds from '../components/history/HistoryRounds.vue'
@@ -12,6 +12,7 @@ import RiskChart from '../components/report/RiskChart.vue'
 const route = useRoute(), detail = ref<HistoryDetail | null>(null), loading = ref(true), error = ref('')
 const statuses = { RUNNING: '进行中', FINISHED: '已结束', INTERRUPTED: '已中断' }
 const riskPoints = computed(() => detail.value?.rounds.flatMap(r => r.analysis ? [{ roundNo: r.roundNo, score: r.analysis.riskScore }] : []) ?? [])
+const purposes: Record<FundFlow['purpose'], string> = { INITIAL_PAYMENT: '首笔付款', ADDITIONAL_PAYMENT: '追加付款', INVESTMENT_PAYMENT: '投资款', EXTRA_FEE_PAYMENT: '额外费用', LOAN_TRANSFER: '借款转账', OTHER_PAYMENT: '其他付款', REFUND: '实际返款', RESERVE_RELEASE: '预留释放' }
 let version = 0
 async function load() {
   const current = ++version
@@ -48,9 +49,20 @@ onUnmounted(() => { version++ })
           <dt>追加次数</dt><dd>{{ detail.funds.additionalPaymentCount == null ? '未记录' : `${detail.funds.additionalPaymentCount}次` }}</dd>
           <dt>预留释放</dt><dd>{{ detail.funds.reserveReleasedYuan == null ? '未记录' : `${detail.funds.reserveReleasedYuan}元` }}</dd>
         </dl>
+        <template v-if="detail.funds?.fundsRecorded">
+          <h3>逐笔资金流水</h3>
+          <p v-if="!detail.funds.flows?.length" data-testid="history-funds-empty">暂无资金流水</p>
+          <ol v-else class="fund-flows" aria-label="按发生顺序排列的资金流水">
+            <li v-for="flow in detail.funds.flows" :key="flow.sequenceNo" data-testid="history-fund-flow">
+              <div><strong>第{{ flow.roundNo }}轮 · {{ purposes[flow.purpose] }}</strong><span>{{ flow.amountYuan }}元</span></div>
+              <p>发生后余额：{{ flow.balanceAfterYuan }}元</p><p v-if="flow.reason">{{ flow.reason }}</p>
+              <time :datetime="flow.occurredAt">{{ formatShanghai(flow.occurredAt) }}</time>
+            </li>
+          </ol>
+        </template>
       </section>
       <section v-if="detail.status === 'FINISHED' && detail.outcome" class="configuration-section" data-testid="history-detail-outcome"><h2>{{ detail.outcome.displayText }}</h2><p>{{ detail.outcome.reason }}</p></section>
-      <section v-if="detail.status === 'INTERRUPTED' && detail.interruption" class="configuration-section" data-testid="history-detail-interruption"><h2>本次演绎已中断</h2><p>{{ detail.interruption.message }}</p></section>
+      <section v-if="detail.status === 'INTERRUPTED' && detail.interruption" class="configuration-section" data-testid="history-detail-interruption"><h2>{{ detail.interruption.code === 'FUNDS_EXHAUSTED' || detail.interruption.code === 'CHARACTER_EXIT' ? '本次演绎提前终止' : '本次演绎已中断' }}</h2><p>{{ detail.interruption.message }}</p></section>
       <HistoryRounds :rounds="detail.rounds" />
       <div data-testid="history-detail-risk"><RiskChart :points="riskPoints" /></div>
       <section class="configuration-section" data-testid="history-detail-report">
@@ -68,6 +80,12 @@ onUnmounted(() => { version++ })
 
 <style scoped>
 .history-detail :deep(.configuration-section) { padding: 28px; margin-bottom: 24px; background: white; border: 1px solid var(--border); border-radius: 12px; }
+.history-detail { min-width: 0; }
+.fund-flows { margin: 0; padding-left: 1.5rem; }
+.fund-flows li { padding: .75rem 0; overflow-wrap: anywhere; border-top: 1px solid var(--border); }
+.fund-flows li > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; }
+.fund-flows p { margin: .25rem 0; }
+.fund-flows time { color: var(--muted); font-size: .85rem; }
 .history-detail > .button { margin-bottom: 1rem; }
 .history-detail p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .history-detail :deep(dd) { overflow-wrap: anywhere; white-space: pre-wrap; }

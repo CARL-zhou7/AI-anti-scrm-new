@@ -6,6 +6,7 @@ import { simulationApi } from '../api/simulation'
 import { ApiError } from '../api/http'
 import type { ReportView, SimulationState } from '../api/types'
 import RiskChart from '../components/report/RiskChart.vue'
+import { riskColor, riskClass } from '../utils/risk'
 
 const route = useRoute()
 const view = ref<ReportView | null>(null), state = ref<SimulationState | null>(null)
@@ -13,6 +14,7 @@ const loading = ref(true), error = ref(''), retryError = ref(''), retrying = ref
 const generating = computed(() => view.value?.report?.status === 'PENDING' || view.value?.report?.status === 'RUNNING')
 const reportV2 = computed(() => view.value?.contentSchemaVersion === 2 && view.value.content?.contentSchemaVersion === 2 ? view.value.content : null)
 const reportV1 = computed(() => view.value?.content && 'roundAnalyses' in view.value.content ? view.value.content : null)
+const riskAtRound = (roundNo: number) => view.value?.riskSeries.find(point => point.roundNo === roundNo)?.score ?? null
 let timer: ReturnType<typeof setTimeout> | undefined
 let version = 0, polls = 0
 
@@ -115,7 +117,7 @@ onUnmounted(() => { version++; clearTimeout(timer) })
           <section class="configuration-section" data-testid="report-result"><h2>{{ reportV2.result.text }}</h2><p>{{ reportV2.result.reason }}</p></section>
           <section class="configuration-section" data-testid="report-summary"><h2>过程总结</h2><p v-for="(paragraph, index) in reportV2.summary.split(/\n\s*\n/)" :key="index">{{ paragraph }}</p></section>
           <section v-if="reportV2.keyNodes.length" class="configuration-section" data-testid="report-key-nodes">
-            <h2>关键节点</h2><article v-for="(node, index) in reportV2.keyNodes" :key="index"><h3>第{{ node.roundNo }}轮</h3><blockquote v-if="node.quote">{{ node.quote }}</blockquote><p>{{ node.analysis }}</p></article>
+            <h2>关键节点</h2><article v-for="(node, index) in reportV2.keyNodes" :key="index" :class="['round-risk', riskClass(riskAtRound(node.roundNo))]" :style="{ '--risk-color': riskColor(riskAtRound(node.roundNo)) }"><h3>第{{ node.roundNo }}轮</h3><p v-if="riskAtRound(node.roundNo) === null" class="field-help">未评分</p><blockquote v-if="node.quote">{{ node.quote }}</blockquote><p>{{ node.analysis }}</p></article>
           </section>
           <section class="configuration-section" data-testid="report-advice"><h2>防范建议</h2><ul><li v-for="(advice, index) in reportV2.preventionAdvice" :key="index">{{ advice }}</li></ul></section>
           <section class="configuration-section" data-testid="report-funds"><h2>资金摘要</h2><dl>
@@ -128,7 +130,7 @@ onUnmounted(() => { version++; clearTimeout(timer) })
         <section class="configuration-section" data-testid="report-summary"><h2>过程总结</h2><p>{{ reportV1.summary }}</p></section>
         <section class="configuration-section" data-testid="report-round-analyses">
           <h2>逐轮分析</h2>
-          <article v-for="round in reportV1.roundAnalyses" :key="round.roundNo"><h3>第{{ round.roundNo }}轮</h3><p>{{ round.analysis }}</p></article>
+          <article v-for="round in reportV1.roundAnalyses" :key="round.roundNo" :class="['round-risk', riskClass(riskAtRound(round.roundNo))]" :style="{ '--risk-color': riskColor(riskAtRound(round.roundNo)) }"><h3>第{{ round.roundNo }}轮</h3><p v-if="riskAtRound(round.roundNo) === null" class="field-help">未评分</p><p>{{ round.analysis }}</p></article>
         </section>
         <section class="configuration-section" data-testid="report-speech-analysis"><h2>骗子话术分析</h2><p>{{ reportV1.speechAnalysis }}</p></section>
         <section class="configuration-section" data-testid="report-victim-behavior"><h2>受害者行为分析</h2><p>{{ reportV1.victimBehaviorAnalysis }}</p></section>
@@ -146,6 +148,7 @@ onUnmounted(() => { version++; clearTimeout(timer) })
 
 <style scoped>
 .report-page p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.round-risk { border-left: 5px solid var(--risk-color); padding-left: 1rem; }
 .report-page article + article { border-top: 1px solid var(--border); padding-top: .75rem; }
 .report-actions { display: flex; flex-wrap: wrap; gap: 1rem; }
 </style>

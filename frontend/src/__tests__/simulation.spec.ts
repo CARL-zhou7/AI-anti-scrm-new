@@ -108,3 +108,19 @@ it('labels early termination separately and offers no report action', async () =
     wrapper.unmount()
   }
 })
+
+
+it('keeps risk unscored initially and shows only the matching color after scoring', async () => {
+  const { mount } = await import('@vue/test-utils')
+  const { default: RiskNodeBar } = await import('../components/simulation/RiskNodeBar.vue')
+  const wrapper = mount(RiskNodeBar, { props: { risk: null } })
+  expect(wrapper.text()).toContain('尚未评分')
+  for (const [risk, color] of [[0,'#3f8f6f'],[25,'#3978b8'],[50,'#d9a23a'],[75,'#d9733a'],[100,'#c43d33']] as const) {
+    await wrapper.setProps({ risk })
+    expect(wrapper.text()).not.toContain('尚未评分')
+    expect(wrapper.find('.value').exists()).toBe(false)
+    const expected = document.createElement('span'); expected.style.background = color
+    expect(wrapper.get<HTMLElement>('.on .dot').element.style.background).toBe(expected.style.background)
+  }
+  wrapper.unmount()
+})

@@ -148,3 +148,43 @@ it('offers report links only for success or failure and uses one safe inaccessib
   expect(view.get('[data-testid=history-detail-error]').text()).toContain('记录不存在或不可访问')
   view.unmount()
 })
+
+
+it('keeps rounds in a scroll region with all five colors, gray only for unscored, and no score badges', async () => {
+  const data = detail()
+  const sample = data.rounds[0]!
+  data.rounds = [100, 75, 50, 25, 0, null].map((score, index) => ({ ...sample, roundNo: index + 1,
+    analysis: score === null ? null : { ...sample.analysis!, riskScore: score as 0 | 25 | 50 | 75 | 100 } }))
+  vi.spyOn(historyApi, 'detail').mockResolvedValue(data)
+  const wrapper = mount(HistoryDetailView, { global }); await flushPromises()
+  const region = wrapper.get('[data-testid=history-rounds-scroll]')
+  expect(region.attributes('tabindex')).toBe('0')
+  const rounds = region.findAll('[data-testid=history-round]')
+  expect(rounds.map(round => round.classes().find(c => c.startsWith('risk-level-')))).toEqual(['risk-level-100','risk-level-75','risk-level-50','risk-level-25','risk-level-0','risk-level-unscored'])
+  expect(rounds[0]!.get('h3').text()).toBe('第1轮')
+  expect(rounds.slice(0,5).every(round => !round.text().includes('未评分') && !round.text().includes('风险分'))).toBe(true)
+  expect(rounds[5]!.text()).toContain('未评分')
+  wrapper.unmount()
+})
+
+it('renders ordered payment, refund and reserve flows with purpose, round and balance', async () => {
+  const data = detail()
+  data.funds = { fundsRecorded: true, initialAvailableYuan: 1000, availableBalanceYuan: 1050,
+    totalPaidYuan: 100, totalRefundedYuan: 50, actualLossYuan: 50, additionalPaymentCount: 0, reserveReleasedYuan: 100,
+    flows: [
+      { sequenceNo: 1, roundNo: 1, messageId: '11', type: 'PAYMENT', purpose: 'INITIAL_PAYMENT', amountYuan: 100, balanceAfterYuan: 900, reason: null, occurredAt: data.startedAt },
+      { sequenceNo: 2, roundNo: 2, messageId: '21', type: 'REFUND', purpose: 'REFUND', amountYuan: 50, balanceAfterYuan: 950, reason: null, occurredAt: data.startedAt },
+      { sequenceNo: 3, roundNo: 3, messageId: '31', type: 'RESERVE_RELEASE', purpose: 'RESERVE_RELEASE', amountYuan: 100, balanceAfterYuan: 1050, reason: '调整预留安排', occurredAt: data.startedAt },
+    ] }
+  vi.spyOn(historyApi, 'detail').mockResolvedValue(data)
+  const wrapper = mount(HistoryDetailView, { global }); await flushPromises()
+  const rows = wrapper.findAll('[data-testid=history-fund-flow]')
+  expect(rows).toHaveLength(3)
+  for (const [index, row] of rows.entries()) expect(row.text()).toContain(`第${index+1}轮`)
+  expect(rows[0]!.text()).toContain('首笔付款')
+  expect(rows[1]!.text()).toContain('实际返款')
+  expect(rows[2]!.text()).toContain('预留释放')
+  expect(rows[2]!.text()).toContain('1050元')
+  expect(rows[2]!.text()).toContain('调整预留安排')
+  wrapper.unmount()
+})
