@@ -71,29 +71,32 @@ app:
       transient-retries: 2
       max-tokens: 800
     tts:
-      provider: ${TTS_PROVIDER:cosyvoice}  # cosyvoice | silent (silent only in dev/test)
-      gateway-url: ${TTS_GATEWAY_URL:http://127.0.0.1:50080}
+      provider: ${TTS_PROVIDER:qwen}  # qwen | silent (silent only in dev/test)
+      qwen-base-url: ${QWEN_TTS_BASE_URL:}
+      qwen-api-key: ${QWEN_API_KEY:}
+      qwen-model: ${QWEN_TTS_MODEL:qwen-audio-3.1-tts-flash}
+      qwen-region: ${QWEN_TTS_REGION:beijing}
       call-timeout-ms: 30000
-      # Preset voices (V-09): each age band x gender has a primary and a backup; ids must exist in the gateway voices.json.
+      # V-09: user-confirmed 2026-10-22; neutral groups reuse the corresponding male pair.
       voices:
-        - { id: youth_male_a, age-group: YOUTH, gender: MALE, rank: PRIMARY }
-        - { id: youth_male_b, age-group: YOUTH, gender: MALE, rank: BACKUP }
-        - { id: youth_female_a, age-group: YOUTH, gender: FEMALE, rank: PRIMARY }
-        - { id: youth_female_b, age-group: YOUTH, gender: FEMALE, rank: BACKUP }
-        - { id: youth_neutral_a, age-group: YOUTH, gender: NEUTRAL, rank: PRIMARY }
-        - { id: youth_neutral_b, age-group: YOUTH, gender: NEUTRAL, rank: BACKUP }
-        - { id: middle_male_a, age-group: MIDDLE, gender: MALE, rank: PRIMARY }
-        - { id: middle_male_b, age-group: MIDDLE, gender: MALE, rank: BACKUP }
-        - { id: middle_female_a, age-group: MIDDLE, gender: FEMALE, rank: PRIMARY }
-        - { id: middle_female_b, age-group: MIDDLE, gender: FEMALE, rank: BACKUP }
-        - { id: middle_neutral_a, age-group: MIDDLE, gender: NEUTRAL, rank: PRIMARY }
-        - { id: middle_neutral_b, age-group: MIDDLE, gender: NEUTRAL, rank: BACKUP }
-        - { id: senior_male_a, age-group: SENIOR, gender: MALE, rank: PRIMARY }
-        - { id: senior_male_b, age-group: SENIOR, gender: MALE, rank: BACKUP }
-        - { id: senior_female_a, age-group: SENIOR, gender: FEMALE, rank: PRIMARY }
-        - { id: senior_female_b, age-group: SENIOR, gender: FEMALE, rank: BACKUP }
-        - { id: senior_neutral_a, age-group: SENIOR, gender: NEUTRAL, rank: PRIMARY }
-        - { id: senior_neutral_b, age-group: SENIOR, gender: NEUTRAL, rank: BACKUP }
+        - { id: "${QWEN_VOICE_YOUTH_MALE_PRIMARY:longanyang_v3.1}", age-group: YOUTH, gender: MALE, rank: PRIMARY }
+        - { id: "${QWEN_VOICE_YOUTH_MALE_BACKUP:longanlang_v3.1}", age-group: YOUTH, gender: MALE, rank: BACKUP }
+        - { id: "${QWEN_VOICE_YOUTH_FEMALE_PRIMARY:anruorou_v3.1}", age-group: YOUTH, gender: FEMALE, rank: PRIMARY }
+        - { id: "${QWEN_VOICE_YOUTH_FEMALE_BACKUP:longyingtao_v3.1}", age-group: YOUTH, gender: FEMALE, rank: BACKUP }
+        - { id: "${QWEN_VOICE_YOUTH_NEUTRAL_PRIMARY:longanyang_v3.1}", age-group: YOUTH, gender: NEUTRAL, rank: PRIMARY }
+        - { id: "${QWEN_VOICE_YOUTH_NEUTRAL_BACKUP:longanlang_v3.1}", age-group: YOUTH, gender: NEUTRAL, rank: BACKUP }
+        - { id: "${QWEN_VOICE_MIDDLE_MALE_PRIMARY:longanlang_v3.1}", age-group: MIDDLE, gender: MALE, rank: PRIMARY }
+        - { id: "${QWEN_VOICE_MIDDLE_MALE_BACKUP:longzhe_v3.1}", age-group: MIDDLE, gender: MALE, rank: BACKUP }
+        - { id: "${QWEN_VOICE_MIDDLE_FEMALE_PRIMARY:longyingtao_v3.1}", age-group: MIDDLE, gender: FEMALE, rank: PRIMARY }
+        - { id: "${QWEN_VOICE_MIDDLE_FEMALE_BACKUP:anruorou_v3.1}", age-group: MIDDLE, gender: FEMALE, rank: BACKUP }
+        - { id: "${QWEN_VOICE_MIDDLE_NEUTRAL_PRIMARY:longanlang_v3.1}", age-group: MIDDLE, gender: NEUTRAL, rank: PRIMARY }
+        - { id: "${QWEN_VOICE_MIDDLE_NEUTRAL_BACKUP:longzhe_v3.1}", age-group: MIDDLE, gender: NEUTRAL, rank: BACKUP }
+        - { id: "${QWEN_VOICE_SENIOR_MALE_PRIMARY:libai_v3.1}", age-group: SENIOR, gender: MALE, rank: PRIMARY }
+        - { id: "${QWEN_VOICE_SENIOR_MALE_BACKUP:longzhe_v3.1}", age-group: SENIOR, gender: MALE, rank: BACKUP }
+        - { id: "${QWEN_VOICE_SENIOR_FEMALE_PRIMARY:longyingtao_v3.1}", age-group: SENIOR, gender: FEMALE, rank: PRIMARY }
+        - { id: "${QWEN_VOICE_SENIOR_FEMALE_BACKUP:anruorou_v3.1}", age-group: SENIOR, gender: FEMALE, rank: BACKUP }
+        - { id: "${QWEN_VOICE_SENIOR_NEUTRAL_PRIMARY:libai_v3.1}", age-group: SENIOR, gender: NEUTRAL, rank: PRIMARY }
+        - { id: "${QWEN_VOICE_SENIOR_NEUTRAL_BACKUP:longzhe_v3.1}", age-group: SENIOR, gender: NEUTRAL, rank: BACKUP }
     audio-temp-dir: ${AUDIO_TEMP_DIR:var/tmp-audio}
     sse:
       heartbeat-ms: 15000           # TBD-04

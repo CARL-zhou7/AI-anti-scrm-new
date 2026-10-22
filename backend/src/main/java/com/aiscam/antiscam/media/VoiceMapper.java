@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class VoiceMapper {
-    public static final String MAPPING_VERSION = "1";
+    public static final String MAPPING_VERSION = "2";
     private final Map<String, String> voices = new HashMap<>();
     private final SimulationProperties properties;
 
@@ -20,8 +20,12 @@ public class VoiceMapper {
 
     @PostConstruct
     void load() {
+        voices.clear();
         for (var voice : properties.getTts().getVoices()) {
-            voices.put(key(voice.getAgeGroup(), voice.getGender(), voice.getRank()), voice.getId());
+            String id = voice.getId();
+            if (id == null || id.isBlank() || voices.putIfAbsent(key(voice.getAgeGroup(), voice.getGender(), voice.getRank()), id) != null) {
+                throw new IllegalStateException("TTS voices require nonempty IDs and unique mapping keys");
+            }
         }
         for (String age : new String[]{"YOUTH", "MIDDLE", "SENIOR"}) {
             for (String gender : new String[]{"MALE", "FEMALE", "NEUTRAL"}) {
@@ -30,8 +34,10 @@ public class VoiceMapper {
                         throw new IllegalStateException("Missing TTS voice for " + key(age, gender, rank));
                     }
                 }
+                if (voices.get(key(age,gender,"PRIMARY")).equals(voices.get(key(age,gender,"BACKUP")))) throw new IllegalStateException("TTS primary and backup must differ for " + age + "_" + gender);
             }
         }
+        if (voices.size() != 18) throw new IllegalStateException("Exactly 18 TTS voice mappings are required");
     }
 
     public VoicePair map(int scammerAge, String scammerGender, int victimAge, String victimGender) {

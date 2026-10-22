@@ -105,14 +105,23 @@ public class SimulationProperties {
     }
 
     public static class Tts {
-        private String provider = "cosyvoice";
-        private String gatewayUrl = "http://127.0.0.1:50080";
+        private String provider = "qwen";
+        private String qwenBaseUrl = "";
+        private String qwenApiKey = "";
+        private String qwenModel = "qwen-audio-3.1-tts-flash";
+        private String qwenRegion = "beijing";
         private long callTimeoutMs = 30_000;
         private List<Voice> voices = new ArrayList<>();
         public String getProvider() { return provider; }
         public void setProvider(String v) { provider = v; }
-        public String getGatewayUrl() { return gatewayUrl; }
-        public void setGatewayUrl(String v) { gatewayUrl = v; }
+        public String getQwenBaseUrl() { return qwenBaseUrl; }
+        public void setQwenBaseUrl(String v) { qwenBaseUrl = v; }
+        public String getQwenApiKey() { return qwenApiKey; }
+        public void setQwenApiKey(String v) { qwenApiKey = v; }
+        public String getQwenModel() { return qwenModel; }
+        public void setQwenModel(String v) { qwenModel = v; }
+        public String getQwenRegion() { return qwenRegion; }
+        public void setQwenRegion(String v) { qwenRegion = v; }
         public long getCallTimeoutMs() { return callTimeoutMs; }
         public void setCallTimeoutMs(long v) { callTimeoutMs = v; }
         public List<Voice> getVoices() { return voices; }

@@ -29,9 +29,18 @@ public class SimulationConfig {
         String llm = properties.getLlm().getProvider();
         String tts = properties.getTts().getProvider();
         if (!llm.equals("deepseek") && !llm.equals("scripted")) throw new IllegalStateException("Unknown LLM provider " + llm);
-        if (!tts.equals("cosyvoice") && !tts.equals("silent")) throw new IllegalStateException("Unknown TTS provider " + tts);
+        if (!tts.equals("qwen") && !tts.equals("silent")) throw new IllegalStateException("Unknown TTS provider " + tts);
         if (!devOrTest && (llm.equals("scripted") || tts.equals("silent"))) {
             throw new IllegalStateException("scripted/silent simulation providers are only allowed in dev or test profiles");
+        }
+        if (tts.equals("qwen")) {
+            var qwen = properties.getTts();
+            if (qwen.getQwenApiKey().isBlank() || qwen.getQwenBaseUrl().isBlank()) throw new IllegalStateException("QWEN_API_KEY and QWEN_TTS_BASE_URL must be set");
+            if (!"beijing".equals(qwen.getQwenRegion())) throw new IllegalStateException("Qwen TTS requires the Beijing region");
+            if (!"qwen-audio-3.1-tts-flash".equals(qwen.getQwenModel())) throw new IllegalStateException("Unsupported Qwen TTS model");
+            if (!devOrTest && !qwen.getQwenBaseUrl().matches("https://[a-zA-Z0-9-]+\\.cn-beijing\\.maas\\.aliyuncs\\.com/?")) {
+                throw new IllegalStateException("Qwen TTS requires a Beijing workspace HTTPS endpoint");
+            }
         }
         if (!devOrTest && llm.equals("deepseek") && properties.getLlm().getApiKey().isBlank()) {
             throw new IllegalStateException("LLM_API_KEY must be set outside dev/test");
