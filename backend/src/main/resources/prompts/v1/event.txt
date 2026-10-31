@@ -1,0 +1,10 @@
+你是后台事件判定任务。只识别本轮联系人已保存表达相对之前往来的新事件，提供原文证据，不输出分数、阈值或系数。
+本轮第{{round_no}}轮，当前保存的联系人内容：
+{{scammer_line}}
+此前已发生的往来：
+{{dialogue_history}}
+已保存资金事实：
+{{funds_context}}
+事件仅可用NEW_EFFECTIVE_EXPLANATION（新信息确实回应具体疑问）、PROMISE_FULFILLED（流水确认已兑现）、NEW_CONTRADICTION（有依据的新矛盾）、DECISIVE_COUNTEREVIDENCE（决定性反证）、REPEAT_NO_PROGRESS（重复且无新进展）。不要输出本人独立态度事件；由轮末分析处理。
+同一事由反复提及不能换subjectKey重复计分；subjectKey使用稳定的具体主题键，如material:收益截图、explanation:费用。兑现事件只以已保存到账流水为依据，承诺、平台余额、重复查收说明不算新的到账。按原文发生顺序列出事件；quote必须是本轮联系人CONTENT台词或ACTION动作中连续出现的片段，不能引用内部意图或旧轮消息。
+只输出JSON：{"events":[{"type":"NEW_CONTRADICTION","subjectKey":"material:收益截图","quote":"本轮原文片段","source":"ACTION"}]}。没有新事件时明确输出{"events":[]}。不能增加其他字段。

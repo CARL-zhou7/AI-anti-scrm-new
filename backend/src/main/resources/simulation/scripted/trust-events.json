@@ -1,0 +1,18 @@
+{
+  "extends": "default-v12",
+  "rounds": {
+    "2": {
+      "scammer": [{"output": {"line": "你刚才问我的身份，我是小李，负责介绍任务安排。", "action": null, "intent": "说明声称的身份", "tone": {"speed": "NORMAL", "style": "平静"}}}],
+      "event": [{"output": {"events": [
+        {"type": "NEW_EFFECTIVE_EXPLANATION", "subjectKey": "explanation:身份", "quote": "我是小李，负责介绍任务安排", "source": "CONTENT"},
+        {"type": "NEW_EFFECTIVE_EXPLANATION", "subjectKey": "explanation:身份", "quote": "我是小李，负责介绍任务安排", "source": "CONTENT"}
+      ]}}]
+    },
+    "3": {
+      "scammer": [{"output": {"line": "我其实不叫小李，刚才那个身份说错了。", "action": null, "intent": "暴露身份矛盾", "tone": {"speed": "NORMAL", "style": "犹豫"}}}],
+      "event": [{"output": {"events": [
+        {"type": "NEW_CONTRADICTION", "subjectKey": "contradiction:身份", "quote": "我其实不叫小李", "source": "CONTENT"}
+      ]}}]
+    }
+  }
+}

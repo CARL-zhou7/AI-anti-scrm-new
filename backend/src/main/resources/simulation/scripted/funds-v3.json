@@ -1,0 +1,266 @@
+{
+  "extends": "default-v12",
+  "delayMs": 10,
+  "rounds": {
+    "1": {
+      "scammer": [
+        {
+          "output": {
+            "line": "体验报酬已实际到账50元，你可以先核对这笔到账。",
+            "action": null,
+            "intent": "以小额报酬建立联系",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "自然"
+            },
+            "claimedRefundYuan": 50,
+            "fundActions": [
+              {
+                "type": "REWARD",
+                "purpose": "REWARD",
+                "amountYuan": 50,
+                "roundNo": 1,
+                "speaker": "SCAMMER",
+                "quote": "体验报酬已实际到账50元",
+                "eventOrder": 1,
+                "reason": null,
+                "relatedPaymentId": null,
+                "reserveTier": null
+              }
+            ]
+          }
+        }
+      ],
+      "victim": [
+        {
+          "output": {
+            "line": "50元确实收到了，但任务的具体安排我还要了解。",
+            "action": null,
+            "psychology": "承认到账，继续了解",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "自然"
+            },
+            "fundActions": []
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "接触与建立联系",
+            "speechAnalysis": "以“机会”开场，激发好奇心，同时用礼貌降低戒备。",
+            "methodAnalysis": "陌生来电或消息主动搭讪，为后续诱导铺垫。",
+            "victimPsychology": "对陌生身份保持本能警惕，先追问对方来历。",
+            "riskScore": 25,
+            "riskReason": "尚未建立信任，受害者主动追问身份，保持警惕。",
+            "actualFraudOccurred": false,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "2": {
+      "scammer": [
+        {
+          "output": {
+            "line": "说明写明日期为10月25日、户名为任务方、用途为体验任务、金额为100元。",
+            "action": "发来了包含上述四项的说明",
+            "intent": "补充可核对的信息",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "自然"
+            },
+            "claimedRefundYuan": null,
+            "fundActions": []
+          }
+        }
+      ],
+      "event": [
+        {
+          "output": {
+            "events": [
+              {
+                "type": "NEW_EFFECTIVE_EXPLANATION",
+                "subjectKey": "explain:date",
+                "quote": "日期为10月25日",
+                "source": "CONTENT"
+              },
+              {
+                "type": "NEW_EFFECTIVE_EXPLANATION",
+                "subjectKey": "explain:name",
+                "quote": "户名为任务方",
+                "source": "CONTENT"
+              },
+              {
+                "type": "NEW_EFFECTIVE_EXPLANATION",
+                "subjectKey": "explain:purpose",
+                "quote": "用途为体验任务",
+                "source": "CONTENT"
+              },
+              {
+                "type": "NEW_EFFECTIVE_EXPLANATION",
+                "subjectKey": "explain:amount",
+                "quote": "金额为100元",
+                "source": "CONTENT"
+              }
+            ]
+          }
+        }
+      ],
+      "victim": [
+        {
+          "output": {
+            "line": "我已经转账100元，后续任务先不接了。",
+            "action": null,
+            "psychology": "依据已收到的说明做小额尝试",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "自然"
+            },
+            "fundActions": [
+              {
+                "type": "PAYMENT",
+                "purpose": "INITIAL_PAYMENT",
+                "amountYuan": 100,
+                "roundNo": 2,
+                "speaker": "VICTIM",
+                "quote": "我已经转账100元",
+                "eventOrder": 1,
+                "reason": null,
+                "relatedPaymentId": null,
+                "reserveTier": null
+              }
+            ]
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "建立信任",
+            "speechAnalysis": "借“朋友推荐”虚构熟人背书，弱化陌生感。",
+            "methodAnalysis": "利用人际信任与利益诱惑引起兴趣。",
+            "victimPsychology": "被“好处”吸引产生好奇，但仍要求说明细节。",
+            "riskScore": 50,
+            "riskReason": "已支付本金，先前报酬不抹除付款事实",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [
+              {
+                "factCode": "INITIAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 2,
+                "quote": "我已经转账100元",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "3": {
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "诱导操作",
+            "speechAnalysis": "用“简单步骤”“名额不多”降低门槛并制造稀缺。",
+            "methodAnalysis": "稀缺性与轻松获利暗示，催促尽快行动。",
+            "victimPsychology": "察觉“好得不真实”，产生怀疑并选择拖延。",
+            "riskScore": 50,
+            "riskReason": "已支付本金，先前报酬不抹除付款事实",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [
+              {
+                "factCode": "INITIAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 2,
+                "quote": "我已经转账100元",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "4": {
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "施加压力",
+            "speechAnalysis": "以“过了今天就没机会”制造紧迫感，阻止思考。",
+            "methodAnalysis": "时间压力是典型操控手段，意在跳过核实环节。",
+            "victimPsychology": "紧迫要求引发不安，决定先通过官方渠道核实。",
+            "riskScore": 25,
+            "riskReason": "已支付本金，先前报酬不抹除付款事实",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [
+              {
+                "factCode": "INITIAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 2,
+                "quote": "我已经转账100元",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": null,
+            "candidateReason": null
+          }
+        }
+      ]
+    },
+    "5": {
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "阻止核实",
+            "speechAnalysis": "以反问否认嫌疑，并继续催促，试图打断核实。",
+            "methodAnalysis": "阻挠独立核实、持续施压，是诈骗收网前的典型做法。",
+            "victimPsychology": "通过官方渠道得到确认，识破骗局后果断终止联系。",
+            "riskScore": 0,
+            "riskReason": "已支付本金，先前报酬不抹除付款事实",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": true,
+            "evidence": [
+              {
+                "factCode": "INITIAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 2,
+                "quote": "我已经转账100元",
+                "eventOrder": 1
+              },
+              {
+                "factCode": "COOPERATION_STOPPED",
+                "speaker": "VICTIM",
+                "source": "ACTION",
+                "roundNo": 5,
+                "quote": "已经把对方拉黑",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": "DEFRAUDED",
+            "candidateReason": "实际付款后核实并停止配合，未完成追加目标"
+          }
+        }
+      ]
+    }
+  }
+}

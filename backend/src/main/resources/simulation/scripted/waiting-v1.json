@@ -1,0 +1,100 @@
+{
+  "extends": "funds-v3",
+  "rounds": {
+    "1": {
+      "scammer": [
+        {
+          "output": {
+            "line": "体验报酬已实际到账50元，你可以先核对这笔到账。",
+            "action": "发来说明：金额100元，日期10月25日，户名任务方，用途体验任务",
+            "intent": "以小额报酬建立联系",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "自然"
+            },
+            "claimedRefundYuan": 50,
+            "fundActions": [
+              {
+                "type": "REWARD",
+                "purpose": "REWARD",
+                "amountYuan": 50,
+                "roundNo": 1,
+                "speaker": "SCAMMER",
+                "quote": "体验报酬已实际到账50元",
+                "eventOrder": 1,
+                "reason": null,
+                "relatedPaymentId": null,
+                "reserveTier": null
+              }
+            ]
+          }
+        }
+      ],
+      "victim": [
+        {
+          "output": {
+            "line": "50元确实收到了，但任务的具体安排我还要了解。",
+            "action": "我已发送消息向同学咨询这项任务",
+            "psychology": "承认到账，继续了解",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "自然"
+            },
+            "fundActions": []
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "接触与建立联系",
+            "speechAnalysis": "以“机会”开场，激发好奇心，同时用礼貌降低戒备。",
+            "methodAnalysis": "陌生来电或消息主动搭讪，为后续诱导铺垫。",
+            "victimPsychology": "对陌生身份保持本能警惕，先追问对方来历。",
+            "riskScore": 25,
+            "riskReason": "尚未建立信任，受害者主动追问身份，保持警惕。",
+            "actualFraudOccurred": false,
+            "goalAchieved": false,
+            "cooperationStopped": false,
+            "evidence": [],
+            "candidateOutcome": null,
+            "candidateReason": null,
+            "waitingUpdates": [
+              {
+                "action": "OPEN",
+                "type": "CONSULTATION",
+                "subjectKey": "consult:third-party",
+                "text": "咨询同学这项任务",
+                "basis": "已发送消息向同学咨询这项任务"
+              }
+            ]
+          }
+        }
+      ],
+      "event": [
+        {
+          "output": {
+            "events": [
+              {
+                "type": "NEW_EFFECTIVE_EXPLANATION",
+                "subjectKey": "material:任务说明",
+                "quote": "金额100元，日期10月25日，户名任务方，用途体验任务",
+                "source": "ACTION",
+                "materials": [
+                  {
+                    "subjectKey": "material:任务说明",
+                    "amountYuan": 100,
+                    "date": "10月25日",
+                    "accountName": "任务方",
+                    "purpose": "体验任务"
+                  }
+                ],
+                "requirement": null
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

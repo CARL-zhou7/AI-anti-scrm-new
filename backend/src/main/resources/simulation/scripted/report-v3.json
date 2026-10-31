@@ -1,0 +1,30 @@
+{
+  "defaults": {
+    "report": [
+      {
+        "output": {
+          "contentSchemaVersion": 3,
+          "result": {
+            "text": "{{outcome}}：依据已保存过程形成结论",
+            "reason": "{{ending_reason}}"
+          },
+          "summary": "本次模拟从既定诈骗场景与人物背景开始。复盘围绕已保存的对话和行动展开，区分对方提出的要求、受害者的态度，以及实际执行的操作。观看时应先看清双方关系与接触方式，再判断对方是否借助利益、熟人身份或紧迫感获取信任，避免仅凭某句话的语气下结论。\n\n在诈骗推进过程中，对方通过连续交流争取配合，受害者则在当时背景下作出回应。是否表示相信、是否准备操作，与是否已经转出资金，是不同层次的事实。复盘以实际保存过程为依据，不能把对方的要求当成受害者已执行，也不能把声称返款当成实际到账。\n\n关键判断需要结合已发生的行动与后续反应。暂停考虑不等于明确停止，风险分数降低也不会删除此前已经发生的受骗行为。资金部分按本场流水保留支付、本金返款、独立报酬及净亏损，预留资金释放只是资金来源变化，不能被当成收入或额外损失。\n\n本次正式结果为{{outcome}}，沿用服务端保存结论，不因复盘文字重新判定。学习重点是识别具体危险要求、区分承诺与执行，并在涉及资金或账户信息时通过原有联系方式核实。防范建议只针对模拟情境，不评价观看者的能力，也不把一次情景表现当成长期特征。",
+          "keyNodes": [],
+          "preventionAdvice": [
+            "涉及资金时，使用已知的原有联系方式独立核实身份与事项。",
+            "拒绝以追加费用、紧急期限或返款承诺为由要求继续转账的操作。"
+          ],
+          "fundsSummary": {
+            "totalPaidYuan": "{{totalPaidYuan}}",
+            "totalRefundedYuan": "{{totalRefundedYuan}}",
+            "actualLossYuan": "{{actualLossYuan}}",
+            "totalRewardedYuan": "{{totalRewardedYuan}}",
+            "availableBalanceYuan": "{{availableBalanceYuan}}",
+            "generalReserveRemainingYuan": "{{generalReserveRemainingYuan}}",
+            "emergencyReserveRemainingYuan": "{{emergencyReserveRemainingYuan}}"
+          }
+        }
+      }
+    ]
+  }
+}

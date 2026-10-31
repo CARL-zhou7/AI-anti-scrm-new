@@ -1,0 +1,162 @@
+{
+  "extends": "waiting-v1",
+  "rounds": {
+    "2": {
+      "scammer": [
+        {
+          "output": {
+            "line": "任务今天18点截止，内容是填写体验反馈，可以取消，也不用继续接单。",
+            "action": "发来了包含上述四项的说明",
+            "intent": "补充可核对的信息",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "自然"
+            },
+            "claimedRefundYuan": null,
+            "fundActions": []
+          }
+        }
+      ],
+      "event": [
+        {
+          "output": {
+            "events": [
+              {
+                "type": "NEW_EFFECTIVE_EXPLANATION",
+                "subjectKey": "explanation:时间",
+                "quote": "今天18点截止",
+                "source": "CONTENT"
+              },
+              {
+                "type": "NEW_EFFECTIVE_EXPLANATION",
+                "subjectKey": "explanation:内容",
+                "quote": "填写体验反馈",
+                "source": "CONTENT"
+              },
+              {
+                "type": "NEW_EFFECTIVE_EXPLANATION",
+                "subjectKey": "explanation:取消",
+                "quote": "可以取消",
+                "source": "CONTENT"
+              },
+              {
+                "type": "NEW_EFFECTIVE_EXPLANATION",
+                "subjectKey": "explanation:后续",
+                "quote": "不用继续接单",
+                "source": "CONTENT"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "1": {
+      "victim": [
+        {
+          "output": {
+            "line": "50元收到了。任务什么时候截止，做什么，能否取消，后面还要接单吗？",
+            "action": "我已发送消息向同学咨询这项任务",
+            "psychology": "承认到账并询问尚未知晓的安排",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "自然"
+            },
+            "fundActions": []
+          }
+        }
+      ]
+    },
+    "3": {
+      "scammer": [
+        {
+          "output": {
+            "line": "我承认任务不存在，也没有真实订单。",
+            "action": null,
+            "intent": "承认虚构任务",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "犹豫"
+            },
+            "claimedRefundYuan": null,
+            "fundActions": []
+          }
+        }
+      ],
+      "event": [
+        {
+          "output": {
+            "events": [
+              {
+                "type": "DECISIVE_COUNTEREVIDENCE",
+                "subjectKey": "counterevidence:任务不存在",
+                "quote": "我承认任务不存在，也没有真实订单",
+                "source": "CONTENT"
+              }
+            ]
+          }
+        }
+      ],
+      "victim": [
+        {
+          "output": {
+            "line": "你已经承认任务不存在，我不再配合了。",
+            "action": "已经把对方拉黑",
+            "psychology": "根据对方承认的事实终止往来",
+            "tone": {
+              "speed": "NORMAL",
+              "style": "坚定"
+            },
+            "fundActions": []
+          }
+        }
+      ],
+      "narrator": [
+        {
+          "output": {
+            "fraudStage": "反证与停止配合",
+            "speechAnalysis": "联系人承认虚构任务",
+            "methodAnalysis": "虚构任务诱导小额付款",
+            "victimPsychology": "得到反证后停止配合",
+            "riskScore": 0,
+            "riskReason": "明确停止往来",
+            "actualFraudOccurred": true,
+            "goalAchieved": false,
+            "cooperationStopped": true,
+            "evidence": [
+              {
+                "factCode": "INITIAL_PAYMENT_COMPLETED",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 2,
+                "quote": "我已经转账100元",
+                "eventOrder": 1
+              },
+              {
+                "factCode": "DECISIVE_COUNTEREVIDENCE_FOUND",
+                "speaker": "VICTIM",
+                "source": "CONTENT",
+                "roundNo": 3,
+                "quote": "你已经承认任务不存在",
+                "eventOrder": 1
+              },
+              {
+                "factCode": "COOPERATION_STOPPED",
+                "speaker": "VICTIM",
+                "source": "ACTION",
+                "roundNo": 3,
+                "quote": "已经把对方拉黑",
+                "eventOrder": 1
+              }
+            ],
+            "candidateOutcome": "DEFRAUDED",
+            "candidateReason": "已有实际付款，得到决定性反证后停止配合",
+            "characterExit": false,
+            "characterExitReason": null,
+            "attitudeEvents": [],
+            "waitingUpdates": []
+          }
+        }
+      ]
+    }
+  }
+}

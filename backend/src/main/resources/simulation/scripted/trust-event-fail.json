@@ -1,0 +1,12 @@
+{
+  "extends": "trust-v1",
+  "rounds": {
+    "1": {
+      "event": [
+        {
+          "error": "TIMEOUT"
+        }
+      ]
+    }
+  }
+}
