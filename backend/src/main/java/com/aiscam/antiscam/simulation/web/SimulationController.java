@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
-@RequestMapping("/anti.scam/v1/simulations")
+@RequestMapping({"/anti.scam/v1/simulations", "/anti.scam/v1/admin/simulations"})
 public class SimulationController {
     private final SimulationService service;
     private final SimulationEventHub hub;
@@ -40,7 +40,7 @@ public class SimulationController {
     public ResponseEntity<ApiResponse<State>> start(@RequestBody StartRequest body, @RequestParam MultiValueMap<String, String> query,
             Authentication auth, HttpServletRequest request) {
         PageQuery.validate(query, Set.of());
-        var result = service.start(userId(auth), request.getSession().getId(), body);
+        var result = service.start(userId(auth), role(auth), request.getSession().getId(), body);
         return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK)
                 .header("Cache-Control", "no-store").body(ApiResponse.ok(result.state()));
     }
@@ -144,4 +144,9 @@ public class SimulationController {
     }
 
     private static long userId(Authentication auth) { return Long.parseLong(((Account) auth.getPrincipal()).id()); }
+
+    /** The authenticated role is kept separate from the session's review mode. */
+    private static com.aiscam.antiscam.auth.domain.UserRole role(Authentication auth) {
+        return ((Account) auth.getPrincipal()).role();
+    }
 }

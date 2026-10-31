@@ -17,7 +17,8 @@ public record VictimWriteRequest(
         @NotNull(message = "此项不能为空") @Min(value = 0, message = "金额不能为负数") Integer monthlyExpenseYuan,
         @NotNull(message = "此项不能为空") @Min(value = 0, message = "金额不能为负数") Integer initialSavingsYuan,
         @NotNull(message = "此项不能为空") @Min(value = 0, message = "金额不能为负数") Integer availableFundsYuan,
-        @NotNull(message = "此项不能为空") @Min(value = 0, message = "金额不能为负数") Integer reservedFundsYuan,
+        @NotNull(message = "此项不能为空") @Min(value = 0, message = "金额不能为负数") Integer generalReserveFundsYuan,
+        @NotNull(message = "此项不能为空") @Min(value = 0, message = "金额不能为负数") Integer emergencyReserveFundsYuan,
         @NotBlank(message = "此项不能为空") String reservedFundsNote,
         @NotBlank(message = "此项不能为空") String generalDecisionTraits,
         @NotNull(message = "请填写三套场景资料") @Size(min = 3, max = 3, message = "请填写三套场景资料") List<@NotNull @Valid VictimScenarioProfileRequest> scenarioProfiles,
@@ -39,6 +40,6 @@ public record VictimWriteRequest(
         values(avatarKey, speakingAvatarKey).validate();
     }
     public VictimProfileValues values(String storedAvatarKey, String storedSpeakingAvatarKey) {
-        return new VictimProfileValues(name, age, gender, identity, description, familyStatus, incomeDescription, monthlyExpenseYuan, initialSavingsYuan, availableFundsYuan, reservedFundsYuan, reservedFundsNote, generalDecisionTraits, contextPlace, currentState, antiFraudAwareness, riskTendency, personalityTraits, storedAvatarKey, storedSpeakingAvatarKey, scenarioProfiles == null ? null : scenarioProfiles.stream().map(p -> p == null ? null : p.values()).toList());
+        return new VictimProfileValues(name, age, gender, identity, description, familyStatus, incomeDescription, monthlyExpenseYuan, initialSavingsYuan, availableFundsYuan, generalReserveFundsYuan, emergencyReserveFundsYuan, reservedFundsNote, generalDecisionTraits, contextPlace, currentState, antiFraudAwareness, riskTendency, personalityTraits, storedAvatarKey, storedSpeakingAvatarKey, scenarioProfiles == null ? null : scenarioProfiles.stream().map(p -> p == null ? null : p.values()).toList());
     }
 }

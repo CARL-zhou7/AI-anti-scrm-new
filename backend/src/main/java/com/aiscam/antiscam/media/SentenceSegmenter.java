@@ -30,7 +30,7 @@ public final class SentenceSegmenter {
 
     private static void add(List<Segment> result, int[] cps, int start, int end) {
         String text = new String(cps, start, end - start);
-        boolean onlyPunctuation = text.codePoints().allMatch(c -> BREAKS.indexOf(c) >= 0 || Character.isWhitespace(c));
+        boolean onlyPunctuation = text.matches("[\\p{P}\\p{javaWhitespace}]+");
         if (onlyPunctuation && !result.isEmpty()) {
             var last = result.removeLast();
             result.add(new Segment(last.text() + text, last.charStart(), end));

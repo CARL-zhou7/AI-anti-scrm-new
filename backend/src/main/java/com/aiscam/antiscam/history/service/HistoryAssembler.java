@@ -39,7 +39,7 @@ public class HistoryAssembler {
 
     public HistoryItem item(SimulationSession s, SimulationReport row) {
         var names = snapshots.names(s.getScenarioSnapshot(), s.getScammerSnapshot(), s.getVictimSnapshot());
-        boolean finished = s.getStatus() == SimulationStatus.FINISHED;
+        boolean finished = state.reportEligible(s);
         if (finished && row == null) log.warn("History report missing: sessionId={}", s.getId());
         return new HistoryItem(s.getId().toString(), format(s.getStartedAt()), names.scenario(), names.scammer(),
                 names.victim(), s.getStatus().name(), finished && row != null ? ReportViewMapper.summary(row) : null,
@@ -51,7 +51,7 @@ public class HistoryAssembler {
     }
 
     private Funds historyFunds(SimulationSession s, List<SimulationRound> savedRounds) {
-        var f = Funds.from(s, true);
+        var f = Funds.from(s, true, snapshots.fundsV3(s));
         if (!f.fundsRecorded()) return f;
         var roundNumbers = savedRounds.stream().collect(Collectors.toMap(SimulationRound::getId, SimulationRound::getRoundNo));
         var flows = funds.findBySessionIdOrderBySequenceNoAsc(s.getId()).stream()
@@ -60,18 +60,26 @@ public class HistoryAssembler {
                         p.getFlowType().name(), p.getPurpose().name(), p.getAmountYuan(), p.getBalanceAfterYuan(),
                         p.getReason(), format(p.getOccurredAt()))).toList();
         return new Funds(true, f.initialAvailableYuan(), f.availableBalanceYuan(), f.totalPaidYuan(), f.totalRefundedYuan(),
-                f.actualLossYuan(), f.additionalPaymentCount(), f.reserveReleasedYuan(), flows);
+                f.actualLossYuan(), f.additionalPaymentCount(), f.reserveReleasedYuan(), flows, f.totalRewardedYuan(),
+                f.generalReserveTotalYuan(),f.generalReserveRemainingYuan(),f.emergencyReserveTotalYuan(),f.emergencyReserveRemainingYuan());
     }
 
     public HistoryDetail detail(SimulationSession s) {
-        var report = s.getStatus() == SimulationStatus.FINISHED
+        var report = state.reportEligible(s)
                 ? ReportViewMapper.summary(reports.findById(s.getId())
                         .orElseThrow(() -> ApiException.dataInconsistent("记录状态异常，请稍后重试"))) : null;
         var savedRounds = rounds.findBySessionIdOrderByRoundNoAsc(s.getId());
         var byRound = savedRounds.isEmpty() ? java.util.Map.<Long, List<SimulationMessage>>of()
                 : messages.findByRoundIdIn(savedRounds.stream().map(SimulationRound::getId).toList()).stream()
                         .collect(Collectors.groupingBy(SimulationMessage::getRoundId));
+        boolean v3 = snapshots.fundsV3(s);
+        var roundNumbers = savedRounds.stream().collect(Collectors.toMap(SimulationRound::getId,SimulationRound::getRoundNo));
+        var flows = v3 ? funds.findBySessionIdOrderBySequenceNoAsc(s.getId()) : List.<com.aiscam.antiscam.simulation.domain.FundFlow>of();
         var historyRounds = savedRounds.stream().map(r -> {
+            int general = flows.stream().filter(f -> roundNumbers.get(f.getRoundId()) <= r.getRoundNo()
+                    && "GENERAL".equals(f.getReserveTier())).mapToInt(com.aiscam.antiscam.simulation.domain.FundFlow::getAmountYuan).sum();
+            int emergency = flows.stream().filter(f -> roundNumbers.get(f.getRoundId()) <= r.getRoundNo()
+                    && "EMERGENCY".equals(f.getReserveTier())).mapToInt(com.aiscam.antiscam.simulation.domain.FundFlow::getAmountYuan).sum();
             var list = byRound.getOrDefault(r.getId(), List.of()).stream()
                     .sorted(Comparator.comparing(m -> m.getSpeakerRole().ordinal()))
                     .map(m -> new HistoryMessage(m.getId().toString(), r.getRoundNo(), m.getSpeakerRole().name(),
@@ -79,11 +87,13 @@ public class HistoryAssembler {
                             format(m.getPresentationCompletedAt()), m.getPresentationErrorCode(), format(m.getCreatedAt())))
                     .toList();
             return new HistoryRound(r.getRoundNo(), r.getPhase().name(), list.size() == 2,
-                    r.getPhase() == RoundPhase.COMPLETE, list, state.analysis(r), format(r.getReadingUntil()),
+                    r.getPhase() == RoundPhase.COMPLETE, list, historyAnalysis(s, r), format(r.getReadingUntil()),
                     s.getSnapshotSchemaVersion() < 2 ? null : new Funds(
                             true, s.getInitialAvailableFundsYuan(), r.getRoundBalanceYuan(), r.getRoundPaidYuan(),
                             r.getRoundRefundedYuan(), r.getRoundActualLossYuan(), r.getAdditionalPaymentCountTotal(),
-                            r.getRoundReserveReleasedYuan(), null));
+                            r.getRoundReserveReleasedYuan(), null, v3 ? r.getRoundRewardedYuan() : null,
+                            v3 ? s.getGeneralReserveTotalYuan() : null, v3 ? s.getGeneralReserveTotalYuan()-general : null,
+                            v3 ? s.getEmergencyReserveTotalYuan() : null, v3 ? s.getEmergencyReserveTotalYuan()-emergency : null));
         }).toList();
         return new HistoryDetail(s.getId().toString(), s.getStatus().name(), format(s.getStartedAt()),
                 format(s.getDeadlineAt()), format(s.getEndedAt()),
@@ -91,5 +101,20 @@ public class HistoryAssembler {
                 historyRounds, state.outcome(s), interruption(s), report,
                 snapshots.read(s.getRuntimeSnapshot()).path("ruleset_version").asText("PRD-V3.2"),
                 historyFunds(s, savedRounds));
+    }
+
+    /**
+     * V3.5 history keeps the complete analysis but never the per-round score change: that belongs to the live card
+     * only, and history/report show the final score alone. Old runs keep whatever they recorded.
+     */
+    private com.aiscam.antiscam.simulation.web.dto.SimulationViews.Analysis historyAnalysis(SimulationSession s,
+            SimulationRound round) {
+        var analysis = state.analysis(s, round);
+        if (analysis == null || analysis.trustChange() == null
+                || !com.aiscam.antiscam.simulation.rules.SimulationRuleset.isV35(s)) return analysis;
+        return new com.aiscam.antiscam.simulation.web.dto.SimulationViews.Analysis(analysis.fraudStage(),
+                analysis.speechAnalysis(), analysis.methodAnalysis(), analysis.victimPsychology(), analysis.riskScore(),
+                analysis.riskReason(), analysis.savedAt(), analysis.presentedAt(), null,
+                analysis.methodShort(), analysis.intentShort());
     }
 }

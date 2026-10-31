@@ -79,6 +79,32 @@ function detail(): HistoryDetail {
     outcome: { code: 'NOT_DEFRAUDED', displayText: '未受骗结束', reason: '核实后停止联系', limitReason: null }, interruption: null, report: summary('SUCCEEDED') }
 }
 
+it('hides the per-round score line for V1.4 history but keeps the full analysis and the final score', async () => {
+  const v35 = detail()
+  v35.rulesetVersion = 'PRD-V3.5'
+  v35.rounds[0]!.analysis = { ...v35.rounds[0]!.analysis!, trustChange: { before: 50, after: 62, delta: 12 },
+    methodShort: '冒充亲友', intentShort: '借亲属身份让受害人放下戒心' }
+  v35.outcome = { code: 'SCAMMER_WIN', displayText: '骗子胜', reason: '第15轮结束时判定', limitReason: null,
+    winning: 'SCAMMER', finalTrustScore: 62 }
+  const api = vi.spyOn(historyApi, 'detail').mockResolvedValue(v35)
+  const view = mount(HistoryDetailView, { global }); await flushPromises()
+  expect(view.find('[data-testid=history-round-trust]').exists()).toBe(false)
+  expect(view.text()).toContain('紧迫话术')
+  expect(view.text()).toContain('权威伪装')
+  expect(view.get('[data-testid=history-final-trust]').text()).toContain('62')
+  view.unmount()
+
+  // An older run keeps whatever it recorded.
+  const legacy = detail()
+  legacy.rulesetVersion = 'PRD-V3.4'
+  legacy.rounds[0]!.analysis = { ...legacy.rounds[0]!.analysis!, trustChange: { before: 50, after: 62, delta: 12 } }
+  api.mockResolvedValue(legacy)
+  const old = mount(HistoryDetailView, { global }); await flushPromises()
+  expect(old.get('[data-testid=history-round-trust]').text()).toContain('50 → 62')
+  expect(old.find('[data-testid=history-final-trust]').exists()).toBe(false)
+  old.unmount()
+})
+
 it('lists snapshots in Shanghai time, paginates with deduplication and stops at the last page', async () => {
   const api = vi.spyOn(historyApi, 'list').mockResolvedValueOnce({ items: [item()], nextCursor: 'c1', hasMore: true })
     .mockResolvedValueOnce({ items: [item(), item('2')], nextCursor: null, hasMore: false })

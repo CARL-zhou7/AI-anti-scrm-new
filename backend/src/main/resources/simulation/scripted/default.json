@@ -2,6 +2,7 @@
   "_comment": "Dev/test only. Five rounds; the victim stops in round 5 -> NOT_DEFRAUDED. Internal notes carry INTERNAL-NOTE-SECRET so leaks are easy to grep.",
   "delayMs": 300,
   "defaults": {
+    "event": [{"output": {"events": []}}],
     "report": [{"output": {
       "summary": "骗子以机会和利益吸引受害者，并反复催促操作。受害者逐渐起疑，通过官方渠道核实后终止联系。",
       "roundAnalyses": [

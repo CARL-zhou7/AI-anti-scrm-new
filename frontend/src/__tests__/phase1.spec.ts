@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { csrf } from '../api/csrf'
 import { authApi } from '../api/auth'
+import { loginRole } from '../api/loginRole'
 import { http, ApiError } from '../api/http'
 import { homeApi } from '../api/home'
 import HomeView from '../views/HomeView.vue'
@@ -13,10 +14,29 @@ const success = (data: unknown, status = 200) => new Response(JSON.stringify({
   code: 'OK', message: '成功', data, requestId: 'test-request',
 }), { status, headers: { 'Content-Type': 'application/json' } })
 
-beforeEach(() => csrf.clear())
+beforeEach(() => { csrf.clear(); loginRole.clear() })
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('phase 1 smoke', () => {
+  it('keeps the selected login role in this tab and refreshes csrf in the returned role', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(success({ token: 'user-token', headerName: 'X-CSRF-TOKEN' }))
+      .mockResolvedValueOnce(success({ id: '102', username: 'admin', role: 'ADMIN' }))
+      .mockResolvedValueOnce(success({ token: 'admin-token', headerName: 'X-CSRF-TOKEN' }))
+      .mockResolvedValueOnce(success({ id: '102', username: 'admin', role: 'ADMIN' }))
+      .mockResolvedValueOnce(success({ loggedOut: true }))
+    vi.stubGlobal('fetch', fetcher)
+    await authApi.login({ username: 'admin', password: '123456' })
+    expect(loginRole.current()).toBe('ADMIN')
+    expect(fetcher.mock.calls[2][1].headers['X-Login-Role']).toBe('ADMIN')
+    await authApi.me()
+    await authApi.logout()
+    expect(fetcher.mock.calls[3][1].headers['X-Login-Role']).toBe('ADMIN')
+    expect(fetcher.mock.calls[4][1].headers['X-Login-Role']).toBe('ADMIN')
+    expect(fetcher.mock.calls[4][1].headers['X-CSRF-TOKEN']).toBe('admin-token')
+    expect(localStorage.getItem('login-role')).toBeNull()
+  })
+
   it('fetches one csrf for concurrent calls and refreshes it after login', async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(success({ token: 'before', headerName: 'X-CSRF-TOKEN' }))

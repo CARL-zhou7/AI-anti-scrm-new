@@ -47,6 +47,7 @@ server:
   error:
     include-message: never
     include-stacktrace: never
+  port: 8100
 app:
   content:
     avatar-store: ${AVATAR_STORE:var}
@@ -58,6 +59,7 @@ app:
     username: ${ADMIN_USERNAME:}
     password: ${ADMIN_PASSWORD:}
   simulation:
+    max-active-duration-ms: ${SIMULATION_MAX_ACTIVE_DURATION_MS:1800000}
     timing:
       sample-ttl-ms: 60000          # TBD-01a
       max-uncertainty-ms: 1500      # TBD-01a

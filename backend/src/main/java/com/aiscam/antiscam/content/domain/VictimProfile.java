@@ -58,8 +58,12 @@ public class VictimProfile {
     private int initialSavingsYuan;
     @Column(name = "available_funds_yuan", nullable = false, columnDefinition = "int unsigned")
     private int availableFundsYuan;
-    @Column(name = "reserved_funds_yuan", nullable = false, columnDefinition = "int unsigned")
+    @Column(name = "reserved_funds_yuan", insertable = false, updatable = false, columnDefinition = "int unsigned")
     private int reservedFundsYuan;
+    @Column(name = "general_reserve_funds_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int generalReserveFundsYuan;
+    @Column(name = "emergency_reserve_funds_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int emergencyReserveFundsYuan;
     @Column(name = "reserved_funds_note", nullable = false, columnDefinition = "text")
     private String reservedFundsNote;
     @Column(name = "general_decision_traits", nullable = false, columnDefinition = "text")
@@ -69,12 +73,17 @@ public class VictimProfile {
     private List<VictimScenarioProfile> scenarioProfiles = new ArrayList<>();
 
     public List<VictimScenarioProfileValues> getScenarioProfiles() { return scenarioProfiles.stream().map(VictimScenarioProfile::values).toList(); }
+    public VictimScenarioProfile scenarioProfile(ScenarioCode code) {
+        return scenarioProfiles.stream().filter(p -> p.getScenarioCode().equals(code.name())).findFirst().orElseThrow();
+    }
     public String getFamilyStatus() { return familyStatus; }
     public String getIncomeDescription() { return incomeDescription; }
     public int getMonthlyExpenseYuan() { return monthlyExpenseYuan; }
     public int getInitialSavingsYuan() { return initialSavingsYuan; }
     public int getAvailableFundsYuan() { return availableFundsYuan; }
-    public int getReservedFundsYuan() { return reservedFundsYuan; }
+    public int getReservedFundsYuan() { return generalReserveFundsYuan + emergencyReserveFundsYuan; }
+    public int getGeneralReserveFundsYuan() { return generalReserveFundsYuan; }
+    public int getEmergencyReserveFundsYuan() { return emergencyReserveFundsYuan; }
     public String getReservedFundsNote() { return reservedFundsNote; }
     public String getGeneralDecisionTraits() { return generalDecisionTraits; }
 
@@ -107,7 +116,8 @@ public class VictimProfile {
         monthlyExpenseYuan = values.monthlyExpenseYuan();
         initialSavingsYuan = values.initialSavingsYuan();
         availableFundsYuan = values.availableFundsYuan();
-        reservedFundsYuan = values.reservedFundsYuan();
+        generalReserveFundsYuan=values.generalReserveFundsYuan();
+        emergencyReserveFundsYuan=values.emergencyReserveFundsYuan();
         reservedFundsNote = values.reservedFundsNote();
         generalDecisionTraits = values.generalDecisionTraits();
         for (var value : values.scenarioProfiles()) {

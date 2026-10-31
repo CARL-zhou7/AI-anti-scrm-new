@@ -1,8 +1,11 @@
 openapi: 3.1.0
 info:
   title: AI反诈情景推演平台接口文档
-  version: 1.1.0
-  description: 44项正式HTTP操作、11类SSE事件（V1.1：设置暂停/继续、分句语音时间、动作说明、张嘴立绘；移除画像永久删除）。点击计时协议已冻结（API-42 + StartRequest.timing）；V-02/V-03运行参数仍待实测。
+  version: 1.4.0
+  x-admin-demo-routing:
+    basePath: /admin/simulations
+    description: 管理员演示复用 /simulations 的启动、单场状态、呈现回执、暂停/恢复、退出、逐轮干预、SSE、音频和报告契约；使用管理员 Session 与管理员 CSRF。列表和历史详情不提供管理员别名，所有单场接口仍校验本人归属。
+  description: 44项正式HTTP操作、11类SSE事件（V1.4：PRD-V3.5固定15轮与SCAMMER_WIN/VICTIM_WIN判定、trust-v3整轮证据与多条反证、取消业务截止、报告contentSchemaVersion 4、三栏解说methodShort/intentShort与观看者可见的真实受骗倾向变化；保留V1.3信任策略、V1.2画像/资金/报告v1-v3与Qwen语音）。StartRequest.timing已改为可选。
 servers:
 - url: /anti.scam/v1
   description: 前后端同源HTTPS；部署域名另行配置
@@ -19,6 +22,8 @@ tags:
 - name: 计时
 paths:
   /auth/csrf:
+    parameters:
+    - $ref: '#/components/parameters/LoginRole'
     get:
       tags:
       - 认证
@@ -122,6 +127,8 @@ paths:
                 type: string
               description: no-store
   /auth/register:
+    parameters:
+    - $ref: '#/components/parameters/LoginRole'
     post:
       tags:
       - 认证
@@ -294,6 +301,8 @@ paths:
               confirmPassword: '123456'
       x-csrf-required: true
   /auth/login:
+    parameters:
+    - $ref: '#/components/parameters/LoginRole'
     post:
       tags:
       - 认证
@@ -467,12 +476,14 @@ paths:
               password: '123456'
       x-csrf-required: true
   /auth/logout:
+    parameters:
+    - $ref: '#/components/parameters/LoginRole'
     post:
       tags:
       - 认证
       summary: 登出
       operationId: logout
-      description: '无请求体。有效Session及CSRF下销毁当前Session、清除Cookie，关闭其SSE并撤销临时媒体访问。已有RUNNING演绎按主动离开规则收敛，成功报告不受影响。重复请求若Session已失效返回401，客户端按已登出处理。
+      description: '无请求体。有效Session及所选身份的CSRF下退出该身份；另一角色仍登录时保留Session和Cookie，两种身份均退出时销毁Session并清除Cookie。用户退出关闭其SSE并撤销临时媒体访问，已有RUNNING演绎按主动离开规则收敛，成功报告不受影响；管理员退出不影响用户演绎。所选身份已退出时返回401，客户端按已登出处理。
 
 
         需求依据：PRD§8.1、BR-P11、PER-01～04；本轮Cookie Session+CSRF确认'
@@ -637,6 +648,8 @@ paths:
               description: no-store
       x-csrf-required: true
   /auth/me:
+    parameters:
+    - $ref: '#/components/parameters/LoginRole'
     get:
       tags:
       - 认证
@@ -1245,7 +1258,7 @@ paths:
                     gender: 男
                     identity: 示例人物身份
                     description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                    contextTime: 工作日晚间
+                    contextTime: 昨天20:00
                     contextPlace: 家中
                     currentState: 正在查看手机消息
                     fraudExperience: HIGH
@@ -1434,7 +1447,7 @@ paths:
                   gender: 男
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   fraudExperience: HIGH
@@ -1616,7 +1629,7 @@ paths:
                     gender: 女
                     identity: 示例人物身份
                     description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                    contextTime: 工作日晚间
+                    contextTime: 昨天20:00
                     contextPlace: 家中
                     currentState: 正在查看手机消息
                     antiFraudAwareness: MEDIUM
@@ -1804,7 +1817,7 @@ paths:
                   gender: 女
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   antiFraudAwareness: MEDIUM
@@ -2168,7 +2181,7 @@ paths:
                       gender: 男
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       fraudExperience: HIGH
@@ -2188,7 +2201,7 @@ paths:
                       gender: 女
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       antiFraudAwareness: MEDIUM
@@ -2436,7 +2449,7 @@ paths:
                       gender: 男
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       fraudExperience: HIGH
@@ -2456,7 +2469,7 @@ paths:
                       gender: 女
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       antiFraudAwareness: MEDIUM
@@ -2746,7 +2759,7 @@ paths:
                       gender: 男
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       fraudExperience: HIGH
@@ -2766,7 +2779,7 @@ paths:
                       gender: 女
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       antiFraudAwareness: MEDIUM
@@ -2966,11 +2979,11 @@ paths:
                 "endedAt": null, "currentRoundNo": 0, "configuration": {"scenario": {"id": "1", "code": "TASK_REBATE", "name":
                 "刷单返利诈骗", "description": "以完成任务获得返利为由诱导垫付和追加投入。", "focus": "青年群体"}, "scammer": {"id": "11", "avatar": {"key":
                 "avatar_example_01", "url": "/anti.scam/v1/avatars/avatar_example_01"}, "name": "示例骗子甲", "age": 30, "gender":
-                "男", "identity": "示例人物身份", "description": "仅用于接口字段演示，不代替PRD初始人物卡。", "contextTime": "工作日晚间", "contextPlace":
+                "男", "identity": "示例人物身份", "description": "仅用于接口字段演示，不代替PRD初始人物卡。", "contextTime": "昨天20:00", "contextPlace":
                 "家中", "currentState": "正在查看手机消息", "fraudExperience": "HIGH", "speechSkill": "HIGH", "manipulationSkill": "MEDIUM",
                 "behaviorTraits": "善于利用小额返利建立信任。"}, "victim": {"id": "21", "avatar": {"key": "avatar_example_01", "url": "/anti.scam/v1/avatars/avatar_example_01"},
                 "name": "示例受害者乙", "age": 30, "gender": "女", "identity": "示例人物身份", "description": "仅用于接口字段演示，不代替PRD初始人物卡。",
-                "contextTime": "工作日晚间", "contextPlace": "家中", "currentState": "正在查看手机消息", "antiFraudAwareness": "MEDIUM",
+                "contextTime": "昨天20:00", "contextPlace": "家中", "currentState": "正在查看手机消息", "antiFraudAwareness": "MEDIUM",
                 "riskTendency": "LOW", "personalityTraits": "谨慎，遇到转账要求时会核实。"}}, "currentRound": null, "latestRiskScore": null,
                 "outcome": null, "interruption": null, "readingUntil": null, "report": null}}
 
@@ -3133,6 +3146,8 @@ paths:
           $ref: '#/components/schemas/SessionPausedEvent'
         session.resumed:
           $ref: '#/components/schemas/SessionResumedEvent'
+        intervention.draft:
+          $ref: '#/components/schemas/InterventionDraftEvent'
   /simulations/{id}/opening/presented:
     post:
       tags:
@@ -3195,7 +3210,7 @@ paths:
                         gender: 男
                         identity: 示例人物身份
                         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                        contextTime: 工作日晚间
+                        contextTime: 昨天20:00
                         contextPlace: 家中
                         currentState: 正在查看手机消息
                         fraudExperience: HIGH
@@ -3215,7 +3230,7 @@ paths:
                         gender: 女
                         identity: 示例人物身份
                         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                        contextTime: 工作日晚间
+                        contextTime: 昨天20:00
                         contextPlace: 家中
                         currentState: 正在查看手机消息
                         antiFraudAwareness: MEDIUM
@@ -3494,7 +3509,7 @@ paths:
                         gender: 男
                         identity: 示例人物身份
                         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                        contextTime: 工作日晚间
+                        contextTime: 昨天20:00
                         contextPlace: 家中
                         currentState: 正在查看手机消息
                         fraudExperience: HIGH
@@ -3514,7 +3529,7 @@ paths:
                         gender: 女
                         identity: 示例人物身份
                         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                        contextTime: 工作日晚间
+                        contextTime: 昨天20:00
                         contextPlace: 家中
                         currentState: 正在查看手机消息
                         antiFraudAwareness: MEDIUM
@@ -3810,7 +3825,7 @@ paths:
                         gender: 男
                         identity: 示例人物身份
                         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                        contextTime: 工作日晚间
+                        contextTime: 昨天20:00
                         contextPlace: 家中
                         currentState: 正在查看手机消息
                         fraudExperience: HIGH
@@ -3830,7 +3845,7 @@ paths:
                         gender: 女
                         identity: 示例人物身份
                         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                        contextTime: 工作日晚间
+                        contextTime: 昨天20:00
                         contextPlace: 家中
                         currentState: 正在查看手机消息
                         antiFraudAwareness: MEDIUM
@@ -4156,7 +4171,7 @@ paths:
                       gender: 男
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       fraudExperience: HIGH
@@ -4176,7 +4191,7 @@ paths:
                       gender: 女
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       antiFraudAwareness: MEDIUM
@@ -4382,7 +4397,7 @@ paths:
       - 数据库§5.7、§10.3
       responses:
         '200':
-          description: 返回已授权二进制资源；不套JSON，不跳转到公开供应商URL。音频格式已锁定为MP3（audio/mpeg），仍需在PC Chrome/Edge目标版本完成播放实测（TBD-07）。
+          description: 返回已授权二进制资源；不套JSON，不跳转到公开供应商URL。V1.2由Qwen-Audio-3.1-TTS-Flash（qwen-audio-3.1-tts-flash，中国北京地域）分句合成、拼接并转码；目标格式MP3（audio/mpeg），最终子类型在TBD-07关闭。
           headers:
             Cache-Control:
               schema:
@@ -4393,7 +4408,7 @@ paths:
                 type: string
               description: nosniff
           content:
-            audio/*:
+            audio/mpeg:
               schema:
                 type: string
                 format: binary
@@ -4574,7 +4589,7 @@ paths:
       - 复盘与历史
       summary: 报告状态与内容
       operationId: getReport
-      description: 'RUNNING/INTERRUPTED返回200且report/content为null，unavailableReason说明原因，不伪造FAILED。FINISHED必须有报告行，否则500 DATA_INCONSISTENT。成功内容仅来自已保存报告；风险和结局引用原事实。GET不触发生成或重试。
+      description: 'RUNNING/INTERRUPTED返回200且report/content为null，unavailableReason说明原因，不伪造FAILED。FINISHED必须有报告行，否则500 DATA_INCONSISTENT。成功内容仅来自已保存报告；风险和正式结果引用原事实。GET不触发生成或重试。
 
 
         需求依据：PRD§8.5；数据库§9.1、§9.3'
@@ -4609,6 +4624,7 @@ paths:
                         attemptNo: 0
                         updatedAt: '2026-10-15T02:00:20.000Z'
                         error: null
+                      ending: null
                       unavailableReason: null
                       outcome:
                         code: NOT_DEFRAUDED
@@ -4635,6 +4651,7 @@ paths:
                         attemptNo: 1
                         updatedAt: '2026-10-15T02:00:20.000Z'
                         error: null
+                      ending: null
                       unavailableReason: null
                       outcome:
                         code: NOT_DEFRAUDED
@@ -4661,13 +4678,19 @@ paths:
                         attemptNo: 1
                         updatedAt: '2026-10-15T02:00:20.000Z'
                         error: null
+                      ending: null
                       unavailableReason: null
                       outcome:
                         code: NOT_DEFRAUDED
                         displayText: 未受骗结束
                         reason: 受害者拒绝转账并停止配合，未发生实际受骗行为。
                         limitReason: null
+                        goalAchieved: null
+                        stoppedAfterFraud: null
+                        actualLossYuan: null
+                      contentSchemaVersion: 1
                       content:
+                        contentSchemaVersion: 1
                         summary: 受害者识别转账要求并终止配合。
                         roundAnalyses:
                         - roundNo: 1
@@ -4696,6 +4719,7 @@ paths:
                         error:
                           code: GENERATION_FAILED
                           message: 报告生成失败，可手动重试。
+                      ending: null
                       unavailableReason: null
                       outcome:
                         code: NOT_DEFRAUDED
@@ -4716,6 +4740,7 @@ paths:
                       sessionId: '501'
                       simulationStatus: RUNNING
                       report: null
+                      ending: null
                       unavailableReason: SIMULATION_RUNNING
                       outcome: null
                       content: null
@@ -4730,7 +4755,8 @@ paths:
                       sessionId: '501'
                       simulationStatus: INTERRUPTED
                       report: null
-                      unavailableReason: SIMULATION_INTERRUPTED
+                      ending: null
+                      unavailableReason: TECHNICAL_INTERRUPT
                       outcome: null
                       content: null
                       riskSeries: []
@@ -4874,13 +4900,248 @@ paths:
         description: 所属路径资源标识；必须校验父子关系
         schema:
           $ref: '#/components/schemas/Id'
+  /simulations/{id}/intervention:
+    get:
+      tags:
+      - 管理员干预
+      summary: 查询待确认门状态（API-47）
+      operationId: interventionState
+      description: '内测期间USER与ADMIN均可访问本人开启逐轮确认的ADMIN_TEST场次；他人场次或旧的NONE场次返回404。开场currentRoundNo=0时phase为null；
+        SCAMMER_GENERATING时currentDraft为null；SCAMMER_REVIEW时返回唯一的活动草稿。匿名调用返回401，写入仍须CSRF校验。'
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: 当前待确认状态
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/InterventionState'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: NotFound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+      - 管理员干预
+      summary: 直接修改草稿内容（不采用）
+      operationId: reviseDraft
+      description: '校验draftId与expectedRevisionNo后原地提升修订号，仍处于待确认状态；内容不通过校验返回400，要求content字段错误码CONTENT_REJECTED；
+        旧轮草稿返回409 STALE_DRAFT，修订号过期返回409 DRAFT_REVISION_CONFLICT。'
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftRequest'
+      responses:
+        '200':
+          description: 更新后的待确认状态
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/InterventionState'
+        '400':
+          description: ValidationFailed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: NotFound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /simulations/{id}/intervention/adopt:
+    post:
+      tags:
+      - 管理员干预
+      summary: 确认并采用草稿（API-48）
+      operationId: adoptDraft
+      description: '确认当前轮活动草稿：原样继续采用已经生成或修订校验的已保存草稿，仅提交不同的新改写时重新校验内容；在会话锁内复核draftId与expectedRevisionNo，保存为骗子正式消息并进入呈现与受害者生成。
+        请求字段continue为Java关键字，线上字段名固定为continue。同一草稿重复采用且含义一致时返回既有状态且不重复生成受害者；同ID不同最终内容返回409 IDEMPOTENCY_CONFLICT。
+        未确认期间正式消息为空，刷新按USER_EXIT处理。'
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdoptRequest'
+      responses:
+        '200':
+          description: 采用后的会话状态
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/SimulationState'
+        '400':
+          description: ValidationFailed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: NotFound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /simulations/{id}/intervention/regenerate:
+    post:
+      tags:
+      - 管理员干预
+      summary: 重新生成本轮草稿（API-49）
+      operationId: regenerateDraft
+      description: '丢弃当前活动草稿并让引擎为同一轮重新生成；被丢弃的草稿永远不会被采用，重新生成不改写已保存的正式消息或流水。'
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftRequest'
+      responses:
+        '200':
+          description: 重新生成后的待确认状态
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/InterventionState'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: NotFound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /simulations/{id}/report/retry:
     post:
       tags:
       - 复盘与历史
       summary: 报告失败重试
       operationId: retryReport
-      description: '无请求体。仅本人FINISHED且报告FAILED时原子转PENDING，返回202；PENDING/RUNNING返回当前任务200，SUCCEEDED返回原报告200。RUNNING/INTERRUPTED演绎409。重试保留原配置/Prompt/风险/结局，领取才增加attemptNo，隔离旧任务迟到结果。
+      description: '无请求体。仅本人FINISHED且报告FAILED时原子转PENDING，返回202；PENDING/RUNNING返回当前任务200，SUCCEEDED返回原报告200。RUNNING/INTERRUPTED演绎409。重试保留原配置/Prompt/风险/结果/报告结构，领取才增加attemptNo，隔离旧任务迟到结果。
 
 
         需求依据：PRD BR-P07；数据库§9.4；本轮幂等重试确认'
@@ -4914,6 +5175,7 @@ paths:
                     attemptNo: 1
                     updatedAt: '2026-10-15T02:00:20.000Z'
                     error: null
+                  ending: null
                   unavailableReason: null
                   outcome:
                     code: NOT_DEFRAUDED
@@ -5124,6 +5386,7 @@ paths:
                         attemptNo: 0
                         updatedAt: '2026-10-15T02:00:20.000Z'
                         error: null
+                      ending: null
                       unavailableReason: null
                       outcome:
                         code: NOT_DEFRAUDED
@@ -5150,6 +5413,7 @@ paths:
                         attemptNo: 1
                         updatedAt: '2026-10-15T02:00:20.000Z'
                         error: null
+                      ending: null
                       unavailableReason: null
                       outcome:
                         code: NOT_DEFRAUDED
@@ -5176,13 +5440,19 @@ paths:
                         attemptNo: 1
                         updatedAt: '2026-10-15T02:00:20.000Z'
                         error: null
+                      ending: null
                       unavailableReason: null
                       outcome:
                         code: NOT_DEFRAUDED
                         displayText: 未受骗结束
                         reason: 受害者拒绝转账并停止配合，未发生实际受骗行为。
                         limitReason: null
+                        goalAchieved: null
+                        stoppedAfterFraud: null
+                        actualLossYuan: null
+                      contentSchemaVersion: 1
                       content:
+                        contentSchemaVersion: 1
                         summary: 受害者识别转账要求并终止配合。
                         roundAnalyses:
                         - roundNo: 1
@@ -5213,7 +5483,7 @@ paths:
       - 复盘与历史
       summary: 本人历史详情
       operationId: getSimulationDetail
-      description: '返回完整当时配置、按轮号及角色排序的已保存过程、真实呈现状态、结局或中断及报告状态。半轮如实保留；没有分析为null。无audioUrl，不重新调用模型/TTS，不续演。
+      description: '返回完整当时配置、按轮号及角色排序的已保存过程、真实呈现状态、正式结果、提前终止或中断、资金摘要及报告状态。半轮如实保留；没有分析为null。无audioUrl，不重新调用模型/TTS，不续演。
 
 
         需求依据：PRD§8.6、§11.5；架构§12.3；数据库§10.2'
@@ -5262,7 +5532,7 @@ paths:
                       gender: 男
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       fraudExperience: HIGH
@@ -5282,7 +5552,7 @@ paths:
                       gender: 女
                       identity: 示例人物身份
                       description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                      contextTime: 工作日晚间
+                      contextTime: 昨天20:00
                       contextPlace: 家中
                       currentState: 正在查看手机消息
                       antiFraudAwareness: MEDIUM
@@ -6024,7 +6294,7 @@ paths:
                     gender: 男
                     identity: 示例人物身份
                     description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                    contextTime: 工作日晚间
+                    contextTime: 昨天20:00
                     contextPlace: 家中
                     currentState: 正在查看手机消息
                     fraudExperience: HIGH
@@ -6209,7 +6479,7 @@ paths:
                   gender: 男
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   fraudExperience: HIGH
@@ -6372,7 +6642,6 @@ paths:
               gender: 男
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
               contextPlace: 家中
               currentState: 正在查看手机消息
               fraudExperience: HIGH
@@ -6424,7 +6693,7 @@ paths:
                   gender: 男
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   fraudExperience: HIGH
@@ -6609,7 +6878,7 @@ paths:
                   gender: 男
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   fraudExperience: HIGH
@@ -6820,7 +7089,6 @@ paths:
               gender: 男
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
               contextPlace: 家中
               currentState: 正在查看手机消息
               fraudExperience: HIGH
@@ -6873,7 +7141,7 @@ paths:
                   gender: 男
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   fraudExperience: HIGH
@@ -7123,7 +7391,7 @@ paths:
                   gender: 男
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   fraudExperience: HIGH
@@ -7366,7 +7634,7 @@ paths:
                     gender: 女
                     identity: 示例人物身份
                     description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                    contextTime: 工作日晚间
+                    contextTime: 昨天20:00
                     contextPlace: 家中
                     currentState: 正在查看手机消息
                     antiFraudAwareness: MEDIUM
@@ -7550,7 +7818,7 @@ paths:
                   gender: 女
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   antiFraudAwareness: MEDIUM
@@ -7706,20 +7974,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/VictimWrite'
-            example:
-              name: 示例受害者乙
-              age: 30
-              gender: 女
-              identity: 示例人物身份
-              description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
-              contextPlace: 家中
-              currentState: 正在查看手机消息
-              antiFraudAwareness: MEDIUM
-              riskTendency: LOW
-              personalityTraits: 谨慎，遇到转账要求时会核实。
-              avatarKey: avatar_example_01
-              speakingAvatarKey: avatar_example_02
       x-csrf-required: true
   /admin/victim-profiles/{id}:
     get:
@@ -7763,7 +8017,7 @@ paths:
                   gender: 女
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   antiFraudAwareness: MEDIUM
@@ -7947,7 +8201,7 @@ paths:
                   gender: 女
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   antiFraudAwareness: MEDIUM
@@ -8151,21 +8405,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/VictimUpdate'
-            example:
-              name: 示例受害者乙
-              age: 30
-              gender: 女
-              identity: 示例人物身份
-              description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
-              contextPlace: 家中
-              currentState: 正在查看手机消息
-              antiFraudAwareness: MEDIUM
-              riskTendency: LOW
-              personalityTraits: 谨慎，遇到转账要求时会核实。
-              avatarKey: avatar_example_01
-              version: 0
-              speakingAvatarKey: avatar_example_02
       x-csrf-required: true
   /admin/victim-profiles/{id}/disable:
     post:
@@ -8209,7 +8448,7 @@ paths:
                   gender: 女
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   antiFraudAwareness: MEDIUM
@@ -8458,7 +8697,7 @@ paths:
                   gender: 女
                   identity: 示例人物身份
                   description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                  contextTime: 工作日晚间
+                  contextTime: 昨天20:00
                   contextPlace: 家中
                   currentState: 正在查看手机消息
                   antiFraudAwareness: MEDIUM
@@ -9365,19 +9604,514 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
       x-csrf-required: true
+  /admin/trust-policy:
+    get:
+      tags:
+        - 后台管理
+      operationId: getTrustPolicy
+      summary: 读取信任分机制
+      x-access-roles:
+        - ADMIN
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustPolicyViewResponse'
+        '401':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - 后台管理
+      operationId: updateTrustPolicy
+      summary: 保存信任分机制
+      x-access-roles:
+        - ADMIN
+      security:
+        - SessionCookie: []
+          CsrfHeader: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustPolicyViewResponse'
+        '400':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: 请求失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-csrf-required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrustPolicyUpdate'
+  /admin/interventions:
+    get:
+      tags:
+      - 知识库与场景规则
+      summary: 查询本人待入库干预记录（API-50）
+      operationId: listWaitingInterventions
+      description: '仅ADMIN。默认返回本人演示测试场次中已采用（ADOPTED）且尚未归入规则的记录；ruleId非空时改为返回该规则下本人的来源记录。
+        其他管理员与普通用户的记录永不返回；响应不含内部提示、阈值或计分系数。'
+      x-access-roles: [ADMIN]
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      parameters:
+      - name: ruleId
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Id'
+      - name: sceneCode
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [TASK_REBATE, FAKE_INVESTMENT, IMPERSONATION_LOAN]
+      responses:
+        '200':
+          description: 待入库记录或某条规则的来源
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/InterventionRecord'
+        '400':
+          description: 未知查询参数
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 仅管理员可访问
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/interventions/induce:
+    post:
+      tags:
+      - 知识库与场景规则
+      summary: 从选中的待入库记录归纳规则草稿（API-51）
+      operationId: induceSceneRule
+      description: '只读：返回可编辑的规则草稿，不写库、不改变来源状态。来源必须全部属于本人、同一场景且仍为ADOPTED，否则400或404；
+        规则正文不含人名、余额、阈值或本场临时状态。'
+      x-access-roles: [ADMIN]
+      x-csrf-required: true
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                interventionIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    $ref: '#/components/schemas/Id'
+              required: [interventionIds]
+              additionalProperties: false
+      responses:
+        '200':
+          description: 规则草稿
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/RuleDraft'
+        '400':
+          description: 来源为空、标识非法或跨场景
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 仅管理员可访问
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 来源不存在或不属于本人
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/scene-rules:
+    get:
+      tags:
+      - 知识库与场景规则
+      summary: 场景规则列表（API-52）
+      operationId: listSceneRules
+      description: 返回全部规则及来源条数，按版本与标识倒序；规则只影响之后新开的同场景场次。
+      x-access-roles: [ADMIN]
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      responses:
+        '200':
+          description: 规则列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/SceneRulePage'
+        '403':
+          description: 仅管理员可访问
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - 知识库与场景规则
+      summary: 提交场景规则并关联来源（API-53）
+      operationId: createSceneRule
+      description: '同一事务内写入规则、全部来源关联并把来源置为LINKED，任一失败全部回滚。同一场景标题重复返回409 RULE_TITLE_CONFLICT；
+        来源已被其他规则占用返回409 SOURCE_ALREADY_LINKED；不追加已有规则的来源，只合并不拆分。'
+      x-access-roles: [ADMIN]
+      x-csrf-required: true
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SceneRuleWrite'
+      responses:
+        '201':
+          description: 已提交的规则
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/SceneRule'
+        '400':
+          description: 标题、正文或来源缺失
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 仅管理员可访问
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 来源不存在或不属于本人
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 标题冲突或来源已被占用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/scene-rules/{ruleId}:
+    put:
+      tags:
+      - 知识库与场景规则
+      summary: 编辑或启停场景规则（API-54）
+      operationId: updateSceneRule
+      description: '编辑与启停都会提升版本号；version与当前版本不一致返回409 VERSION_CONFLICT，同场景标题重复返回409 RULE_TITLE_CONFLICT。
+        已冻结的快照不因编辑改变，进行中的场次不受影响；不允许追加来源。'
+      x-access-roles: [ADMIN]
+      x-csrf-required: true
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SceneRuleUpdate'
+      responses:
+        '200':
+          description: 更新后的规则
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/SceneRule'
+        '400':
+          description: 状态或正文不合法
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 仅管理员可访问
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 规则不存在或不属于本人
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 版本冲突或同场景标题重复
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/scene-rules/{ruleId}/sources:
+    get:
+      tags:
+      - 知识库与场景规则
+      summary: 查看一条规则的本人来源（API-55）
+      operationId: listSceneRuleSources
+      description: 只返回本人来源记录（原台词、干预要求、最终台词）；其他管理员的来源永不返回。
+      x-access-roles: [ADMIN]
+      security:
+      - SessionCookie: []
+        CsrfHeader: []
+      parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: 该规则的本人来源
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiSuccess'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/InterventionRecord'
+        '403':
+          description: 仅管理员可访问
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 规则不存在或不属于本人
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
+  parameters:
+    LoginRole:
+      name: X-Login-Role
+      in: header
+      required: false
+      description: 认证接口选择本标签页的登录上下文，默认USER；ADMIN选择已独立认证的管理员上下文，不授予角色。登录成功仍以账号真实角色保存身份。两种上下文的CSRF分别绑定；退出仅清除所选身份，另一身份仍登录时保留Cookie。业务接口按URL固定选择USER或ADMIN，不采信此头切换权限。
+      schema:
+        type: string
+        enum: [USER, ADMIN]
   securitySchemes:
     SessionCookie:
       type: apiKey
       in: cookie
       name: JSESSIONID
-      description: 本次接口设计选择此Cookie名；HttpOnly; Secure; SameSite=Lax; Path=/anti.scam/v1。注册/登录时可以是匿名Session，其他接口必须按x-access-roles验证已登录身份。单实例内存存储，重启失效。
+      description: 本次接口设计选择此Cookie名；HttpOnly; Secure; SameSite=Lax; Path=/anti.scam/v1。同浏览器USER与ADMIN独立保存认证上下文；注册/登录时可以是匿名Session，其他接口必须按x-access-roles验证已登录身份。单实例内存存储，重启失效。
     CsrfHeader:
       type: apiKey
       in: header
       name: X-CSRF-TOKEN
-      description: 从GET /auth/csrf获取，与当前Session绑定；全部状态变更操作必需，包括注册/登录/上传/退出。不是身份认证替代物。
+      description: 从GET /auth/csrf获取，与当前Session及所选USER或ADMIN上下文绑定；全部状态变更操作必需，包括注册/登录/上传/退出。两类上下文的令牌不能互用，不是身份认证替代物。
   schemas:
+    Ending:
+      type: object
+      additionalProperties: false
+      required: [code, displayText, reason]
+      properties:
+        code:
+          type: string
+          enum: [USER_EXIT, FUNDS_EXHAUSTED, CHARACTER_EXIT]
+        displayText:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+          description: 结束原因，明确未形成受骗或识破结论
+    TrustPolicyView:
+      type: object
+      additionalProperties: false
+      required:
+        - thresholdAccept
+        - thresholdSmall
+        - thresholdLarge
+        - version
+        - rulesetVersion
+        - updatedAt
+      properties:
+        thresholdAccept:
+          type: integer
+          minimum: 0
+          maximum: 100
+        thresholdSmall:
+          type: integer
+          minimum: 0
+          maximum: 100
+        thresholdLarge:
+          type: integer
+          minimum: 0
+          maximum: 100
+        version:
+          type: integer
+          minimum: 0
+        rulesetVersion:
+          type: string
+          enum: [trust-v1, trust-v2, trust-v3]
+        updatedAt:
+          $ref: '#/components/schemas/UtcMillis'
+      description: 三项阈值必须严格递增；仅影响新会话
+    TrustPolicyUpdate:
+      type: object
+      additionalProperties: false
+      required:
+        - thresholdAccept
+        - thresholdSmall
+        - thresholdLarge
+        - version
+      properties:
+        thresholdAccept:
+          type: integer
+          minimum: 0
+          maximum: 100
+        thresholdSmall:
+          type: integer
+          minimum: 0
+          maximum: 100
+        thresholdLarge:
+          type: integer
+          minimum: 0
+          maximum: 100
+        version:
+          type: integer
+          minimum: 0
+      description: 三项阈值必须严格递增；仅影响新会话
+    TrustPolicyViewResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - data
+        - requestId
+      properties:
+        code:
+          type: string
+          const: OK
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/TrustPolicyView'
+        requestId:
+          type: string
     Id:
       type: string
       description: 正整数业务ID的十进制字符串；不是数字类型，也不是权限凭据
@@ -9431,17 +10165,22 @@ components:
       - RUNNING
     OutcomeCode:
       type: string
-      description: 正式结局，不能根据风险分直接推导
+      description: 正式结果，不能根据风险分或余额直接推导；PRD-V3.5新会话在第15轮使用SCAMMER_WIN/VICTIM_WIN，PRD-V3.4及更早记录保留原码
       enum:
+      - SCAMMER_WIN
+      - VICTIM_WIN
+      - DEFRAUDED
+      - IDENTIFIED
+      - LIMIT_REACHED
       - GOAL_ACHIEVED
       - LOSS_STOPPED
       - NOT_DEFRAUDED
       - UNDETERMINED
       examples:
-      - NOT_DEFRAUDED
+      - SCAMMER_WIN
     InterruptionCode:
       type: string
-      description: 演绎中断原因，由服务端核定
+      description: 演绎中断或提前终止原因，由服务端核定；FUNDS_EXHAUSTED/CHARACTER_EXIT为提前终止，不生成正式报告
       enum:
       - USER_EXIT
       - DIALOGUE_FAILED
@@ -9450,6 +10189,8 @@ components:
       - MEDIA_FAILED
       - PERSISTENCE_FAILED
       - TIME_LIMIT
+      - FUNDS_EXHAUSTED
+      - CHARACTER_EXIT
       - CONNECTION_LOST
       - SERVICE_RESTARTED
       examples:
@@ -9489,7 +10230,7 @@ components:
       - SCAMMER_PRESENTING
     PresentationError:
       type: string
-      description: 客户端可报告的技术呈现错误；不能提交TTS或数据库故障、正式结局
+      description: 客户端可报告的技术呈现错误；不能提交TTS或数据库故障、正式结果、余额变化或目标判定
       enum:
       - TEXT_RENDER_FAILED
       - AVATAR_LOAD_FAILED
@@ -9500,13 +10241,9 @@ components:
       - ANIMATION_FAILED
     RiskScore:
       type: integer
-      enum:
-      - 0
-      - 25
-      - 50
-      - 75
-      - 100
-      description: 仅五档已保存风险；未评分在容器字段用null，不用0占位
+      minimum: 0
+      maximum: 100
+      description: 0至100的已保存连续风险；综合信任程度与本轮行为评估，行为相同时随信任提高而提高，已发生受骗事实及资金损失单独保留；旧五档记录保留，未评分用null，不用0占位
       examples:
       - 25
     FieldError:
@@ -9561,6 +10298,34 @@ components:
       - fieldErrors: []
         activeSessionId: null
         currentVersion: null
+    ApiSuccess:
+      type: object
+      description: 既有成功封套的稳定字段；各接口在此之上增加data
+      properties:
+        code:
+          type: string
+          const: OK
+        message:
+          type: string
+        requestId:
+          $ref: '#/components/schemas/RequestId'
+      required: [code, message, requestId]
+      additionalProperties: true
+    InterventionStateResponse:
+      type: object
+      description: 待确认门状态的封套（V1.4）
+      properties:
+        code:
+          type: string
+          const: OK
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/InterventionState'
+        requestId:
+          $ref: '#/components/schemas/RequestId'
+      required: [code, message, data, requestId]
+      additionalProperties: false
     ErrorResponse:
       type: object
       description: 统一失败响应
@@ -9997,11 +10762,6 @@ components:
           type: string
           description: 人物描述
           minLength: 1
-        contextTime: &id015
-          type: string
-          description: 情境时间文案，不是ISO时间戳
-          minLength: 1
-          maxLength: 128
         contextPlace: &id016
           type: string
           description: 情境地点
@@ -10032,7 +10792,6 @@ components:
       - gender
       - identity
       - description
-      - contextTime
       - contextPlace
       - currentState
       - fraudExperience
@@ -10048,7 +10807,6 @@ components:
         gender: 男
         identity: 示例人物身份
         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-        contextTime: 工作日晚间
         contextPlace: 家中
         currentState: 正在查看手机消息
         fraudExperience: HIGH
@@ -10066,7 +10824,6 @@ components:
         gender: *id012
         identity: *id013
         description: *id014
-        contextTime: *id015
         contextPlace: *id016
         currentState: *id017
         fraudExperience: *id018
@@ -10085,7 +10842,6 @@ components:
       - gender
       - identity
       - description
-      - contextTime
       - contextPlace
       - currentState
       - fraudExperience
@@ -10102,7 +10858,6 @@ components:
         gender: 男
         identity: 示例人物身份
         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-        contextTime: 工作日晚间
         contextPlace: 家中
         currentState: 正在查看手机消息
         fraudExperience: HIGH
@@ -10128,7 +10883,11 @@ components:
         gender: *id012
         identity: *id013
         description: *id014
-        contextTime: *id015
+        contextTime: &id015
+          type: string
+          description: 故事时间；新画像固定“昨天20:00”，旧快照可保留旧文案
+          minLength: 1
+          maxLength: 128
         contextPlace: *id016
         currentState: *id017
         fraudExperience: *id018
@@ -10165,7 +10924,7 @@ components:
         gender: 男
         identity: 示例人物身份
         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-        contextTime: 工作日晚间
+        contextTime: 昨天20:00
         contextPlace: 家中
         currentState: 正在查看手机消息
         fraudExperience: HIGH
@@ -10233,7 +10992,7 @@ components:
         gender: 男
         identity: 示例人物身份
         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-        contextTime: 工作日晚间
+        contextTime: 昨天20:00
         contextPlace: 家中
         currentState: 正在查看手机消息
         fraudExperience: HIGH
@@ -10280,7 +11039,7 @@ components:
           gender: 男
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           fraudExperience: HIGH
@@ -10325,7 +11084,7 @@ components:
           gender: 男
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           fraudExperience: HIGH
@@ -10340,14 +11099,54 @@ components:
         hasMore: false
     VictimWrite:
       type: object
-      description: 完整画像输入，所有字段必填；不接受enabled/role/id
+      description: 完整画像输入，所有字段必填；不接受enabled/role/id/contextTime
       properties:
         name: *id010
         age: *id011
         gender: *id012
         identity: *id013
         description: *id014
-        contextTime: *id015
+        familyStatus:
+          type: string
+          description: 家庭生活与同住情况
+          minLength: 1
+        incomeDescription:
+          type: string
+          description: 收入说明，可含家庭支持、经营收入或养老金
+          minLength: 1
+        monthlyExpenseYuan:
+          type: integer
+          description: 日常支出，单位元
+          minimum: 0
+        initialSavingsYuan:
+          type: integer
+          description: 初始存款，单位元
+          minimum: 0
+        availableFundsYuan:
+          type: integer
+          description: 可立即动用资金，单位元；不得大于initialSavingsYuan
+          minimum: 0
+        generalReserveFundsYuan:
+          type: integer
+          minimum: 0
+        emergencyReserveFundsYuan:
+          type: integer
+          minimum: 0
+        reservedFundsNote:
+          type: string
+          description: 预留资金安排说明
+          minLength: 1
+        generalDecisionTraits:
+          type: string
+          description: 一般决策特点
+          minLength: 1
+        scenarioProfiles:
+          type: array
+          description: 三套场景资料；每个scenarioCode各一次，不齐不能启用
+          minItems: 3
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/VictimScenarioProfile'
         contextPlace: *id016
         currentState: *id017
         antiFraudAwareness: &id026
@@ -10369,7 +11168,16 @@ components:
       - gender
       - identity
       - description
-      - contextTime
+      - familyStatus
+      - incomeDescription
+      - monthlyExpenseYuan
+      - initialSavingsYuan
+      - availableFundsYuan
+      - generalReserveFundsYuan
+      - emergencyReserveFundsYuan
+      - reservedFundsNote
+      - generalDecisionTraits
+      - scenarioProfiles
       - contextPlace
       - currentState
       - antiFraudAwareness
@@ -10384,7 +11192,64 @@ components:
         gender: 女
         identity: 示例人物身份
         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-        contextTime: 工作日晚间
+        familyStatus: 与家人同住
+        incomeDescription: 示例固定收入
+        monthlyExpenseYuan: 3000
+        initialSavingsYuan: 50000
+        availableFundsYuan: 10000
+        generalReserveFundsYuan: 40000
+        emergencyReserveFundsYuan: 0
+        reservedFundsNote: 长期储蓄与应急预留
+        generalDecisionTraits: 谨慎，但愿意听取说明
+        scenarioProfiles:
+        - scenarioCode: TASK_REBATE
+          needs: 补充收入
+          relevantExperience: 无正规兼职经验
+          judgmentBasis: 看实际到账
+          verificationHabits: 会询问规则
+          actionBoundaries: 不透支
+          stopConditions: 要求先付款时停止
+          recentEvents: 约一周前搜索兼职
+          consultationsTransactions: 咨询过同学
+          sharedExperiences: 同学分享过求职群
+          contactBackground: 群内接触
+          initialTrustMode: 基于同学推荐
+          initialTrustScore: 50
+          positiveFactor: 1.00
+          negativeFactor: 1.00
+          smallAmountCapYuan: 200
+        - scenarioCode: FAKE_INVESTMENT
+          needs: 学习理财
+          relevantExperience: 看过金融安全课程
+          judgmentBasis: 核对渠道
+          verificationHabits: 咨询家人
+          actionBoundaries: 不动预留资金
+          stopConditions: 无法核实即停止
+          recentEvents: 约两天前比较储蓄产品
+          consultationsTransactions: 尚未购买投资产品
+          sharedExperiences: 无
+          contactBackground: 线上推荐
+          initialTrustMode: 先了解再决定
+          initialTrustScore: 50
+          positiveFactor: 1.00
+          negativeFactor: 1.00
+          smallAmountCapYuan: 200
+        - scenarioCode: IMPERSONATION_LOAN
+          needs: 帮助朋友
+          relevantExperience: 有电话确认习惯
+          judgmentBasis: 确认本人
+          verificationHabits: 用原有电话回拨
+          actionBoundaries: 未确认不转账
+          stopConditions: 身份无法确认
+          recentEvents: 约四天前见过面
+          consultationsTransactions: 无借款往来
+          sharedExperiences: 聊过求职和租房
+          contactBackground: 同学身份
+          initialTrustMode: 认可同学身份
+          initialTrustScore: 50
+          positiveFactor: 1.00
+          negativeFactor: 1.00
+          smallAmountCapYuan: 200
         contextPlace: 家中
         currentState: 正在查看手机消息
         antiFraudAwareness: MEDIUM
@@ -10394,14 +11259,54 @@ components:
         speakingAvatarKey: avatar_example_02
     VictimUpdate:
       type: object
-      description: 全量编辑可编辑字段，必须携带读取时version
+      description: 全量编辑可编辑字段，必须携带读取时version；不接受contextTime
       properties:
         name: *id010
         age: *id011
         gender: *id012
         identity: *id013
         description: *id014
-        contextTime: *id015
+        familyStatus:
+          type: string
+          description: 家庭生活与同住情况
+          minLength: 1
+        incomeDescription:
+          type: string
+          description: 收入说明
+          minLength: 1
+        monthlyExpenseYuan:
+          type: integer
+          description: 日常支出，单位元
+          minimum: 0
+        initialSavingsYuan:
+          type: integer
+          description: 初始存款，单位元
+          minimum: 0
+        availableFundsYuan:
+          type: integer
+          description: 可立即动用资金，单位元；不得大于initialSavingsYuan
+          minimum: 0
+        generalReserveFundsYuan:
+          type: integer
+          minimum: 0
+        emergencyReserveFundsYuan:
+          type: integer
+          minimum: 0
+        reservedFundsNote:
+          type: string
+          description: 预留资金安排说明
+          minLength: 1
+        generalDecisionTraits:
+          type: string
+          description: 一般决策特点
+          minLength: 1
+        scenarioProfiles:
+          type: array
+          description: 三套场景资料；每个scenarioCode各一次，不齐不得保存
+          minItems: 3
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/VictimScenarioProfile'
         contextPlace: *id016
         currentState: *id017
         antiFraudAwareness: *id026
@@ -10419,7 +11324,16 @@ components:
       - gender
       - identity
       - description
-      - contextTime
+      - familyStatus
+      - incomeDescription
+      - monthlyExpenseYuan
+      - initialSavingsYuan
+      - availableFundsYuan
+      - generalReserveFundsYuan
+      - emergencyReserveFundsYuan
+      - reservedFundsNote
+      - generalDecisionTraits
+      - scenarioProfiles
       - contextPlace
       - currentState
       - antiFraudAwareness
@@ -10435,7 +11349,64 @@ components:
         gender: 女
         identity: 示例人物身份
         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-        contextTime: 工作日晚间
+        familyStatus: 与家人同住
+        incomeDescription: 示例固定收入
+        monthlyExpenseYuan: 3000
+        initialSavingsYuan: 50000
+        availableFundsYuan: 10000
+        generalReserveFundsYuan: 40000
+        emergencyReserveFundsYuan: 0
+        reservedFundsNote: 长期储蓄与应急预留
+        generalDecisionTraits: 谨慎，但愿意听取说明
+        scenarioProfiles:
+        - scenarioCode: TASK_REBATE
+          needs: 补充收入
+          relevantExperience: 无正规兼职经验
+          judgmentBasis: 看实际到账
+          verificationHabits: 会询问规则
+          actionBoundaries: 不透支
+          stopConditions: 要求先付款时停止
+          recentEvents: 约一周前搜索兼职
+          consultationsTransactions: 咨询过同学
+          sharedExperiences: 同学分享过求职群
+          contactBackground: 群内接触
+          initialTrustMode: 基于同学推荐
+          initialTrustScore: 50
+          positiveFactor: 1.00
+          negativeFactor: 1.00
+          smallAmountCapYuan: 200
+        - scenarioCode: FAKE_INVESTMENT
+          needs: 学习理财
+          relevantExperience: 看过金融安全课程
+          judgmentBasis: 核对渠道
+          verificationHabits: 咨询家人
+          actionBoundaries: 不动预留资金
+          stopConditions: 无法核实即停止
+          recentEvents: 约两天前比较储蓄产品
+          consultationsTransactions: 尚未购买投资产品
+          sharedExperiences: 无
+          contactBackground: 线上推荐
+          initialTrustMode: 先了解再决定
+          initialTrustScore: 50
+          positiveFactor: 1.00
+          negativeFactor: 1.00
+          smallAmountCapYuan: 200
+        - scenarioCode: IMPERSONATION_LOAN
+          needs: 帮助朋友
+          relevantExperience: 有电话确认习惯
+          judgmentBasis: 确认本人
+          verificationHabits: 用原有电话回拨
+          actionBoundaries: 未确认不转账
+          stopConditions: 身份无法确认
+          recentEvents: 约四天前见过面
+          consultationsTransactions: 无借款往来
+          sharedExperiences: 聊过求职和租房
+          contactBackground: 同学身份
+          initialTrustMode: 认可同学身份
+          initialTrustScore: 50
+          positiveFactor: 1.00
+          negativeFactor: 1.00
+          smallAmountCapYuan: 200
         contextPlace: 家中
         currentState: 正在查看手机消息
         antiFraudAwareness: MEDIUM
@@ -10446,7 +11417,7 @@ components:
         speakingAvatarKey: avatar_example_02
     VictimProfile:
       type: object
-      description: 普通用户完整画像；历史使用当时快照映射同一展示结构
+      description: 普通用户完整画像；历史使用当时快照映射同一展示结构。普通详情只展示当前所选场景；scenarioProfiles返回三套用于配置和历史完整性
       properties:
         id: &id029
           $ref: '#/components/schemas/Id'
@@ -10455,11 +11426,75 @@ components:
         speakingAvatar:
           $ref: '#/components/schemas/AvatarRef'
           description: 张嘴帧半身立绘（V1.1），与avatar像素尺寸一致
+        profileSchemaVersion:
+          enum: [1, 2, 3, null]
+          type:
+          - integer
+          - 'null'
+          description: 画像展示结构版本；当前为3，历史可为1、2或null
         name: *id010
         age: *id011
         gender: *id012
         identity: *id013
         description: *id014
+        familyStatus:
+          type:
+          - string
+          - 'null'
+          description: 家庭生活；旧快照可为null
+        incomeDescription:
+          type:
+          - string
+          - 'null'
+          description: 收入说明；旧快照可为null
+        monthlyExpenseYuan:
+          type:
+          - integer
+          - 'null'
+          description: 日常支出，单位元；旧快照可为null
+          minimum: 0
+        initialSavingsYuan:
+          type:
+          - integer
+          - 'null'
+          description: 初始存款，单位元；旧快照可为null
+          minimum: 0
+        availableFundsYuan:
+          type:
+          - integer
+          - 'null'
+          description: 可立即动用资金，单位元；旧快照可为null
+          minimum: 0
+        reservedFundsYuan:
+          type:
+          - integer
+          - 'null'
+          description: 预留资金合计，单位元；旧快照可为null
+          minimum: 0
+        generalReserveFundsYuan:
+          type: [integer, 'null']
+          minimum: 0
+        emergencyReserveFundsYuan:
+          type: [integer, 'null']
+          minimum: 0
+        reservedFundsNote:
+          type:
+          - string
+          - 'null'
+          description: 预留资金安排；旧快照可为null
+        generalDecisionTraits:
+          type:
+          - string
+          - 'null'
+          description: 一般决策特点；旧快照可为null
+        scenarioProfiles:
+          type:
+          - array
+          - 'null'
+          description: 三套场景资料；旧快照可为null，不补造
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/PublicVictimScenarioProfile'
         contextTime: *id015
         contextPlace: *id016
         currentState: *id017
@@ -10490,12 +11525,58 @@ components:
         speakingAvatar:
           key: avatar_example_02
           url: /anti.scam/v1/avatars/avatar_example_02
+        profileSchemaVersion: 2
         name: 示例受害者乙
         age: 30
         gender: 女
         identity: 示例人物身份
         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-        contextTime: 工作日晚间
+        familyStatus: 与家人同住
+        incomeDescription: 示例固定收入
+        monthlyExpenseYuan: 3000
+        initialSavingsYuan: 50000
+        availableFundsYuan: 10000
+        reservedFundsYuan: 40000
+        reservedFundsNote: 长期储蓄与应急预留
+        generalDecisionTraits: 谨慎，但愿意听取说明
+        scenarioProfiles:
+        - scenarioCode: TASK_REBATE
+          needs: 补充收入
+          relevantExperience: 无正规兼职经验
+          judgmentBasis: 看实际到账
+          verificationHabits: 会询问规则
+          actionBoundaries: 不透支
+          stopConditions: 要求先付款时停止
+          recentEvents: 约一周前搜索兼职
+          consultationsTransactions: 咨询过同学
+          sharedExperiences: 同学分享过求职群
+          contactBackground: 群内接触
+          initialTrustMode: 基于同学推荐
+        - scenarioCode: FAKE_INVESTMENT
+          needs: 学习理财
+          relevantExperience: 看过金融安全课程
+          judgmentBasis: 核对渠道
+          verificationHabits: 咨询家人
+          actionBoundaries: 不动预留资金
+          stopConditions: 无法核实即停止
+          recentEvents: 约两天前比较储蓄产品
+          consultationsTransactions: 尚未购买投资产品
+          sharedExperiences: 无
+          contactBackground: 线上推荐
+          initialTrustMode: 先了解再决定
+        - scenarioCode: IMPERSONATION_LOAN
+          needs: 帮助朋友
+          relevantExperience: 有电话确认习惯
+          judgmentBasis: 确认本人
+          verificationHabits: 用原有电话回拨
+          actionBoundaries: 未确认不转账
+          stopConditions: 身份无法确认
+          recentEvents: 约四天前见过面
+          consultationsTransactions: 无借款往来
+          sharedExperiences: 聊过求职和租房
+          contactBackground: 同学身份
+          initialTrustMode: 认可同学身份
+        contextTime: 昨天20:00
         contextPlace: 家中
         currentState: 正在查看手机消息
         antiFraudAwareness: MEDIUM
@@ -10510,11 +11591,75 @@ components:
         speakingAvatar:
           $ref: '#/components/schemas/AvatarRef'
           description: 张嘴帧半身立绘（V1.1），与avatar像素尺寸一致
+        profileSchemaVersion:
+          enum: [1, 2, 3, null]
+          type:
+          - integer
+          - 'null'
+          description: 画像展示结构版本；当前为3，历史可为1、2或null
         name: *id010
         age: *id011
         gender: *id012
         identity: *id013
         description: *id014
+        familyStatus:
+          type:
+          - string
+          - 'null'
+          description: 家庭生活；旧快照可为null
+        incomeDescription:
+          type:
+          - string
+          - 'null'
+          description: 收入说明；旧快照可为null
+        monthlyExpenseYuan:
+          type:
+          - integer
+          - 'null'
+          description: 日常支出，单位元；旧快照可为null
+          minimum: 0
+        initialSavingsYuan:
+          type:
+          - integer
+          - 'null'
+          description: 初始存款，单位元；旧快照可为null
+          minimum: 0
+        availableFundsYuan:
+          type:
+          - integer
+          - 'null'
+          description: 可立即动用资金，单位元；旧快照可为null
+          minimum: 0
+        reservedFundsYuan:
+          type:
+          - integer
+          - 'null'
+          description: 预留资金合计，单位元；旧快照可为null
+          minimum: 0
+        generalReserveFundsYuan:
+          type: [integer, 'null']
+          minimum: 0
+        emergencyReserveFundsYuan:
+          type: [integer, 'null']
+          minimum: 0
+        reservedFundsNote:
+          type:
+          - string
+          - 'null'
+          description: 预留资金安排；旧快照可为null
+        generalDecisionTraits:
+          type:
+          - string
+          - 'null'
+          description: 一般决策特点；旧快照可为null
+        scenarioProfiles:
+          type:
+          - array
+          - 'null'
+          description: 三套场景资料；旧快照可为null
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/VictimScenarioProfile'
         contextTime: *id015
         contextPlace: *id016
         currentState: *id017
@@ -10555,12 +11700,70 @@ components:
         speakingAvatar:
           key: avatar_example_02
           url: /anti.scam/v1/admin/avatars/avatar_example_02
+        profileSchemaVersion: 2
         name: 示例受害者乙
         age: 30
         gender: 女
         identity: 示例人物身份
         description: 仅用于接口字段演示，不代替PRD初始人物卡。
-        contextTime: 工作日晚间
+        familyStatus: 与家人同住
+        incomeDescription: 示例固定收入
+        monthlyExpenseYuan: 3000
+        initialSavingsYuan: 50000
+        availableFundsYuan: 10000
+        reservedFundsYuan: 40000
+        reservedFundsNote: 长期储蓄与应急预留
+        generalDecisionTraits: 谨慎，但愿意听取说明
+        scenarioProfiles:
+        - scenarioCode: TASK_REBATE
+          needs: 补充收入
+          relevantExperience: 无正规兼职经验
+          judgmentBasis: 看实际到账
+          verificationHabits: 会询问规则
+          actionBoundaries: 不透支
+          stopConditions: 要求先付款时停止
+          recentEvents: 约一周前搜索兼职
+          consultationsTransactions: 咨询过同学
+          sharedExperiences: 同学分享过求职群
+          contactBackground: 群内接触
+          initialTrustMode: 基于同学推荐
+          initialTrustScore: 50
+          positiveFactor: 1.00
+          negativeFactor: 1.00
+          smallAmountCapYuan: 200
+        - scenarioCode: FAKE_INVESTMENT
+          needs: 学习理财
+          relevantExperience: 看过金融安全课程
+          judgmentBasis: 核对渠道
+          verificationHabits: 咨询家人
+          actionBoundaries: 不动预留资金
+          stopConditions: 无法核实即停止
+          recentEvents: 约两天前比较储蓄产品
+          consultationsTransactions: 尚未购买投资产品
+          sharedExperiences: 无
+          contactBackground: 线上推荐
+          initialTrustMode: 先了解再决定
+          initialTrustScore: 50
+          positiveFactor: 1.00
+          negativeFactor: 1.00
+          smallAmountCapYuan: 200
+        - scenarioCode: IMPERSONATION_LOAN
+          needs: 帮助朋友
+          relevantExperience: 有电话确认习惯
+          judgmentBasis: 确认本人
+          verificationHabits: 用原有电话回拨
+          actionBoundaries: 未确认不转账
+          stopConditions: 身份无法确认
+          recentEvents: 约四天前见过面
+          consultationsTransactions: 无借款往来
+          sharedExperiences: 聊过求职和租房
+          contactBackground: 同学身份
+          initialTrustMode: 认可同学身份
+          initialTrustScore: 50
+          positiveFactor: 1.00
+          negativeFactor: 1.00
+          smallAmountCapYuan: 200
+        contextTime: 昨天20:00
         contextPlace: 家中
         currentState: 正在查看手机消息
         antiFraudAwareness: MEDIUM
@@ -10570,6 +11773,165 @@ components:
         version: 0
         createdAt: '2026-10-15T02:00:00.000Z'
         updatedAt: '2026-10-15T02:00:00.000Z'
+    VictimScenarioProfile:
+      type: object
+      description: 受害者一套场景资料；每名受害者三套，分别对应固定场景代码（V1.2）
+      properties:
+        scenarioCode:
+          type: string
+          description: 场景代码
+          enum:
+          - TASK_REBATE
+          - FAKE_INVESTMENT
+          - IMPERSONATION_LOAN
+        needs:
+          type: string
+          description: 场景需求
+          minLength: 1
+        relevantExperience:
+          type: string
+          description: 相关经验
+          minLength: 1
+        judgmentBasis:
+          type: string
+          description: 判断依据
+          minLength: 1
+        verificationHabits:
+          type: string
+          description: 核实习惯
+          minLength: 1
+        actionBoundaries:
+          type: string
+          description: 行动边界
+          minLength: 1
+        stopConditions:
+          type: string
+          description: 停止条件
+          minLength: 1
+        recentEvents:
+          type: string
+          description: 近期事件；使用“昨天”“三天前”等相对时间
+          minLength: 1
+        consultationsTransactions:
+          type: string
+          description: 咨询或交易经历
+          minLength: 1
+        sharedExperiences:
+          type: string
+          description: 共同经历
+          minLength: 1
+        contactBackground:
+          type: string
+          description: 接触背景
+          minLength: 1
+        initialTrustMode:
+          type: string
+          description: 初始信任方式
+          minLength: 1
+        initialTrustScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        positiveFactor:
+          type: number
+          minimum: 0.10
+          maximum: 3.00
+          multipleOf: 0.01
+        negativeFactor:
+          type: number
+          minimum: 0.10
+          maximum: 3.00
+          multipleOf: 0.01
+        smallAmountCapYuan:
+          type: integer
+          minimum: 0
+      required:
+      - scenarioCode
+      - needs
+      - relevantExperience
+      - judgmentBasis
+      - verificationHabits
+      - actionBoundaries
+      - stopConditions
+      - recentEvents
+      - consultationsTransactions
+      - sharedExperiences
+      - contactBackground
+      - initialTrustMode
+      - initialTrustScore
+      - positiveFactor
+      - negativeFactor
+      - smallAmountCapYuan
+      additionalProperties: false
+    PublicVictimScenarioProfile:
+      type: object
+      description: 受害者一套场景资料；每名受害者三套，分别对应固定场景代码（V1.2）
+      properties:
+        scenarioCode:
+          type: string
+          description: 场景代码
+          enum:
+          - TASK_REBATE
+          - FAKE_INVESTMENT
+          - IMPERSONATION_LOAN
+        needs:
+          type: string
+          description: 场景需求
+          minLength: 1
+        relevantExperience:
+          type: string
+          description: 相关经验
+          minLength: 1
+        judgmentBasis:
+          type: string
+          description: 判断依据
+          minLength: 1
+        verificationHabits:
+          type: string
+          description: 核实习惯
+          minLength: 1
+        actionBoundaries:
+          type: string
+          description: 行动边界
+          minLength: 1
+        stopConditions:
+          type: string
+          description: 停止条件
+          minLength: 1
+        recentEvents:
+          type: string
+          description: 近期事件；使用“昨天”“三天前”等相对时间
+          minLength: 1
+        consultationsTransactions:
+          type: string
+          description: 咨询或交易经历
+          minLength: 1
+        sharedExperiences:
+          type: string
+          description: 共同经历
+          minLength: 1
+        contactBackground:
+          type: string
+          description: 接触背景
+          minLength: 1
+        initialTrustMode:
+          type: string
+          description: 初始信任方式
+          minLength: 1
+      required:
+      - scenarioCode
+      - needs
+      - relevantExperience
+      - judgmentBasis
+      - verificationHabits
+      - actionBoundaries
+      - stopConditions
+      - recentEvents
+      - consultationsTransactions
+      - sharedExperiences
+      - contactBackground
+      - initialTrustMode
+      additionalProperties: false
     VictimPage:
       type: object
       description: 游标分页结果，不包含总页数或总数
@@ -10606,7 +11968,7 @@ components:
           gender: 女
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           antiFraudAwareness: MEDIUM
@@ -10650,7 +12012,7 @@ components:
           gender: 女
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           antiFraudAwareness: MEDIUM
@@ -10707,7 +12069,7 @@ components:
           gender: 男
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           fraudExperience: HIGH
@@ -10722,12 +12084,13 @@ components:
           speakingAvatar:
             key: avatar_example_02
             url: /anti.scam/v1/avatars/avatar_example_02
+          profileSchemaVersion: 2
           name: 示例受害者乙
           age: 30
           gender: 女
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           antiFraudAwareness: MEDIUM
@@ -10735,7 +12098,7 @@ components:
           personalityTraits: 谨慎，遇到转账要求时会核实。
     StartRequest:
       type: object
-      description: 开始请求：业务选择、幂等键与已冻结的计时证据。计时证据用于服务端把客户端单调时钟的点击时刻映射到服务端时间轴
+      description: 开始请求：业务选择、幂等键与可选的计时证据。V1.4（PRD-V3.5）不要求计时证据；缺省时服务端以请求到达时刻作为开始时刻，不伪造计时证据
       properties:
         startRequestId:
           type: string
@@ -10748,13 +12111,13 @@ components:
         victimProfileId:
           $ref: '#/components/schemas/Id'
         timing:
+          description: 可选。提供时按计时校准建立startedAt；缺省时以receivedAt作为startedAt
           $ref: '#/components/schemas/TimingEvidence'
       required:
       - startRequestId
       - scenarioId
       - scammerProfileId
       - victimProfileId
-      - timing
       additionalProperties: false
       examples:
       - startRequestId: c34c01fd-8596-42ba-a356-0e802e1b7eb9
@@ -10861,7 +12224,7 @@ components:
         requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
     PresentationReceipt:
       type: object
-      description: FAILED必须带errorCode；COMPLETED不得带errorCode；不接受客户端结局、风险或时间作为完成依据
+      description: FAILED必须带errorCode；COMPLETED不得带errorCode；不接受客户端结果、风险、余额或时间作为完成依据
       properties:
         status:
           type: string
@@ -10911,25 +12274,57 @@ components:
       - reason: NAVIGATION
     Outcome:
       type: object
-      description: 只在FINISHED返回；实际结局优先于上限
+      description: 只在FINISHED返回；正式结果优先于上限。旧记录按当时规则返回旧码和旧文案
       properties:
         code:
           $ref: '#/components/schemas/OutcomeCode'
         displayText:
           type: string
-          description: 结局中文展示名
+          description: 正式结果中文展示名；旧记录返回旧名称
         reason:
           type: string
-          description: 已保存结局依据
+          description: 已保存结果依据
         limitReason:
           anyOf:
           - type: string
-            description: 仅UNDETERMINED具有上限原因
+            description: LIMIT_REACHED/UNDETERMINED必填；DEFRAUDED可为时限原因
             enum:
             - ROUND_LIMIT
             - TIME_LIMIT
             - BOTH
           - type: 'null'
+        goalAchieved:
+          type:
+          - boolean
+          - 'null'
+          description: 是否达到关键目标；由已保存轮次投影，旧记录可为null
+        stoppedAfterFraud:
+          type:
+          - boolean
+          - 'null'
+          description: 是否受骗后停止；旧记录可为null
+        actualLossYuan:
+          type:
+          - integer
+          - 'null'
+          description: 正式结束时当前亏损；旧记录可为null
+          minimum: 0
+        winning:
+          type:
+          - string
+          - 'null'
+          description: V1.4（PRD-V3.5）第15轮判定：SCAMMER骗子胜、VICTIM受害者胜；旧记录与主动退出为null。由程序按最终分与净损失判定，模型不得自判
+          enum:
+          - SCAMMER
+          - VICTIM
+          - null
+        finalTrustScore:
+          type:
+          - integer
+          - 'null'
+          description: V1.4最终受骗倾向分（0～100，取已保存事件轮末分）；旧记录与主动退出为null
+          minimum: 0
+          maximum: 100
       required:
       - code
       - displayText
@@ -10937,11 +12332,22 @@ components:
       - limitReason
       additionalProperties: false
       examples:
-      - code: NOT_DEFRAUDED
-        displayText: 未受骗结束
+      - code: IDENTIFIED
+        displayText: 已识破
         reason: 受害者拒绝转账并停止配合，未发生实际受骗行为。
         limitReason: null
+        goalAchieved: false
+        stoppedAfterFraud: false
+        actualLossYuan: 0
       allOf:
+      - if:
+          properties:
+            code:
+              const: LIMIT_REACHED
+        then:
+          properties:
+            limitReason:
+              type: string
       - if:
           properties:
             code:
@@ -10950,19 +12356,27 @@ components:
           properties:
             limitReason:
               type: string
-        else:
+      - if:
+          properties:
+            code:
+              enum:
+              - IDENTIFIED
+              - GOAL_ACHIEVED
+              - LOSS_STOPPED
+              - NOT_DEFRAUDED
+        then:
           properties:
             limitReason:
               type: 'null'
     Interruption:
       type: object
-      description: 只在INTERRUPTED返回，无正式结局
+      description: 只在INTERRUPTED返回；中断或提前终止均无正式结果
       properties:
         code:
           $ref: '#/components/schemas/InterruptionCode'
         message:
           type: string
-          description: 本人可见安全说明
+          description: 本人可见安全说明；提前终止说明资金或角色原因
       required:
       - code
       - message
@@ -10970,10 +12384,32 @@ components:
       examples:
       - code: MEDIA_FAILED
         message: 必要媒体呈现失败，本次演绎已中断。
+    TrustChange:
+      type: object
+      description: 仅供观看者查看的本轮受骗倾向分真实变化；before/after为轮初/轮末分，delta为0至100裁剪后的实际净变化；不提供给骗子或受害者模型，不包含事件明细、阈值或系数（D9）。
+      required: [before, after, delta]
+      properties:
+        before:
+          type: integer
+          minimum: 0
+          maximum: 100
+        after:
+          type: integer
+          minimum: 0
+          maximum: 100
+        delta:
+          type: integer
+          minimum: -100
+          maximum: 100
     Analysis:
       type: object
       description: 已保存分析整体；没有分析时整个对象为null
       properties:
+        trustChange:
+          anyOf:
+            - $ref: '#/components/schemas/TrustChange'
+            - type: 'null'
+          description: 本轮开始与结束信任分及净增减；未记录信任分的旧会话为null。
         fraudStage:
           type: string
           description: 诈骗阶段
@@ -10982,7 +12418,21 @@ components:
           description: 话术分析
         methodAnalysis:
           type: string
-          description: 手段分析
+          description: 手段分析（完整分析，供复盘报告和历史详情）
+        methodShort:
+          anyOf:
+            - type: string
+              minLength: 2
+              maxLength: 12
+            - type: 'null'
+          description: 实时三栏解说用短手段标签；缺失或长度不合格时为null，回退完整methodAnalysis，不触发生成重试
+        intentShort:
+          anyOf:
+            - type: string
+              minLength: 12
+              maxLength: 40
+            - type: 'null'
+          description: 实时三栏解说用短意图句；缺失或长度不合格时为null，回退完整speechAnalysis，不触发生成重试
         victimPsychology:
           type: string
           description: 受害者心理
@@ -11013,11 +12463,17 @@ components:
       - fraudStage: 建立信任
         speechAnalysis: 通过小额返利承诺吸引关注。
         methodAnalysis: 以完成任务为由提出垫付。
+        methodShort: 小额返利
+        intentShort: 用返利承诺降低戒心，推动先垫付。
         victimPsychology: 对转账要求保持警惕。
         riskScore: 25
         riskReason: 尚未转账，已提出核实要求。
         savedAt: '2026-10-15T02:00:20.000Z'
         presentedAt: null
+        trustChange:
+          before: 50
+          after: 62
+          delta: 12
     HistoryMessage:
       type: object
       description: 历史消息不包含音频字段
@@ -11209,6 +12665,7 @@ components:
             charStart: 0
             charEnd: 21
         analysis: null
+        funds: null
         readingUntil: null
     HistoryRound:
       type: object
@@ -11237,6 +12694,11 @@ components:
           anyOf:
           - $ref: '#/components/schemas/Analysis'
           - type: 'null'
+        funds:
+          anyOf:
+          - $ref: '#/components/schemas/Funds'
+          - type: 'null'
+          description: 本轮结束资金摘要；旧记录/无资金为null
         readingUntil:
           anyOf:
           - $ref: '#/components/schemas/UtcMillis'
@@ -11249,6 +12711,7 @@ components:
       - presentationComplete
       - messages
       - analysis
+      - funds
       - readingUntil
       additionalProperties: false
       examples:
@@ -11267,6 +12730,7 @@ components:
           presentationErrorCode: null
           savedAt: '2026-10-15T02:00:10.000Z'
         analysis: null
+        funds: null
         readingUntil: null
     ReportError:
       type: object
@@ -11396,8 +12860,11 @@ components:
           $ref: '#/components/schemas/UtcMillis'
           description: 已校准点击起点，不是请求到达时刻
         deadlineAt:
-          $ref: '#/components/schemas/UtcMillis'
-          description: 有效截止时间＝startedAt+600秒+pausedCreditMs（V1.1）；暂停中前端冻结倒计时，服务端实时计入（累计≤300秒）
+          anyOf:
+          - $ref: '#/components/schemas/UtcMillis'
+            description: 旧会话（PRD-V3.4及更早）的有效截止时间＝startedAt+有效时长+pausedCreditMs
+          - type: 'null'
+          description: PRD-V3.5 已取消业务截止，固定返回null；只保留单步生成、TTS、保存与媒体播放的技术超时
         endedAt:
           anyOf:
           - $ref: '#/components/schemas/UtcMillis'
@@ -11426,6 +12893,30 @@ components:
           anyOf:
           - $ref: '#/components/schemas/Interruption'
           - type: 'null'
+        funds:
+          $ref: '#/components/schemas/Funds'
+          description: 本场资金摘要；旧记录fundsRecorded=false（V1.2）
+        winner:
+          type:
+          - string
+          - 'null'
+          description: V1.4（PRD-V3.5）FINISHED时的胜方；旧记录与未结束为null。与outcome.winning一致
+          enum:
+          - SCAMMER
+          - VICTIM
+          - null
+        finalTrustScore:
+          type:
+          - integer
+          - 'null'
+          description: V1.4 FINISHED时的最终受骗倾向分；旧记录与未结束为null
+          minimum: 0
+          maximum: 100
+        intervention:
+          anyOf:
+          - $ref: '#/components/schemas/InterventionState'
+          - type: 'null'
+          description: ADMIN_TEST场次返回待确认门状态；内测期间USER与ADMIN新建场次均开启，旧NONE场次为null（V1.4）
         readingUntil:
           anyOf:
           - $ref: '#/components/schemas/UtcMillis'
@@ -11456,6 +12947,10 @@ components:
           anyOf:
           - $ref: '#/components/schemas/ReportSummary'
           - type: 'null'
+        ruleSnapshotCount:
+          type: integer
+          minimum: 0
+          description: 本场开始时冻结的已启用场景规则条数（V1.4）；规则正文、标题与来源不对外公开，普通用户只能看到条数
       required:
       - sessionId
       - status
@@ -11469,12 +12964,14 @@ components:
       - latestRiskScore
       - outcome
       - interruption
+      - funds
       - readingUntil
       - report
       - nextAction
       - paused
       - pausedAt
       - pausedCreditMs
+      - ruleSnapshotCount
       additionalProperties: false
       examples:
       - sessionId: '501'
@@ -11504,7 +13001,7 @@ components:
             gender: 男
             identity: 示例人物身份
             description: 仅用于接口字段演示，不代替PRD初始人物卡。
-            contextTime: 工作日晚间
+            contextTime: 昨天20:00
             contextPlace: 家中
             currentState: 正在查看手机消息
             fraudExperience: HIGH
@@ -11524,7 +13021,7 @@ components:
             gender: 女
             identity: 示例人物身份
             description: 仅用于接口字段演示，不代替PRD初始人物卡。
-            contextTime: 工作日晚间
+            contextTime: 昨天20:00
             contextPlace: 家中
             currentState: 正在查看手机消息
             antiFraudAwareness: MEDIUM
@@ -11534,6 +13031,16 @@ components:
         latestRiskScore: null
         outcome: null
         interruption: null
+        funds:
+          fundsRecorded: true
+          initialAvailableYuan: 10000
+          availableBalanceYuan: 10000
+          totalPaidYuan: 0
+          totalRefundedYuan: 0
+          actualLossYuan: 0
+          additionalPaymentCount: 0
+          reserveReleasedYuan: 0
+          flows: null
         readingUntil: null
         nextAction: null
         paused: false
@@ -11587,7 +13094,7 @@ components:
               gender: 男
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               fraudExperience: HIGH
@@ -11607,7 +13114,7 @@ components:
               gender: 女
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               antiFraudAwareness: MEDIUM
@@ -11630,10 +13137,168 @@ components:
           pausedAt: null
           pausedCreditMs: 0
           report: null
+    FundFlow:
+      type: object
+      description: 一笔教学模拟资金流水；只用于报告和历史，不连接现实支付（V1.2）。REFUND只记实际到账，声称返款不入账；刷单/投资累计实际返款≤300且≤累计支付，单笔≤原付款，借款无REFUND；内部原付款关联字段不对外返回。
+      properties:
+        sequenceNo:
+          type: integer
+          description: 本场流水顺序
+          minimum: 1
+        roundNo:
+          type: integer
+          description: 发生轮次
+          minimum: 1
+          maximum: 20
+        messageId:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+          description: 触发消息；系统事件可为null
+        type:
+          type: string
+          description: 支付、本金退回、到账报酬、预留释放
+          enum:
+          - PAYMENT
+          - REFUND
+          - REWARD
+          - RESERVE_RELEASE
+        purpose:
+          type: string
+          description: 与type组合一致
+          enum:
+          - INITIAL_PAYMENT
+          - ADDITIONAL_PAYMENT
+          - INVESTMENT_PAYMENT
+          - EXTRA_FEE_PAYMENT
+          - LOAN_TRANSFER
+          - OTHER_PAYMENT
+          - REFUND
+          - REWARD
+          - RESERVE_RELEASE
+        amountYuan:
+          type: integer
+          description: 金额，单位元
+          minimum: 1
+        balanceAfterYuan:
+          type: integer
+          description: 发生后可动用余额
+          minimum: 0
+        reason:
+          anyOf:
+          - type: string
+            description: 预留释放依据或必要说明
+            maxLength: 255
+          - type: 'null'
+        occurredAt:
+          $ref: '#/components/schemas/UtcMillis'
+      required:
+      - sequenceNo
+      - roundNo
+      - messageId
+      - type
+      - purpose
+      - amountYuan
+      - balanceAfterYuan
+      - reason
+      - occurredAt
+      additionalProperties: false
+    Funds:
+      type: object
+      description: 一次演绎的资金摘要（V1.3）；退回本金与到账报酬共用每场300元上限，退回本金不能超过原付款，借款无实际出款；旧记录不补造报酬或预留分层。
+      properties:
+        fundsRecorded:
+          type: boolean
+          description: false表示旧记录没有资金事实，不能把null/0当真实余额
+        initialAvailableYuan:
+          type:
+          - integer
+          - 'null'
+          description: 初始可动用资金；旧记录null
+          minimum: 0
+        availableBalanceYuan:
+          type:
+          - integer
+          - 'null'
+          description: 当前余额；旧记录null
+          minimum: 0
+        totalPaidYuan:
+          type:
+          - integer
+          - 'null'
+          description: 累计实际支付；旧记录null
+          minimum: 0
+        totalRefundedYuan:
+          type:
+          - integer
+          - 'null'
+          description: 累计实际返款；旧记录null
+          minimum: 0
+        actualLossYuan:
+          type:
+          - integer
+          - 'null'
+          description: 当前实际亏损；旧记录null
+          minimum: 0
+        additionalPaymentCount:
+          type:
+          - integer
+          - 'null'
+          description: 首笔后的追加次数；旧记录null
+          minimum: 0
+        reserveReleasedYuan:
+          type:
+          - integer
+          - 'null'
+          description: 累计预留释放；旧记录null
+          minimum: 0
+        flows:
+          anyOf:
+          - type: array
+            items:
+              $ref: '#/components/schemas/FundFlow'
+            description: 历史详情返回；状态和报告可为null
+          - type: 'null'
+        totalRewardedYuan:
+          type: [integer, 'null']
+          minimum: 0
+        generalReserveTotalYuan:
+          type: [integer, 'null']
+          minimum: 0
+        generalReserveRemainingYuan:
+          type: [integer, 'null']
+          minimum: 0
+        emergencyReserveTotalYuan:
+          type: [integer, 'null']
+          minimum: 0
+        emergencyReserveRemainingYuan:
+          type: [integer, 'null']
+          minimum: 0
+      required:
+      - fundsRecorded
+      - initialAvailableYuan
+      - availableBalanceYuan
+      - totalPaidYuan
+      - totalRefundedYuan
+      - actualLossYuan
+      - additionalPaymentCount
+      - reserveReleasedYuan
+      - totalRewardedYuan
+      - generalReserveTotalYuan
+      - generalReserveRemainingYuan
+      - emergencyReserveTotalYuan
+      - emergencyReserveRemainingYuan
+      - flows
+      additionalProperties: false
     RiskPoint:
       type: object
-      description: 直接引用已保存评分
+      description: 直接引用已保存评分，附本轮已记录的信任分变化；仅供观看与复盘，不传入角色提示词。
       properties:
+        trustChange:
+          anyOf:
+            - $ref: '#/components/schemas/TrustChange'
+            - type: 'null'
+          description: 本轮开始和结束信任分及净增减，未记录的旧会话为null。
         roundNo:
           type: integer
           minimum: 1
@@ -11649,9 +13314,93 @@ components:
       - roundNo: 1
         score: 25
     ReportContent:
+      description: 只在成功保存后返回；contentSchemaVersion为1、2、3或4，分别对应旧五字段、新精简结构（V1.2/V1.3）或带V1.4胜负与最终分的结构
+      oneOf:
+      - $ref: '#/components/schemas/ReportContentV1'
+      - $ref: '#/components/schemas/ReportContentV2'
+      - $ref: '#/components/schemas/ReportContentV3'
+      - $ref: '#/components/schemas/ReportContentV4'
+      discriminator:
+        propertyName: contentSchemaVersion
+        mapping:
+          '1': '#/components/schemas/ReportContentV1'
+          '2': '#/components/schemas/ReportContentV2'
+          '3': '#/components/schemas/ReportContentV3'
+          '4': '#/components/schemas/ReportContentV4'
+    ReportResult:
       type: object
-      description: 只在成功保存后返回，不含可执行HTML
+      description: 一句话正式结果及依据（V1.2）
       properties:
+        text:
+          type: string
+          description: 一句话结果
+          minLength: 1
+        reason:
+          type: string
+          description: 结果依据
+          minLength: 1
+      required:
+      - text
+      - reason
+      additionalProperties: false
+    ReportKeyNode:
+      type: object
+      description: 最多3个关键节点之一（V1.2）
+      properties:
+        title:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 32
+            description: 具体事件标题，目标8—16字；历史节点可缺失
+          - type: 'null'
+        roundNo:
+          type: integer
+          description: 实际轮号
+          minimum: 1
+          maximum: 20
+        quote:
+          anyOf:
+          - type: string
+            description: 简短原话
+          - type: 'null'
+        analysis:
+          type: string
+          description: 该节点作用
+          minLength: 1
+      required:
+      - roundNo
+      - quote
+      - analysis
+      additionalProperties: false
+    ReportFundsSummary:
+      type: object
+      description: 报告中的资金摘要，必须与保存流水一致（V1.2）
+      properties:
+        totalPaidYuan:
+          type: integer
+          description: 累计实际支付
+          minimum: 0
+        totalRefundedYuan:
+          type: integer
+          description: 累计实际返款
+          minimum: 0
+        actualLossYuan:
+          type: integer
+          description: 当前实际亏损
+          minimum: 0
+      required:
+      - totalPaidYuan
+      - totalRefundedYuan
+      - actualLossYuan
+      additionalProperties: false
+    ReportContentV1:
+      type: object
+      description: 旧报告结构；只读展示，不按v2重新校验
+      properties:
+        contentSchemaVersion:
+          type: integer
+          const: 1
         summary:
           type: string
           description: 过程总结
@@ -11681,28 +13430,179 @@ components:
           description: 骗子话术分析
         victimBehaviorAnalysis:
           type: string
-          description: 受害者行为分析，不评价观看用户能力
+          description: 受害者行为分析
         outcomeAnalysis:
           type: string
-          description: 与正式结局一致的解释
+          description: 与旧正式结果一致的解释
       required:
+      - contentSchemaVersion
       - summary
       - roundAnalyses
       - speechAnalysis
       - victimBehaviorAnalysis
       - outcomeAnalysis
       additionalProperties: false
-      examples:
-      - summary: 受害者识别转账要求并终止配合。
-        roundAnalyses:
-        - roundNo: 1
-          analysis: 收到垫付要求后提出核实并拒绝转账。
-        speechAnalysis: 以返利引导垫付。
-        victimBehaviorAnalysis: 保持核实意识，没有执行转账。
-        outcomeAnalysis: 未发生实际受骗行为，结局为未受骗结束。
+    ReportContentV2:
+      type: object
+      description: 新精简报告结构；新生成约80—120字，短场可更短；兼容历史长摘要（最多800字），最多3个关键节点（V1.2）
+      properties:
+        contentSchemaVersion:
+          type: integer
+          const: 2
+        result:
+          $ref: '#/components/schemas/ReportResult'
+        summary:
+          type: string
+          description: 按接触背景→诈骗推进→关键判断→最终结果组织；约400—600字
+          minLength: 1
+        keyNodes:
+          type: array
+          description: 关键节点；可少于3个
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/ReportKeyNode'
+        preventionAdvice:
+          type: array
+          description: 防范建议
+          minItems: 2
+          maxItems: 3
+          items:
+            type: string
+        fundsSummary:
+          $ref: '#/components/schemas/ReportFundsSummary'
+      required:
+      - contentSchemaVersion
+      - result
+      - summary
+      - keyNodes
+      - preventionAdvice
+      - fundsSummary
+      additionalProperties: false
+    ReportFundsSummaryV3:
+      type: object
+      additionalProperties: false
+      properties:
+        totalPaidYuan:
+          type: integer
+          minimum: 0
+        totalRefundedYuan:
+          type: integer
+          minimum: 0
+        totalRewardedYuan:
+          type: integer
+          minimum: 0
+        actualLossYuan:
+          type: integer
+          minimum: 0
+        availableBalanceYuan:
+          type: integer
+          minimum: 0
+        generalReserveRemainingYuan:
+          type: integer
+          minimum: 0
+        emergencyReserveRemainingYuan:
+          type: integer
+          minimum: 0
+      required:
+      - totalPaidYuan
+      - totalRefundedYuan
+      - totalRewardedYuan
+      - actualLossYuan
+      - availableBalanceYuan
+      - generalReserveRemainingYuan
+      - emergencyReserveRemainingYuan
+    ReportContentV3:
+      type: object
+      description: 新精简报告结构；新生成约80—120字，短场可更短；兼容历史长摘要（最多800字），最多3个关键节点（V1.3）；无正式结果时必须写明未形成受骗或识破结论
+      properties:
+        contentSchemaVersion:
+          type: integer
+          const: 3
+        result:
+          $ref: '#/components/schemas/ReportResult'
+        summary:
+          type: string
+          description: 按接触背景→诈骗推进→关键判断→最终结果组织；约400—600字
+          minLength: 1
+        keyNodes:
+          type: array
+          description: 关键节点；可少于3个
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/ReportKeyNode'
+        preventionAdvice:
+          type: array
+          description: 防范建议
+          minItems: 2
+          maxItems: 3
+          items:
+            type: string
+        fundsSummary:
+          $ref: '#/components/schemas/ReportFundsSummaryV3'
+      required:
+      - contentSchemaVersion
+      - result
+      - summary
+      - keyNodes
+      - preventionAdvice
+      - fundsSummary
+      additionalProperties: false
+    ReportContentV4:
+      type: object
+      description: V1.4报告：沿用v3结构与校验，winning与finalTrustScore由服务端按已保存结果注入，模型输出中的同名字段不被接受（V3.5）；主动退出时两者均为null且正文写明未形成胜负结论
+      properties:
+        contentSchemaVersion:
+          type: integer
+          const: 4
+        result:
+          $ref: '#/components/schemas/ReportResult'
+        winning:
+          anyOf:
+          - type: string
+            enum:
+            - SCAMMER
+            - VICTIM
+          - type: 'null'
+          description: 程序判定的胜方；主动退出为null
+        finalTrustScore:
+          anyOf:
+          - type: integer
+            minimum: 0
+            maximum: 100
+          - type: 'null'
+          description: 已保存的最终受骗倾向分；主动退出为null
+        summary:
+          type: string
+          description: 按接触背景→诈骗推进→关键判断→最终结果组织；约400—600字
+          minLength: 1
+        keyNodes:
+          type: array
+          description: 关键节点；可少于3个
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/ReportKeyNode'
+        preventionAdvice:
+          type: array
+          description: 防范建议
+          minItems: 2
+          maxItems: 3
+          items:
+            type: string
+        fundsSummary:
+          $ref: '#/components/schemas/ReportFundsSummaryV3'
+      required:
+      - contentSchemaVersion
+      - result
+      - winning
+      - finalTrustScore
+      - summary
+      - keyNodes
+      - preventionAdvice
+      - fundsSummary
+      additionalProperties: false
     ReportView:
       type: object
-      description: 报告查询；FINISHED缺报告记录为500，不包装为正常空报告
+      description: 报告查询；有报告资格而缺行时为500；旧版退出无报告返回LEGACY_NO_REPORT，GET不补建报告
       properties:
         sessionId:
           $ref: '#/components/schemas/Id'
@@ -11718,12 +13618,27 @@ components:
             description: 无报告的原因
             enum:
             - SIMULATION_RUNNING
-            - SIMULATION_INTERRUPTED
+            - TECHNICAL_INTERRUPT
+            - NO_DIALOGUE
+            - LEGACY_NO_REPORT
+          - type: 'null'
+        ending:
+          anyOf:
+          - $ref: '#/components/schemas/Ending'
           - type: 'null'
         outcome:
           anyOf:
           - $ref: '#/components/schemas/Outcome'
           - type: 'null'
+        contentSchemaVersion:
+          anyOf:
+          - type: integer
+            enum:
+            - 1
+            - 2
+            - 3
+          - type: 'null'
+          description: 报告结构版本；无内容为null
         content:
           anyOf:
           - $ref: '#/components/schemas/ReportContent'
@@ -11738,6 +13653,7 @@ components:
       - simulationStatus
       - report
       - unavailableReason
+      - ending
       - outcome
       - content
       - riskSeries
@@ -11752,12 +13668,17 @@ components:
           attemptNo: 0
           updatedAt: '2026-10-15T02:00:20.000Z'
           error: null
+        ending: null
         unavailableReason: null
         outcome:
-          code: NOT_DEFRAUDED
-          displayText: 未受骗结束
+          code: IDENTIFIED
+          displayText: 已识破
           reason: 受害者拒绝转账并停止配合，未发生实际受骗行为。
           limitReason: null
+          goalAchieved: false
+          stoppedAfterFraud: false
+          actualLossYuan: 0
+        contentSchemaVersion: null
         content: null
         riskSeries:
         - roundNo: 1
@@ -11869,6 +13790,9 @@ components:
           - $ref: '#/components/schemas/UtcMillis'
             description: 终态时间
           - type: 'null'
+        rulesetVersion:
+          type: string
+          description: 当时规则版本；旧记录可为PRD-V3.2（V1.2）
         configuration:
           $ref: '#/components/schemas/Configuration'
         rounds:
@@ -11877,6 +13801,9 @@ components:
             $ref: '#/components/schemas/HistoryRound'
           description: 按轮号升序，最多20轮
           maxItems: 20
+        funds:
+          $ref: '#/components/schemas/Funds'
+          description: 本场资金摘要与逐笔流水；旧记录fundsRecorded=false（V1.2）
         outcome:
           anyOf:
           - $ref: '#/components/schemas/Outcome'
@@ -11895,8 +13822,10 @@ components:
       - startedAt
       - deadlineAt
       - endedAt
+      - rulesetVersion
       - configuration
       - rounds
+      - funds
       - outcome
       - interruption
       - report
@@ -11907,6 +13836,7 @@ components:
         startedAt: '2026-10-15T02:00:00.000Z'
         deadlineAt: '2026-10-15T02:10:00.000Z'
         endedAt: '2026-10-15T02:00:20.000Z'
+        rulesetVersion: PRD-V3.2
         configuration:
           scenario:
             id: '1'
@@ -11927,7 +13857,7 @@ components:
             gender: 男
             identity: 示例人物身份
             description: 仅用于接口字段演示，不代替PRD初始人物卡。
-            contextTime: 工作日晚间
+            contextTime: 昨天20:00
             contextPlace: 家中
             currentState: 正在查看手机消息
             fraudExperience: HIGH
@@ -11947,7 +13877,7 @@ components:
             gender: 女
             identity: 示例人物身份
             description: 仅用于接口字段演示，不代替PRD初始人物卡。
-            contextTime: 工作日晚间
+            contextTime: 昨天20:00
             contextPlace: 家中
             currentState: 正在查看手机消息
             antiFraudAwareness: MEDIUM
@@ -11969,7 +13899,18 @@ components:
             presentationErrorCode: null
             savedAt: '2026-10-15T02:00:10.000Z'
           analysis: null
+          funds: null
           readingUntil: null
+        funds:
+          fundsRecorded: false
+          initialAvailableYuan: null
+          availableBalanceYuan: null
+          totalPaidYuan: null
+          totalRefundedYuan: null
+          actualLossYuan: null
+          additionalPaymentCount: null
+          reserveReleasedYuan: null
+          flows: null
         outcome: null
         interruption:
           code: MEDIA_FAILED
@@ -12330,7 +14271,7 @@ components:
             gender: 男
             identity: 示例人物身份
             description: 仅用于接口字段演示，不代替PRD初始人物卡。
-            contextTime: 工作日晚间
+            contextTime: 昨天20:00
             contextPlace: 家中
             currentState: 正在查看手机消息
             fraudExperience: HIGH
@@ -12377,7 +14318,7 @@ components:
             gender: 女
             identity: 示例人物身份
             description: 仅用于接口字段演示，不代替PRD初始人物卡。
-            contextTime: 工作日晚间
+            contextTime: 昨天20:00
             contextPlace: 家中
             currentState: 正在查看手机消息
             antiFraudAwareness: MEDIUM
@@ -12422,7 +14363,7 @@ components:
           gender: 男
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           fraudExperience: HIGH
@@ -12466,7 +14407,7 @@ components:
           gender: 女
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           antiFraudAwareness: MEDIUM
@@ -12510,7 +14451,7 @@ components:
             gender: 男
             identity: 示例人物身份
             description: 仅用于接口字段演示，不代替PRD初始人物卡。
-            contextTime: 工作日晚间
+            contextTime: 昨天20:00
             contextPlace: 家中
             currentState: 正在查看手机消息
             fraudExperience: HIGH
@@ -12561,7 +14502,7 @@ components:
             gender: 女
             identity: 示例人物身份
             description: 仅用于接口字段演示，不代替PRD初始人物卡。
-            contextTime: 工作日晚间
+            contextTime: 昨天20:00
             contextPlace: 家中
             currentState: 正在查看手机消息
             antiFraudAwareness: MEDIUM
@@ -12610,7 +14551,7 @@ components:
           gender: 男
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           fraudExperience: HIGH
@@ -12658,7 +14599,7 @@ components:
           gender: 女
           identity: 示例人物身份
           description: 仅用于接口字段演示，不代替PRD初始人物卡。
-          contextTime: 工作日晚间
+          contextTime: 昨天20:00
           contextPlace: 家中
           currentState: 正在查看手机消息
           antiFraudAwareness: MEDIUM
@@ -12720,7 +14661,7 @@ components:
               gender: 男
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               fraudExperience: HIGH
@@ -12740,7 +14681,7 @@ components:
               gender: 女
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               antiFraudAwareness: MEDIUM
@@ -12810,7 +14751,7 @@ components:
                 gender: 男
                 identity: 示例人物身份
                 description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                contextTime: 工作日晚间
+                contextTime: 昨天20:00
                 contextPlace: 家中
                 currentState: 正在查看手机消息
                 fraudExperience: HIGH
@@ -12830,7 +14771,7 @@ components:
                 gender: 女
                 identity: 示例人物身份
                 description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                contextTime: 工作日晚间
+                contextTime: 昨天20:00
                 contextPlace: 家中
                 currentState: 正在查看手机消息
                 antiFraudAwareness: MEDIUM
@@ -12887,6 +14828,7 @@ components:
             attemptNo: 0
             updatedAt: '2026-10-15T02:00:20.000Z'
             error: null
+          ending: null
           unavailableReason: null
           outcome:
             code: NOT_DEFRAUDED
@@ -12984,7 +14926,7 @@ components:
               gender: 男
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               fraudExperience: HIGH
@@ -13004,7 +14946,7 @@ components:
               gender: 女
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               antiFraudAwareness: MEDIUM
@@ -13155,7 +15097,7 @@ components:
               gender: 男
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               fraudExperience: HIGH
@@ -13175,7 +15117,7 @@ components:
               gender: 女
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               antiFraudAwareness: MEDIUM
@@ -13195,6 +15137,7 @@ components:
           sessionId: '501'
           simulationStatus: RUNNING
           report: null
+          ending: null
           unavailableReason: SIMULATION_RUNNING
           outcome: null
           content: null
@@ -13250,7 +15193,7 @@ components:
               gender: 男
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               fraudExperience: HIGH
@@ -13270,7 +15213,7 @@ components:
               gender: 女
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               antiFraudAwareness: MEDIUM
@@ -13417,7 +15360,7 @@ components:
           nextAction: NEXT_ROUND
     SessionFinishedEvent:
       type: object
-      description: FINISHED、唯一结局与报告PENDING已同事务提交，之后可进行最后阅读停留。
+      description: FINISHED、唯一正式结果与报告PENDING已同事务提交，之后可进行最后阅读停留。
       properties:
         eventId:
           type: string
@@ -13466,7 +15409,7 @@ components:
               gender: 男
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               fraudExperience: HIGH
@@ -13486,7 +15429,7 @@ components:
               gender: 女
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               antiFraudAwareness: MEDIUM
@@ -13602,7 +15545,7 @@ components:
               gender: 男
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               fraudExperience: HIGH
@@ -13622,7 +15565,7 @@ components:
               gender: 女
               identity: 示例人物身份
               description: 仅用于接口字段演示，不代替PRD初始人物卡。
-              contextTime: 工作日晚间
+              contextTime: 昨天20:00
               contextPlace: 家中
               currentState: 正在查看手机消息
               antiFraudAwareness: MEDIUM
@@ -13673,6 +15616,7 @@ components:
             attemptNo: 0
             updatedAt: '2026-10-15T02:00:20.000Z'
             error: null
+          ending: null
           unavailableReason: null
           outcome:
             code: NOT_DEFRAUDED
@@ -13735,7 +15679,7 @@ components:
                 gender: 男
                 identity: 示例人物身份
                 description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                contextTime: 工作日晚间
+                contextTime: 昨天20:00
                 contextPlace: 家中
                 currentState: 正在查看手机消息
                 fraudExperience: HIGH
@@ -13755,7 +15699,7 @@ components:
                 gender: 女
                 identity: 示例人物身份
                 description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                contextTime: 工作日晚间
+                contextTime: 昨天20:00
                 contextPlace: 家中
                 currentState: 正在查看手机消息
                 antiFraudAwareness: MEDIUM
@@ -13775,6 +15719,7 @@ components:
             sessionId: '501'
             simulationStatus: RUNNING
             report: null
+            ending: null
             unavailableReason: SIMULATION_RUNNING
             outcome: null
             content: null
@@ -13875,7 +15820,7 @@ components:
                 gender: 男
                 identity: 示例人物身份
                 description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                contextTime: 工作日晚间
+                contextTime: 昨天20:00
                 contextPlace: 家中
                 currentState: 正在查看手机消息
                 fraudExperience: HIGH
@@ -13895,7 +15840,7 @@ components:
                 gender: 女
                 identity: 示例人物身份
                 description: 仅用于接口字段演示，不代替PRD初始人物卡。
-                contextTime: 工作日晚间
+                contextTime: 昨天20:00
                 contextPlace: 家中
                 currentState: 正在查看手机消息
                 antiFraudAwareness: MEDIUM
@@ -13937,6 +15882,306 @@ components:
       - sessionId
       - stateVersion
       - data
+      additionalProperties: false
+    ScammerDraft:
+      type: object
+      description: ADMIN_TEST场次的骗子草稿；originalContent保留模型原始台词，draftContent是当前待确认文本（V1.4）
+      properties:
+        draftId:
+          $ref: '#/components/schemas/Id'
+        sessionId:
+          $ref: '#/components/schemas/Id'
+        roundNo:
+          type: integer
+          minimum: 1
+          maximum: 20
+        roundPhase:
+          type: string
+          description: 生成该草稿时所处轮次阶段
+          enum: [SCAMMER_GENERATING, SCAMMER_REVIEW, SCAMMER_PRESENTING, VICTIM_GENERATING, VICTIM_PRESENTING,
+            ANALYZING, ANALYSIS_PRESENTING, COMPLETE]
+        revisionNo:
+          type: integer
+          minimum: 0
+          description: 单调递增；编辑或重新生成都会提升，迟到的请求据此被拒绝
+        status:
+          type: string
+          enum: [DRAFT, ADOPTED, DISCARDED]
+        originalContent:
+          type: string
+          minLength: 1
+        originalAction:
+          type:
+          - string
+          - 'null'
+        draftContent:
+          type: string
+          minLength: 1
+        draftAction:
+          type:
+          - string
+          - 'null'
+        guidance:
+          type:
+          - string
+          - 'null'
+        updatedAt:
+          $ref: '#/components/schemas/UtcMillis'
+      required: [draftId, sessionId, roundNo, roundPhase, revisionNo, status, originalContent, originalAction,
+        draftContent, draftAction, guidance, updatedAt]
+      additionalProperties: false
+    InterventionState:
+      type: object
+      description: 待确认门状态（API-47）；仅本人ADMIN_TEST场次返回，内测期间USER与ADMIN均可使用（V1.4）
+      properties:
+        sessionId:
+          $ref: '#/components/schemas/Id'
+        interventionMode:
+          type: string
+          enum: [NONE, ADMIN_TEST]
+        currentRoundNo:
+          type: integer
+          minimum: 0
+          maximum: 20
+        phase:
+          anyOf:
+          - type: string
+            enum: [SCAMMER_GENERATING, SCAMMER_REVIEW, SCAMMER_PRESENTING, VICTIM_GENERATING, VICTIM_PRESENTING,
+              ANALYZING, ANALYSIS_PRESENTING, COMPLETE]
+          - type: 'null'
+          description: 开场currentRoundNo=0时为null
+        currentDraft:
+          anyOf:
+          - $ref: '#/components/schemas/ScammerDraft'
+          - type: 'null'
+          description: 仅SCAMMER_REVIEW时非null
+        pendingInterventionCount:
+          type: integer
+          minimum: 0
+        canRegenerate:
+          type: boolean
+        canAdopt:
+          type: boolean
+      required: [sessionId, interventionMode, currentRoundNo, phase, currentDraft, pendingInterventionCount,
+        canRegenerate, canAdopt]
+      additionalProperties: false
+    DraftRequest:
+      type: object
+      description: 修改或重新生成的请求（V1.4 API-49）
+      properties:
+        draftId:
+          $ref: '#/components/schemas/Id'
+        expectedRevisionNo:
+          type: integer
+          minimum: 0
+        guidance:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+        content:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 120
+          - type: 'null'
+      required: [draftId, expectedRevisionNo]
+      additionalProperties: false
+    AdoptRequest:
+      type: object
+      description: 采用请求（V1.4 API-48）；continue是Java关键字，线上字段名固定为continue
+      properties:
+        draftId:
+          $ref: '#/components/schemas/Id'
+        expectedRevisionNo:
+          type: integer
+          minimum: 0
+        continue:
+          type: boolean
+          description: 继续采用当前草稿
+        content:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 120
+          - type: 'null'
+          description: 直接在采用时改写；与草稿一致即沿用草稿
+      required: [draftId, expectedRevisionNo, continue]
+      additionalProperties: false
+    InterventionDraftEvent:
+      type: object
+      description: （V1.4）ADMIN_TEST场次的草稿已保存，等待本人确认；内测期间USER与ADMIN场次均可收到该事件
+      properties:
+        eventId:
+          type: string
+        sessionId:
+          $ref: '#/components/schemas/Id'
+        stateVersion:
+          $ref: '#/components/schemas/StateVersion'
+        data:
+          type: object
+          properties:
+            roundNo:
+              type: integer
+              minimum: 1
+              maximum: 20
+            draft:
+              $ref: '#/components/schemas/ScammerDraft'
+            pendingInterventionCount:
+              type: integer
+              minimum: 0
+          required: [roundNo, draft, pendingInterventionCount]
+          additionalProperties: false
+      required: [eventId, sessionId, stateVersion, data]
+      additionalProperties: false
+    InterventionRecord:
+      type: object
+      description: 一条已采用干预的可追溯记录（V1.4 API-50/55）；ADOPTED表示待入库，LINKED表示已归入某条场景规则。ruleId只在按规则查询来源时非空
+      properties:
+        previousContext:
+          description: 上一轮双方的已保存对话
+          type: [string, 'null']
+        interventionId:
+          $ref: '#/components/schemas/Id'
+        sessionId:
+          $ref: '#/components/schemas/Id'
+        sourceSessionId:
+          $ref: '#/components/schemas/Id'
+        roundNo:
+          type: integer
+          minimum: 1
+          maximum: 20
+        sceneCode:
+          type: string
+          enum: [TASK_REBATE, FAKE_INVESTMENT, IMPERSONATION_LOAN]
+        originalContent:
+          type: string
+          minLength: 1
+        finalContent:
+          type: string
+          minLength: 1
+        interventionNote:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum: [PENDING, ADOPTED, LINKED]
+        createdAt:
+          $ref: '#/components/schemas/UtcMillis'
+        ruleId:
+          anyOf:
+          - $ref: '#/components/schemas/Id'
+          - type: 'null'
+      required: [interventionId, sessionId, sourceSessionId, roundNo, sceneCode, originalContent, finalContent,
+        interventionNote, status, createdAt, ruleId]
+      additionalProperties: false
+    RuleDraft:
+      type: object
+      description: 归纳得到的规则草稿（API-51）；只读提案，提交前不写库也不改变来源状态
+      properties:
+        scenarioCode:
+          type: string
+          enum: [TASK_REBATE, FAKE_INVESTMENT, IMPERSONATION_LOAN]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 128
+        ruleText:
+          type: string
+          minLength: 1
+        sourceInterventionIds:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Id'
+      required: [scenarioCode, title, ruleText, sourceInterventionIds]
+      additionalProperties: false
+    SceneRuleWrite:
+      type: object
+      description: 提交规则并关联来源（API-53）；一条来源只能归入一条规则，只合并不拆分
+      properties:
+        scenarioCode:
+          type: string
+          enum: [TASK_REBATE, FAKE_INVESTMENT, IMPERSONATION_LOAN]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 128
+        ruleText:
+          type: string
+          minLength: 1
+        sourceInterventionIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/Id'
+      required: [scenarioCode, title, ruleText, sourceInterventionIds]
+      additionalProperties: false
+    SceneRuleUpdate:
+      type: object
+      description: 编辑或启停（API-54）；version不匹配返回409 VERSION_CONFLICT，编辑与启停都会提升版本号
+      properties:
+        title:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 128
+          - type: 'null'
+        ruleText:
+          anyOf:
+          - type: string
+            minLength: 1
+          - type: 'null'
+        status:
+          anyOf:
+          - type: string
+            enum: [ENABLED, DISABLED]
+          - type: 'null'
+        version:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+      additionalProperties: false
+    SceneRule:
+      type: object
+      description: 场景规则（API-52～54）；规则按场景生效，只影响之后新开的同场景场次
+      properties:
+        ruleId:
+          $ref: '#/components/schemas/Id'
+        scenarioCode:
+          type: string
+          enum: [TASK_REBATE, FAKE_INVESTMENT, IMPERSONATION_LOAN]
+        title:
+          type: string
+          minLength: 1
+          maxLength: 128
+        ruleText:
+          type: string
+          minLength: 1
+        version:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [ENABLED, DISABLED]
+        sourceCount:
+          type: integer
+          minimum: 0
+        updatedAt:
+          $ref: '#/components/schemas/UtcMillis'
+      required: [ruleId, scenarioCode, title, ruleText, version, status, sourceCount, updatedAt]
+      additionalProperties: false
+    SceneRulePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SceneRule'
+      required: [items]
       additionalProperties: false
     SessionResumedEvent:
       type: object

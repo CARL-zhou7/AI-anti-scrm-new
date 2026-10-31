@@ -7,4 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SimulationRoundRepository extends JpaRepository<SimulationRound, Long> {
     Optional<SimulationRound> findBySessionIdAndRoundNo(long sessionId, int roundNo);
     List<SimulationRound> findBySessionIdOrderByRoundNoAsc(long sessionId);
+    long countBySessionIdAndPhase(long sessionId, RoundPhase phase);
 }

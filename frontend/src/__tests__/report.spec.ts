@@ -4,6 +4,7 @@ import ReportPage from '../views/ReportView.vue'
 import RiskChart from '../components/report/RiskChart.vue'
 import { reportApi } from '../api/report'
 import { simulationApi } from '../api/simulation'
+import { historyApi } from '../api/history'
 import { ApiError } from '../api/http'
 import type { ReportView } from '../api/types'
 
@@ -106,6 +107,32 @@ it('renders new and historical outcome names exactly as saved', async () => {
 })
 
 
+it('shows the V1.4 verdict and final score from the saved session', async () => {
+  const value = report()
+  value.outcome = { code: 'SCAMMER_WIN', displayText: '骗子胜', reason: '第15轮结束判定',
+    limitReason: null, winning: 'SCAMMER', finalTrustScore: 82 }
+  value.contentSchemaVersion = 4
+  vi.spyOn(reportApi, 'view').mockResolvedValue(value)
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('[data-testid=report-outcome]').text()).toBe('骗子胜')
+  const verdict = wrapper.get('[data-testid=report-verdict]')
+  expect(verdict.text()).toContain('82')
+  expect(verdict.text()).toContain('骗子胜')
+  wrapper.unmount()
+
+  // A user exit has no verdict and no final score.
+  const exited = report()
+  exited.simulationStatus = 'INTERRUPTED'
+  exited.outcome = null
+  exited.ending = { code: 'USER_EXIT', displayText: '用户离开', reason: '未形成胜负结论' }
+  vi.spyOn(reportApi, 'view').mockResolvedValue(exited)
+  const second = render(); await flushPromises()
+  expect(second.find('[data-testid=report-verdict]').exists()).toBe(false)
+  expect(second.get('[data-testid=report-ending]').text()).toBe('用户离开')
+  second.unmount()
+})
+
+
 it('renders report v2 paragraphs, nodes, advice and authoritative funds without v1 sections', async () => {
   const value: ReportView = { ...report(), contentSchemaVersion: 2, content: { contentSchemaVersion: 2,
     result: { text: '已受骗：转账后停止', reason: '有实际付款' }, summary: '接触背景\n\n诈骗推进\n\n关键判断\n\n最终结果',
@@ -114,11 +141,12 @@ it('renders report v2 paragraphs, nodes, advice and authoritative funds without 
   vi.spyOn(reportApi, 'view').mockResolvedValue(value)
   const wrapper = render(); await flushPromises()
   expect(wrapper.get('[data-testid=report-summary]').findAll('p')).toHaveLength(4)
-  for (const text of ['已受骗：转账后停止', '已经付款', '独立核实', '累计支付', '实际返款', '实际亏损']) expect(wrapper.text()).toContain(text)
+  for (const text of ['已经付款', '独立核实', '累计支付', '本金返款', '最终净损失']) expect(wrapper.text()).toContain(text)
   expect(wrapper.get('[data-testid=report-funds]').text()).toContain('100 元')
   expect(wrapper.find('[data-testid=report-round-analyses]').exists()).toBe(false)
   expect(wrapper.find('[data-testid=report-speech-analysis]').exists()).toBe(false)
   expect(wrapper.get('[data-testid=report-key-nodes] article').classes()).toContain('risk-level-25')
+  expect(wrapper.get('[data-testid=report-node-trust]').text()).toBe('信任数据未保存')
   expect(wrapper.find('[data-testid=report-retry]').exists()).toBe(false)
   wrapper.unmount()
 })
@@ -130,5 +158,92 @@ it('uses the shared risk colors and hides visible score labels in charts', () =>
     .toEqual(['#3f8f6f','#3978b8','#d9a23a','#d9733a','#c43d33'])
   expect(wrapper.find('.risk-values').exists()).toBe(false)
   expect(wrapper.text()).not.toContain('25分')
+  wrapper.unmount()
+})
+
+
+it('keeps a normal business ending report available without a formal outcome', async () => {
+  vi.spyOn(reportApi, 'view').mockResolvedValue({ ...report('PENDING'), simulationStatus: 'INTERRUPTED', outcome: null,
+    ending: { code: 'USER_EXIT', displayText: '用户离开', reason: '已离开页面；未形成受骗或识破结论。' } })
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('[data-testid=report-ending]').text()).toBe('用户离开')
+  expect(wrapper.text()).toContain('未形成受骗或识破结论')
+  expect(wrapper.find('[data-testid=report-generating]').exists()).toBe(true)
+  expect(wrapper.text()).not.toContain('不生成正式复盘')
+  wrapper.unmount()
+})
+
+
+it.each([3, 4] as const)('renders interrupted v%s reports including their summary and money facts', async schema => {
+  const value: ReportView = { ...report(), simulationStatus: 'INTERRUPTED', contentSchemaVersion: schema, outcome: null,
+    ending: { code: 'USER_EXIT', displayText: '用户离开', reason: '未形成受骗或识破结论' },
+    content: { contentSchemaVersion: schema, winning: null, finalTrustScore: null, result: { text: '未形成受骗或识破结论', reason: '用户离开' }, summary: '已保存过程', keyNodes: [], preventionAdvice: ['独立核实', '谨慎付款'],
+      fundsSummary: { totalPaidYuan: 100, totalRefundedYuan: 10, totalRewardedYuan: 50, actualLossYuan: 40, availableBalanceYuan: 960, generalReserveRemainingYuan: 1000, emergencyReserveRemainingYuan: 500 } } }
+  vi.spyOn(reportApi, 'view').mockResolvedValue(value)
+  const wrapper = render(); await flushPromises()
+  const facts = wrapper.get('[data-testid=report-funds]').text()
+  for (const text of ['累计支付', '本金返款', '独立报酬', '最终净损失', '可用余额', '普通预留剩余', '应急预留剩余']) expect(facts).toContain(text)
+  expect(wrapper.get('[data-testid=report-ending]').text()).toBe('用户离开')
+  expect(wrapper.get('[data-testid=report-summary]').text()).toContain('已保存过程')
+  wrapper.unmount()
+})
+
+
+it('shows only report key nodes with their saved trust changes', async () => {
+  const data: ReportView = { ...report(), contentSchemaVersion: 2, content: { contentSchemaVersion: 2,
+    result: { text: '未受骗结束', reason: '已停止' }, summary: '总结',
+    keyNodes: [{ roundNo: 3, quote: '本轮解释', analysis: '解释降低了疑虑' },
+      { roundNo: 13, quote: '拒绝转账', analysis: '保持警惕' }], preventionAdvice: [],
+    fundsSummary: { totalPaidYuan: 0, totalRefundedYuan: 0, actualLossYuan: 0 } },
+    riskSeries: [
+      { roundNo: 1, score: 25, trustChange: { before: 65, after: 65, delta: 0 } },
+      { roundNo: 3, score: 25, trustChange: { before: 65, after: 70, delta: 5 } },
+      { roundNo: 9, score: 50, trustChange: { before: 75, after: 71, delta: -4 } },
+      { roundNo: 13, score: 25, trustChange: { before: 71, after: 71, delta: 0 } },
+    ] }
+  vi.spyOn(reportApi, 'view').mockResolvedValue(data)
+  const detail = vi.spyOn(historyApi, 'detail').mockResolvedValue({ rounds: [{ roundNo: 9,
+    messages: [{ speaker: 'SCAMMER', content: '先交钱才能给单据' }], analysis: { speechAnalysis: '改变了先前的说法' } }] } as unknown as Awaited<ReturnType<typeof historyApi.detail>>)
+  const wrapper = render()
+  await flushPromises()
+  expect(wrapper.find('[data-testid=report-trust-rounds]').exists()).toBe(false)
+  const nodes = wrapper.get('[data-testid=report-key-nodes]').findAll('article')
+  expect(nodes).toHaveLength(2)
+  expect(nodes[0]!.get('[data-testid=report-node-trust]').text()).toContain('信任 65 → 70　↑ +5 上升')
+  expect(nodes[1]!.text()).toContain('保持警惕')
+  expect(nodes[1]!.get('[data-testid=report-node-trust]').text()).toContain('信任 71 → 71　→ 0 不变')
+  expect(nodes.map(node => node.get('h3').text())).toEqual([
+    '事件标题未保存', '事件标题未保存',
+  ])
+  expect(detail).not.toHaveBeenCalled()
+  expect(wrapper.text()).not.toContain('本轮 0 分')
+  wrapper.unmount()
+})
+
+
+it.each([
+  [0, 0, 0, 0, '本次没有实际收付。'],
+  [0, 0, 50, 0, '另获独立报酬50元。'],
+  [2000, 0, 0, 2000, '本次累计支付2,000元。'],
+  [2000, 100, 0, 1900, '本次累计支付2,000元，收回本金100元。'],
+  [2000, 2000, 0, 0, '本次累计支付2,000元，收回本金2,000元。'],
+  [2000, 100, 50, 1850, '本次累计支付2,000元，收回本金100元，另获独立报酬50元。'],
+])('describes saved funds %s/%s/%s without inventing a verdict', async (paid, refunded, rewarded, loss, sentence) => {
+  const value: ReportView = { ...report(), contentSchemaVersion: 3, content: {
+    contentSchemaVersion: 3, result: { text: '未受骗结束', reason: '保存结果' }, summary: '短概述',
+    keyNodes: [{ roundNo: 3, title: '对方要求追加付款', quote: '本轮原话', analysis: '实际行为的简短解释' }],
+    preventionAdvice: ['独立核实', '谨慎付款'], fundsSummary: { totalPaidYuan: paid, totalRefundedYuan: refunded,
+      totalRewardedYuan: rewarded, actualLossYuan: loss, availableBalanceYuan: 960,
+      generalReserveRemainingYuan: 100, emergencyReserveRemainingYuan: 50 } } }
+  value.riskSeries = [{ roundNo: 3, score: 25, trustChange: { before: 72, after: 67, delta: -5 } }]
+  vi.spyOn(reportApi, 'view').mockResolvedValue(value)
+  const wrapper = render(); await flushPromises()
+  expect(wrapper.get('[data-testid=funds-sentence]').text()).toBe(sentence.replace(/。$/, '，'))
+  expect(wrapper.get('.loss strong').text()).toBe(`${loss.toLocaleString('zh-CN')} 元`)
+  expect(wrapper.get('[data-testid=report-node-trust]').classes()).toContain('down')
+  expect(wrapper.get('[data-testid=report-node-trust]').text()).toContain('↓ −5 下降')
+  expect(wrapper.get('article h3').text()).toBe('对方要求追加付款')
+  expect(wrapper.find('[data-testid=report-result]').exists()).toBe(false)
+  expect(wrapper.get('details summary').text()).toBe('资金明细')
   wrapper.unmount()
 })

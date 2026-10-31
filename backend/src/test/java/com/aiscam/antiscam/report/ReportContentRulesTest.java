@@ -20,8 +20,8 @@ class ReportContentRulesTest {
                 java.util.Collections.nCopies(advice,"通过原有号码独立核实"),amount);
     }
     @Test void boundsReferencesAndMoneyAreValidated() {
-        for (int length : new int[]{300,400,800}) assertDoesNotThrow(() -> AgentOutputValidator.reportV2(content(length,1,2,funds),"已受骗",funds,quotes));
-        for (int length : new int[]{299,801}) assertThrows(ReportValidationException.class,
+        for (int length : new int[]{1,80,120,299,300,400,800}) assertDoesNotThrow(() -> AgentOutputValidator.reportV2(content(length,1,2,funds),"已受骗",funds,quotes));
+        for (int length : new int[]{0,801}) assertThrows(ReportValidationException.class,
                 () -> AgentOutputValidator.reportV2(content(length,1,2,funds),"已受骗",funds,quotes));
         for (var value : List.of(content(400,4,2,funds),content(400,1,1,funds),content(400,1,4,funds),
                 content(400,1,2,new ReportFundsSummary(100,0,100)))) assertThrows(ReportValidationException.class,

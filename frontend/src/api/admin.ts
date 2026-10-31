@@ -1,7 +1,9 @@
 import { http } from './http'
-import type { AdminScenario, AdminProfile, AvatarUpload, ProfileKind, ProfilePage, ScammerWrite, VictimWrite } from './types'
+import type { AdminScenario, AdminProfile, AvatarUpload, InterventionRecord, ProfileKind, ProfilePage, RuleDraft, SceneRulePage, SceneRuleUpdate, SceneRuleView, SceneRuleWrite, ScammerWrite, VictimWrite, TrustPolicy } from './types'
 
 export const adminApi = {
+  getTrustPolicy: () => http.get<TrustPolicy>('/admin/trust-policy'),
+  updateTrustPolicy: (body: Pick<TrustPolicy, 'thresholdAccept' | 'thresholdSmall' | 'thresholdLarge' | 'version'>) => http.put<TrustPolicy>('/admin/trust-policy', body),
   listScenarios: () => http.get<AdminScenario[]>('/admin/scenarios'),
   updateScenario: (id: string, body: { name: string; description: string; version: number }) =>
     http.put<AdminScenario>('/admin/scenarios/' + encodeURIComponent(id), body),
@@ -17,4 +19,18 @@ export const adminApi = {
     const body = new FormData(); body.append('file', file)
     return http.postForm<AvatarUpload>('/admin/avatars', body)
   },
+  // ---- V1.4 knowledge base (API-50~54): waiting records, induction, rules and their sources.
+  interventions(filter: { ruleId?: string; sceneCode?: string } = {}) {
+    const params = new URLSearchParams()
+    if (filter.ruleId) params.set('ruleId', filter.ruleId)
+    if (filter.sceneCode) params.set('sceneCode', filter.sceneCode)
+    const query = params.toString()
+    return http.get<InterventionRecord[]>('/admin/interventions' + (query ? '?' + query : ''))
+  },
+  induce: (interventionIds: string[]) => http.post<RuleDraft>('/admin/interventions/induce', { interventionIds }),
+  listRules: () => http.get<SceneRulePage>('/admin/scene-rules'),
+  createRule: (body: SceneRuleWrite) => http.post<SceneRuleView>('/admin/scene-rules', body),
+  updateRule: (id: string, body: SceneRuleUpdate) =>
+    http.put<SceneRuleView>('/admin/scene-rules/' + encodeURIComponent(id), body),
+  ruleSources: (id: string) => http.get<InterventionRecord[]>('/admin/scene-rules/' + encodeURIComponent(id) + '/sources'),
 }

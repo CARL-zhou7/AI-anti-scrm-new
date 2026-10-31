@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { loginRole } from '../api/loginRole'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import HomeView from '../views/HomeView.vue'
@@ -11,7 +12,11 @@ import ReportView from '../views/ReportView.vue'
 import AdminHomeView from '../views/AdminHomeView.vue'
 import AdminScenariosView from '../views/AdminScenariosView.vue'
 import AdminScammersView from '../views/AdminScammersView.vue'
+import AdminTrustPolicyView from '../views/AdminTrustPolicyView.vue'
 import AdminVictimsView from '../views/AdminVictimsView.vue'
+import AdminDemoView from '../views/AdminDemoView.vue'
+import AdminInterventionsView from '../views/AdminInterventionsView.vue'
+import AdminSceneRulesView from '../views/AdminSceneRulesView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -28,7 +33,13 @@ const router = createRouter({
     { path: '/admin', component: AdminHomeView, meta: { title: '管理后台', role: 'ADMIN' } },
     { path: '/admin/scenarios', component: AdminScenariosView, meta: { title: '场景管理', role: 'ADMIN' } },
     { path: '/admin/scammers', component: AdminScammersView, meta: { title: '骗子画像管理', role: 'ADMIN' } },
+    { path: '/admin/trust-policy', component: AdminTrustPolicyView, meta: { title: '信任分机制', role: 'ADMIN' } },
     { path: '/admin/victims', component: AdminVictimsView, meta: { title: '受害者画像管理', role: 'ADMIN' } },
+    { path: '/admin/demo', component: AdminDemoView, meta: { title: '演示测试', role: 'ADMIN' } },
+    { path: '/admin/demo/run', component: SimulationView, meta: { title: '演示测试', role: 'ADMIN', fullscreen: true } },
+    { path: '/admin/demo/report/:id', component: ReportView, meta: { title: '分析复盘', role: 'ADMIN' } },
+    { path: '/admin/interventions', component: AdminInterventionsView, meta: { title: '待入库记录', role: 'ADMIN' } },
+    { path: '/admin/scene-rules', component: AdminSceneRulesView, meta: { title: '场景规则', role: 'ADMIN' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),
@@ -36,6 +47,8 @@ const router = createRouter({
 
 router.beforeEach(async to => {
   const auth = useAuthStore()
+  if (to.path === '/login' && !loginRole.current()) return
+  if (!auth.ready && to.meta.role) loginRole.set(to.meta.role as 'USER' | 'ADMIN')
   await auth.bootstrap()
   if (!to.meta.public && !auth.account) return '/login'
   if (auth.account && (to.meta.public || to.meta.role !== auth.account.role)) return auth.landing

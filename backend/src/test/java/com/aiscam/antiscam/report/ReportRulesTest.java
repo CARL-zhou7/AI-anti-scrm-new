@@ -98,7 +98,7 @@ class ReportRulesTest {
         var rounds = mock(SimulationRoundRepository.class);
         var reports = mock(SimulationReportRepository.class);
         var assembler = new SimulationStateAssembler(rounds, mock(SimulationMessageRepository.class), reports,
-                mock(ConfigurationSnapshots.class), mock(TempAudioStore.class));
+                mock(ConfigurationSnapshots.class), mock(TempAudioStore.class), mock(SimulationTrustEventRepository.class));
         var session = mock(SimulationSession.class);
         when(session.getId()).thenReturn(1L);
         when(session.getStatus()).thenReturn(SimulationStatus.FINISHED);
@@ -126,7 +126,7 @@ class ReportRulesTest {
         when(reports.findById(1L)).thenReturn(Optional.empty());
         assertEquals("DATA_INCONSISTENT", assertThrows(ApiException.class, () -> assembler.reportView(session)).code);
         when(session.getStatus()).thenReturn(SimulationStatus.INTERRUPTED);
-        assertEquals("SIMULATION_INTERRUPTED", assembler.reportView(session).unavailableReason());
+        assertEquals("TECHNICAL_INTERRUPT", assembler.reportView(session).unavailableReason());
         assertTrue(assembler.reportView(session).riskSeries().isEmpty());
     }
 }

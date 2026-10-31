@@ -9,6 +9,7 @@ public final class DeadlineCalculator {
     private DeadlineCalculator() {}
 
     public static Instant effectiveDeadline(Instant deadlineAt, Instant pausedAt, int pausedTotalMs, Instant now) {
+        if (deadlineAt == null) return null;
         if (pausedAt == null) return deadlineAt;
         long credit = Math.max(0, Math.min(now.toEpochMilli() - pausedAt.toEpochMilli(), PAUSE_CREDIT_CAP_MS - pausedTotalMs));
         return deadlineAt.plusMillis(credit);
@@ -18,17 +19,21 @@ public final class DeadlineCalculator {
         return effectiveDeadline(session.getDeadlineAt(), session.getPausedAt(), session.getPausedTotalMs(), now);
     }
 
+    /** V1.4 sessions have no business deadline, so nothing can expire. */
     public static boolean isExpired(SimulationSession session, Instant now) {
-        return !now.isBefore(effectiveDeadline(session, now));
+        Instant deadline = effectiveDeadline(session, now);
+        return deadline != null && !now.isBefore(deadline);
     }
 
     /** Earliest instant at which the session could expire; while paused, when the remaining credit runs out. */
     public static Instant nextCheck(SimulationSession session) {
+        if (session.getDeadlineAt() == null) return null;
         if (session.getPausedAt() == null) return session.getDeadlineAt();
         return session.getDeadlineAt().plusMillis(PAUSE_CREDIT_CAP_MS - session.getPausedTotalMs());
     }
 
     public static long remainingMs(SimulationSession session, Instant now) {
-        return Math.max(0, effectiveDeadline(session, now).toEpochMilli() - now.toEpochMilli());
+        Instant deadline = effectiveDeadline(session, now);
+        return deadline == null ? Long.MAX_VALUE : Math.max(0, deadline.toEpochMilli() - now.toEpochMilli());
     }
 }

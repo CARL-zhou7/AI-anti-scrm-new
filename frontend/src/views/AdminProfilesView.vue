@@ -28,11 +28,12 @@ function blank(): ProfileFormValues {
     monthlyExpenseYuan: '',
     initialSavingsYuan: '',
     availableFundsYuan: '',
-    reservedFundsYuan: '',
+    generalReserveFundsYuan: '',
+    emergencyReserveFundsYuan: '',
     reservedFundsNote: '',
     generalDecisionTraits: '',
     scenarioProfiles: (['TASK_REBATE', 'FAKE_INVESTMENT', 'IMPERSONATION_LOAN'] as const).map(scenarioCode => ({ scenarioCode,
-      needs: '', relevantExperience: '', judgmentBasis: '', verificationHabits: '', actionBoundaries: '', stopConditions: '', recentEvents: '', consultationsTransactions: '', sharedExperiences: '', contactBackground: '', initialTrustMode: '' })) }
+      needs: '', relevantExperience: '', judgmentBasis: '', verificationHabits: '', actionBoundaries: '', stopConditions: '', recentEvents: '', consultationsTransactions: '', sharedExperiences: '', contactBackground: '', initialTrustMode: '', initialTrustScore: 50, positiveFactor: 1, negativeFactor: 1, smallAmountCapYuan: 200 })) }
 }
 const form = ref<ProfileFormValues>(blank())
 function clearFeedback() { error.value = ''; success.value = ''; fields.value = []; conflict.value = false; currentVersion.value = null }
@@ -61,7 +62,8 @@ function fill(row?: AdminProfile) {
         monthlyExpenseYuan: row.monthlyExpenseYuan ?? '',
         initialSavingsYuan: row.initialSavingsYuan ?? '',
         availableFundsYuan: row.availableFundsYuan ?? '',
-        reservedFundsYuan: row.reservedFundsYuan ?? '',
+        generalReserveFundsYuan: row.generalReserveFundsYuan ?? '',
+        emergencyReserveFundsYuan: row.emergencyReserveFundsYuan ?? '',
         reservedFundsNote: row.reservedFundsNote ?? '',
         generalDecisionTraits: row.generalDecisionTraits ?? '',
         scenarioProfiles: form.value.scenarioProfiles.map(empty => ({ ...empty, ...row.scenarioProfiles?.find(p => p.scenarioCode === empty.scenarioCode) })) })
@@ -100,15 +102,24 @@ async function save() {
   if (props.kind === 'victim') {
     for (const [index, profile] of f.scenarioProfiles.entries()) {
       for (const [key, value] of Object.entries(profile)) {
-        if (!value.trim()) fields.value.push({ field: `scenarioProfiles[${index}].${key}`, code: 'REQUIRED', message: '请完整填写此场景资料' })
+        if (typeof value === 'string' && !value.trim()) fields.value.push({ field: `scenarioProfiles[${index}].${key}`, code: 'REQUIRED', message: '请完整填写此场景资料' })
       }
     }
-    for (const key of ['monthlyExpenseYuan', 'initialSavingsYuan', 'availableFundsYuan', 'reservedFundsYuan'] as const) {
+    for (const key of ['monthlyExpenseYuan', 'initialSavingsYuan', 'availableFundsYuan', 'generalReserveFundsYuan', 'emergencyReserveFundsYuan'] as const) {
       const value = f[key]
       if (value === '' || !Number.isSafeInteger(value) || value < 0 || value > 2147483647) fields.value.push({ field: key, code: 'VALUE_INVALID', message: '请填写有效的非负整数金额' })
     }
     if (f.availableFundsYuan !== '' && f.initialSavingsYuan !== '' && f.availableFundsYuan > f.initialSavingsYuan) fields.value.push({ field: 'availableFundsYuan', code: 'VALUE_INVALID', message: '不能超过初始存款' })
-    if (f.reservedFundsYuan !== '' && f.initialSavingsYuan !== '' && f.reservedFundsYuan > f.initialSavingsYuan) fields.value.push({ field: 'reservedFundsYuan', code: 'VALUE_INVALID', message: '不能超过初始存款' })
+    if (f.generalReserveFundsYuan !== '' && f.emergencyReserveFundsYuan !== '' && f.initialSavingsYuan !== '' && f.generalReserveFundsYuan + f.emergencyReserveFundsYuan > f.initialSavingsYuan) fields.value.push({ field: 'emergencyReserveFundsYuan', code: 'VALUE_INVALID', message: '两类预留合计不能超过初始存款' })
+    for (const [index, profile] of f.scenarioProfiles.entries()) {
+      for (const key of ['initialTrustScore', 'smallAmountCapYuan', 'positiveFactor', 'negativeFactor'] as const) {
+        const value = profile[key]
+        const valid = typeof value === 'number' && Number.isFinite(value) && (key === 'positiveFactor' || key === 'negativeFactor'
+          ? value >= 0.1 && value <= 3 && Math.abs(value * 100 - Math.round(value * 100)) < 1e-8
+          : Number.isSafeInteger(value) && value >= 0 && value <= (key === 'initialTrustScore' ? 100 : 2147483647))
+        if (!valid) fields.value.push({ field: `scenarioProfiles[${index}].${key}`, code: 'VALUE_INVALID', message: '请检查信任参数的范围和精度' })
+      }
+    }
     if (fields.value.length) { error.value = '请补齐三套场景资料并检查金额'; return }
   }
   saving.value = true
@@ -123,7 +134,8 @@ async function save() {
       monthlyExpenseYuan: Number(f.monthlyExpenseYuan),
       initialSavingsYuan: Number(f.initialSavingsYuan),
       availableFundsYuan: Number(f.availableFundsYuan),
-      reservedFundsYuan: Number(f.reservedFundsYuan),
+      generalReserveFundsYuan: Number(f.generalReserveFundsYuan),
+      emergencyReserveFundsYuan: Number(f.emergencyReserveFundsYuan),
       reservedFundsNote: f.reservedFundsNote,
       generalDecisionTraits: f.generalDecisionTraits,
       scenarioProfiles: f.scenarioProfiles }

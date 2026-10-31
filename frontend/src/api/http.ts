@@ -1,7 +1,13 @@
 import type { Envelope, ErrorDetail } from './types'
 import { csrf } from './csrf'
+import { loginRole } from './loginRole'
 
 export const apiBase = import.meta.env.VITE_API_BASE || '/anti.scam/v1'
+
+export function apiUrl(path: string): string {
+  const adminSimulation = loginRole.current() === 'ADMIN' && (path === '/simulations' || path.startsWith('/simulations/'))
+  return apiBase + (adminSimulation ? '/admin' : '') + path
+}
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string,
@@ -11,7 +17,9 @@ export class ApiError extends Error {
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   try {
-    response = await fetch(apiBase + path, { ...init, credentials: 'same-origin', cache: 'no-store' })
+    const headers = { ...init?.headers,
+      ...(path.startsWith('/auth/') && loginRole.current() === 'ADMIN' ? { 'X-Login-Role': 'ADMIN' } : {}) }
+    response = await fetch(apiUrl(path), { ...init, headers, credentials: 'same-origin', cache: 'no-store' })
   } catch {
     throw new ApiError(0, 'NETWORK_ERROR', '网络连接失败，请检查连接后重试')
   }
@@ -47,7 +55,7 @@ async function write<T>(path: string, method: 'POST' | 'PUT', body?: unknown): P
 /** Best-effort exit notification while the page is going away: keepalive fetch with the in-memory CSRF token. */
 export function postKeepalive(path: string, body: unknown, token: string | null): void {
   try {
-    void fetch(apiBase + path, { method: 'POST', keepalive: true, credentials: 'same-origin',
+    void fetch(apiUrl(path), { method: 'POST', keepalive: true, credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', ...(token ? { 'X-CSRF-TOKEN': token } : {}) },
       body: JSON.stringify(body) }).catch(() => undefined)
   } catch { /* the page is unloading; nothing else to do */ }

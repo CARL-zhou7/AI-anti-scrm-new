@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.web.session.HttpSessionDestroyedEvent;
+import org.springframework.security.core.session.SessionIdChangedEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -43,7 +44,13 @@ public class SimulationEventHub {
 
     public record SimulationEvent(String type, long sessionId, long stateVersion, Object data) {}
 
-    private record Subscriber(SseEmitter emitter, String httpSessionId) {}
+    private static final class Subscriber {
+        private final SseEmitter emitter;
+        private volatile String httpSessionId;
+        Subscriber(SseEmitter emitter, String httpSessionId) { this.emitter = emitter; this.httpSessionId = httpSessionId; }
+        SseEmitter emitter() { return emitter; }
+        String httpSessionId() { return httpSessionId; }
+    }
 
     /** Registers a stream and immediately sends the authoritative {@code session.state} snapshot. */
     public SseEmitter subscribe(long sessionId, String httpSessionId, SimulationEvent initialState) {
@@ -77,6 +84,13 @@ public class SimulationEventHub {
     public int activeCount(long sessionId) { return subscribers.getOrDefault(sessionId, List.of()).size(); }
 
     public Instant lastDisconnectedAt(long sessionId) { return lastDisconnectedAt.get(sessionId); }
+
+    @EventListener
+    public void onSessionIdChanged(SessionIdChangedEvent event) {
+        subscribers.values().forEach(list -> list.forEach(s -> {
+            if (s.httpSessionId().equals(event.getOldSessionId())) s.httpSessionId = event.getNewSessionId();
+        }));
+    }
 
     /** Logout, expiry or replacement by a newer login closes that HTTP session's streams immediately. */
     @EventListener

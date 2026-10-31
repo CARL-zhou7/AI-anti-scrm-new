@@ -10,9 +10,10 @@ const statuses: Record<SimulationStatus, string> = { RUNNING: '进行中', FINIS
 const reports = { PENDING: '生成中', RUNNING: '生成中', SUCCEEDED: '已完成', FAILED: '生成失败' }
 
 function reportText(item: HistoryItem) {
+  if (item.report) return reports[item.report.status]
   if (item.status === 'INTERRUPTED') return '不生成正式复盘'
   if (item.status === 'RUNNING') return '—'
-  return item.report ? reports[item.report.status] : '报告状态异常'
+  return '报告状态异常'
 }
 
 async function load(more = false) {
@@ -41,7 +42,7 @@ onMounted(() => load())
           <time :datetime="item.startedAt" data-testid="history-item-started">{{ formatShanghai(item.startedAt) }}</time>
           <h2 data-testid="history-item-scenario">{{ item.scenarioName }}</h2>
           <p data-testid="history-item-profiles">{{ item.scammerName }} 与 {{ item.victimName }}</p>
-          <div class="history-status"><span data-testid="history-item-status">{{ statuses[item.status] }}</span><span data-testid="history-item-report">复盘报告：{{ reportText(item) }}</span></div>
+          <div class="history-status"><span data-testid="history-item-status">{{ item.status === 'INTERRUPTED' && item.report ? '正常结束' : statuses[item.status] }}</span><span data-testid="history-item-report">复盘报告：{{ reportText(item) }}</span></div>
           <p v-if="item.outcome">{{ item.outcome.displayText }}</p><p v-if="item.interruption">{{ item.interruption.message }}</p>
           <span class="field-help">查看保存的过程 →</span>
         </RouterLink>

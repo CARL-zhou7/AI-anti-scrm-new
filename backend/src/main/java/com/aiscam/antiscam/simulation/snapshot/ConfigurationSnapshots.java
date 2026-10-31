@@ -5,6 +5,7 @@ import com.aiscam.antiscam.content.web.dto.AvatarRef;
 import com.aiscam.antiscam.content.web.dto.ScammerView;
 import com.aiscam.antiscam.content.web.dto.ScenarioView;
 import com.aiscam.antiscam.content.web.dto.VictimView;
+import com.aiscam.antiscam.content.web.dto.VictimScenarioProfileView;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,8 +19,26 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class ConfigurationSnapshots {
+    private static final ObjectMapper VERSION_JSON = new ObjectMapper();
     private final ObjectMapper mapper;
     public ConfigurationSnapshots(ObjectMapper mapper) { this.mapper = mapper; }
+
+    public static boolean trustV2(com.aiscam.antiscam.simulation.domain.SimulationSession session) {
+        return trustRuleset(session, "trust-v2");
+    }
+
+    /** V1.4. Exact match: trust-v2 sessions never become v3, and v3 sessions never fall back to v2. */
+    public static boolean trustV3(com.aiscam.antiscam.simulation.domain.SimulationSession session) {
+        return trustRuleset(session, "trust-v3");
+    }
+
+    private static boolean trustRuleset(com.aiscam.antiscam.simulation.domain.SimulationSession session, String version) {
+        if (session.getRuntimeSnapshot() == null) return false;
+        try {
+            return version.equals(VERSION_JSON.readTree(session.getRuntimeSnapshot())
+                    .path("trust_config").path("trust_ruleset_version").asText());
+        } catch (java.io.IOException e) { throw new IllegalStateException("Unreadable runtime snapshot", e); }
+    }
 
     public String scenario(FraudScenario s) {
         Map<String, Object> m = new LinkedHashMap<>();
@@ -57,7 +76,7 @@ public class ConfigurationSnapshots {
         m.put("context_place", p.getContextPlace());
         m.put("current_state", p.getCurrentState());
         m.put("is_enabled", p.isEnabled());
-        m.put("snapshot_schema_version", 2);
+        m.put("snapshot_schema_version", 3);
         m.put("selected_scenario_code", selected.name());
         m.put("family_status", p.getFamilyStatus());
         m.put("income_description", p.getIncomeDescription());
@@ -65,6 +84,8 @@ public class ConfigurationSnapshots {
         m.put("initial_savings_yuan", p.getInitialSavingsYuan());
         m.put("available_funds_yuan", p.getAvailableFundsYuan());
         m.put("reserved_funds_yuan", p.getReservedFundsYuan());
+        m.put("general_reserve_funds_yuan", p.getGeneralReserveFundsYuan());
+        m.put("emergency_reserve_funds_yuan", p.getEmergencyReserveFundsYuan());
         m.put("reserved_funds_note", p.getReservedFundsNote());
         m.put("general_decision_traits", p.getGeneralDecisionTraits());
         m.put("victim_scenario_profiles", p.getScenarioProfiles().stream().map(profile -> {
@@ -79,8 +100,21 @@ public class ConfigurationSnapshots {
             fields.put("recent_events", profile.recentEvents());
             fields.put("consultations_transactions", profile.consultationsTransactions());
             fields.put("shared_experiences", profile.sharedExperiences());
-            fields.put("contact_background", profile.contactBackground());
+            String contact = profile.contactBackground();
+            if (selected == ScenarioCode.IMPERSONATION_LOAN && "男".equals(p.getGender())
+                    && contact.matches("联系者声称是(?:外地工作的)?儿子")
+                    && !p.getFamilyStatus().matches("(?s).*(随母姓|随母亲姓|不同姓|改姓|继子|养子).*")) {
+                contact += "。本场既定家庭事实：父亲姓名为" + p.getName()
+                        + "，儿子随父姓，双方都知道这一姓氏；儿子全名未设定，不得使用骗子画像的真实姓名代替。"
+                        + "若画像明确记录不同姓氏或特殊家庭关系，以该明确事实为准。";
+            }
+            fields.put("contact_background", contact);
             fields.put("initial_trust_mode", profile.initialTrustMode());
+            var parameters = p.scenarioProfile(ScenarioCode.valueOf(profile.scenarioCode()));
+            fields.put("initial_trust_score", parameters.getInitialTrustScore());
+            fields.put("positive_factor", parameters.getPositiveFactor());
+            fields.put("negative_factor", parameters.getNegativeFactor());
+            fields.put("small_amount_cap_yuan", parameters.getSmallAmountCapYuan());
             return fields;
         }).toList());
         return write(m);
@@ -111,7 +145,9 @@ public class ConfigurationSnapshots {
                 v.path("personality_traits").asText(), text(v, "family_status"), text(v, "income_description"),
                 amount(v, "monthly_expense_yuan"), amount(v, "initial_savings_yuan"), amount(v, "available_funds_yuan"),
                 amount(v, "reserved_funds_yuan"), text(v, "reserved_funds_note"), text(v, "general_decision_traits"),
-                scenarioProfiles(v), v.path("snapshot_schema_version").asInt(1));
+                scenarioProfiles(v), v.path("snapshot_schema_version").asInt(1),
+                v.path("snapshot_schema_version").asInt(1) >= 3 ? amount(v, "general_reserve_funds_yuan") : null,
+                v.path("snapshot_schema_version").asInt(1) >= 3 ? amount(v, "emergency_reserve_funds_yuan") : null);
         return new ConfigurationView(scenario, scammer, victim);
     }
 
@@ -123,10 +159,10 @@ public class ConfigurationSnapshots {
         return node.hasNonNull(field) ? node.get(field).intValue() : null;
     }
 
-    private static java.util.List<VictimScenarioProfileValues> scenarioProfiles(JsonNode victim) {
-        var result = new java.util.ArrayList<VictimScenarioProfileValues>();
+    private static java.util.List<VictimScenarioProfileView> scenarioProfiles(JsonNode victim) {
+        var result = new java.util.ArrayList<VictimScenarioProfileView>();
         for (JsonNode p : victim.path("victim_scenario_profiles")) {
-            result.add(new VictimScenarioProfileValues(text(p, "scenario_code"), text(p, "needs"),
+            result.add(new VictimScenarioProfileView(text(p, "scenario_code"), text(p, "needs"),
                     text(p, "relevant_experience"), text(p, "judgment_basis"), text(p, "verification_habits"),
                     text(p, "action_boundaries"), text(p, "stop_conditions"), text(p, "recent_events"),
                     text(p, "consultations_transactions"), text(p, "shared_experiences"), text(p, "contact_background"),
@@ -164,6 +200,37 @@ public class ConfigurationSnapshots {
         return text.toString();
     }
 
+    public String victimVisibleText(String json) {
+        JsonNode v = read(json);
+        var facts = new com.aiscam.antiscam.agent.VictimVisibleFacts(v.path("name").asText(), v.path("age").asInt(),
+                v.path("gender").asText(), v.path("identity").asText(), v.path("description").asText(),
+                v.path("family_status").asText(), v.path("income_description").asText(),
+                v.path("general_decision_traits").asText(), v.path("current_state").asText(),
+                java.util.List.of(), java.util.List.of(), java.util.List.of());
+        StringBuilder text = new StringBuilder(write(facts));
+        for (JsonNode profile : v.path("victim_scenario_profiles")) {
+            if (!profile.path("scenario_code").asText().equals(v.path("selected_scenario_code").asText())) continue;
+            for (String field : java.util.List.of("needs", "relevant_experience", "judgment_basis", "verification_habits",
+                    "action_boundaries", "stop_conditions", "recent_events", "consultations_transactions", "shared_experiences", "contact_background")) {
+                text.append("\n").append(field).append("：").append(profile.path(field).asText());
+            }
+        }
+        return text.toString();
+    }
+
+    public String scammerVisibleText(String json) {
+        JsonNode v = read(json);
+        for (JsonNode profile : v.path("victim_scenario_profiles")) {
+            if (profile.path("scenario_code").asText().equals(v.path("selected_scenario_code").asText())) {
+                return write(new com.aiscam.antiscam.agent.ScammerVisibleProfile(v.path("age").asInt(), v.path("gender").asText(), v.path("identity").asText(),
+                        v.path("description").asText(), profile.path("contact_background").asText(),
+                        java.util.List.of(profile.path("shared_experiences").asText()), java.util.List.of()));
+            }
+        }
+        return write(new com.aiscam.antiscam.agent.ScammerVisibleProfile(v.path("age").asInt(), v.path("gender").asText(), v.path("identity").asText(),
+                v.path("description").asText(), "", java.util.List.of(), java.util.List.of()));
+    }
+
     private static String victimFacts(JsonNode v) {
         if (v.path("snapshot_schema_version").asInt(1) < 2) return "";
         StringBuilder text = new StringBuilder();
@@ -171,11 +238,45 @@ public class ConfigurationSnapshots {
                 "reserved_funds_note", "general_decision_traits")) text.append("\n").append(field).append("：").append(v.path(field).asText());
         for (JsonNode profile : v.path("victim_scenario_profiles")) {
             if (!profile.path("scenario_code").asText().equals(v.path("selected_scenario_code").asText())) continue;
-            profile.fields().forEachRemaining(field -> {
-                if (!field.getKey().equals("scenario_code")) text.append("\n").append(field.getKey()).append("：").append(field.getValue().asText());
-            });
+            for (String field : java.util.List.of("needs", "relevant_experience", "judgment_basis", "verification_habits",
+                    "action_boundaries", "stop_conditions", "recent_events", "consultations_transactions", "shared_experiences",
+                    "contact_background", "initial_trust_mode")) text.append("\n").append(field).append("：").append(profile.path(field).asText());
         }
         return text.toString();
+    }
+
+    /**
+     * Renders the rules frozen into {@code scene_rule_snapshot} as prompt lines. An absent, empty or unreadable
+     * snapshot renders nothing, so a rule problem can never stop a session.
+     */
+    public String sceneRuleText(String json) {
+        if (json == null || json.isBlank()) return "";
+        com.fasterxml.jackson.databind.JsonNode node;
+        try { node = read(json); } catch (IllegalStateException e) { return ""; }
+        if (!node.isArray()) return "";
+        StringBuilder text = new StringBuilder();
+        for (var rule : node) {
+            String body = rule.path("ruleText").asText("");
+            if (body.isBlank()) continue;
+            if (!text.isEmpty()) text.append('\n');
+            String title = rule.path("title").asText("");
+            if (!title.isBlank()) text.append('【').append(title.strip()).append('】');
+            text.append(body.strip());
+        }
+        return text.toString();
+    }
+
+    /** Number of rules frozen at start; an absent or unreadable snapshot counts as none. */
+    public int sceneRuleCount(String json) {
+        if (json == null || json.isBlank()) return 0;
+        try {
+            var node = read(json);
+            return node.isArray() ? node.size() : 0;
+        } catch (IllegalStateException e) { return 0; }
+    }
+
+    public boolean fundsV3(com.aiscam.antiscam.simulation.domain.SimulationSession session) {
+        return "funds-v3".equals(read(session.getRuntimeSnapshot()).path("fund_ruleset_version").asText());
     }
 
     public JsonNode read(String json) {

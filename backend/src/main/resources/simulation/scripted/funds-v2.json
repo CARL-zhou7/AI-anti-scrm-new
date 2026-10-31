@@ -76,7 +76,7 @@
       "scammer": [
         {
           "output": {
-            "line": "先返你50元，剩下的稍后到账",
+            "line": "已返你50元，剩下的稍后到账",
             "action": null,
             "intent": "INTERNAL-NOTE-SECRET 借熟人关系建立信任",
             "tone": {
@@ -91,7 +91,7 @@
                 "amountYuan": 50,
                 "roundNo": 2,
                 "speaker": "SCAMMER",
-                "quote": "先返你50元，剩下的稍后到账",
+                "quote": "已返你50元，剩下的稍后到账",
                 "eventOrder": 1,
                 "reason": null,
                 "relatedPaymentId": "{{payment_id}}"
@@ -101,7 +101,7 @@
         },
         {
           "output": {
-            "line": "先返你50元，剩下的稍后到账",
+            "line": "已返你50元，剩下的稍后到账",
             "action": null,
             "intent": "INTERNAL-NOTE-SECRET 借熟人关系建立信任",
             "tone": {
@@ -116,7 +116,7 @@
                 "amountYuan": 50,
                 "roundNo": 2,
                 "speaker": "SCAMMER",
-                "quote": "先返你50元，剩下的稍后到账",
+                "quote": "已返你50元，剩下的稍后到账",
                 "eventOrder": 1,
                 "reason": null,
                 "relatedPaymentId": "{{payment_id}}"
@@ -315,7 +315,7 @@
         {
           "output": {
             "line": "我又付款200元",
-            "action": null,
+            "action": "已经把对方拉黑",
             "psychology": "INTERNAL-NOTE-SECRET 确认是骗局，坚决终止",
             "tone": {
               "speed": "NORMAL",
@@ -344,11 +344,11 @@
             "speechAnalysis": "以反问否认嫌疑，并继续催促，试图打断核实。",
             "methodAnalysis": "阻挠独立核实、持续施压，是诈骗收网前的典型做法。",
             "victimPsychology": "通过官方渠道得到确认，识破骗局后果断终止联系。",
-            "riskScore": 100,
-            "riskReason": "已实际付款仍继续联系",
+            "riskScore": 0,
+            "riskReason": "付款后停止配合，已终止联系",
             "actualFraudOccurred": true,
-            "goalAchieved": true,
-            "cooperationStopped": false,
+            "goalAchieved": false,
+            "cooperationStopped": true,
             "evidence": [
               {
                 "factCode": "INITIAL_PAYMENT_COMPLETED",
@@ -365,10 +365,18 @@
                 "roundNo": 5,
                 "quote": "我又付款200元",
                 "eventOrder": 1
+              },
+              {
+                "factCode": "COOPERATION_STOPPED",
+                "speaker": "VICTIM",
+                "source": "ACTION",
+                "roundNo": 5,
+                "quote": "已经把对方拉黑",
+                "eventOrder": 2
               }
             ],
-            "candidateOutcome": "GOAL_ACHIEVED",
-            "candidateReason": "首笔之后继续追加投入"
+            "candidateOutcome": "DEFRAUDED",
+            "candidateReason": "已实际付款，尚未达到追加目标，随后停止配合"
           }
         }
       ]

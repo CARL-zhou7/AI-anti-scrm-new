@@ -23,7 +23,8 @@ public class TimingCalibrator {
     }
 
     public CalibratedStart calibrate(TimingEvidence evidence, String httpSessionId, long userId, Instant receivedAt) {
-        if (evidence == null) throw ApiException.field("timing", "REQUIRED", "缺少计时证据");
+        // V1.4 does not require timing evidence: the request arrival time is the start time and no evidence is faked.
+        if (evidence == null) return new CalibratedStart(receivedAt, receivedAt, new LinkedHashMap<>());
         if (evidence.methodVersion() == null) throw ApiException.field("timing.methodVersion", "REQUIRED", "此项不能为空");
         if (evidence.sampleId() == null || evidence.sampleId().isBlank()) {
             throw ApiException.field("timing.sampleId", "REQUIRED", "此项不能为空");
@@ -61,7 +62,7 @@ public class TimingCalibrator {
         if (receivedAt.toEpochMilli() - startedAt.toEpochMilli() > properties.getTiming().getMaxClickToArrivalMs()) {
             throw invalid("timing.clientClickMonotonicMs", "点击到请求到达的间隔过长，请重新开始");
         }
-        if (!startedAt.plusMillis(600_000).isAfter(receivedAt)) {
+        if (!startedAt.plusMillis(properties.getMaxActiveDurationMs()).isAfter(receivedAt)) {
             throw invalid("timing.clientClickMonotonicMs", "有效演绎时长已耗尽");
         }
         Map<String, Object> json = new LinkedHashMap<>();

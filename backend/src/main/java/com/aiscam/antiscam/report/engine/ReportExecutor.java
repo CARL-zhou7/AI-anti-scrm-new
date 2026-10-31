@@ -81,7 +81,7 @@ public class ReportExecutor {
                 var context = contexts.load(claimed.sessionId());
                 long remaining = ChronoUnit.MILLIS.between(clock.instant(), claimed.attemptDeadlineAt());
                 if (remaining <= 0) return; // The deadline sweep owns expired rows.
-                long budget = Math.min(remaining, properties.getLlm().getCallTimeoutMs());
+                long budget = remaining;
                 var result = workers.submit(() -> runner.report(context, budget));
                 call = result;
                 json = mapper.writeValueAsString(result.get(budget, TimeUnit.MILLISECONDS));
@@ -93,6 +93,8 @@ public class ReportExecutor {
                 Thread.currentThread().interrupt();
                 return; // Startup recovery will converge unfinished work after shutdown.
             } catch (ExecutionException e) {
+                if (e.getCause() instanceof ReportValidationException validation)
+                    log.warn("report validation failed sessionId={} reason={}", claimed.sessionId(), validation.getMessage());
                 saveFailure(claimed, e.getCause() instanceof ReportValidationException
                         ? ReportErrorCode.VALIDATION_FAILED : ReportErrorCode.GENERATION_FAILED);
                 return;
@@ -100,6 +102,8 @@ public class ReportExecutor {
                 saveFailure(claimed, ReportErrorCode.PERSISTENCE_FAILED);
                 return;
             } catch (RuntimeException e) {
+                if (e instanceof ReportValidationException validation)
+                    log.warn("report validation failed sessionId={} reason={}", claimed.sessionId(), validation.getMessage());
                 saveFailure(claimed, e instanceof ReportValidationException
                         ? ReportErrorCode.VALIDATION_FAILED : ReportErrorCode.GENERATION_FAILED);
                 return;

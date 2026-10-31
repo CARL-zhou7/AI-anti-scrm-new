@@ -8,7 +8,10 @@ public final class ReportRetryRules {
     public enum Action { RETURN_EXISTING, REQUEUE, NOT_APPLICABLE, INCONSISTENT }
 
     public static Action decide(SimulationStatus simulation, ReportStatus report) {
-        if (simulation != SimulationStatus.FINISHED) return Action.NOT_APPLICABLE;
+        return decide(simulation==SimulationStatus.FINISHED,report);
+    }
+    public static Action decide(boolean eligible, ReportStatus report) {
+        if (!eligible) return Action.NOT_APPLICABLE;
         if (report == null) return Action.INCONSISTENT;
         return report == ReportStatus.FAILED ? Action.REQUEUE : Action.RETURN_EXISTING;
     }

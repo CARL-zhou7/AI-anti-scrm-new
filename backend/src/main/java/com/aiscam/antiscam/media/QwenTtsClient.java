@@ -32,8 +32,7 @@ public class QwenTtsClient implements TtsClient {
                         .header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofByteArray(json)).build();
                 var response=mapper.readTree(call(request,deadline));
                 if(!"stop".equals(response.path("output").path("finish_reason").asText())) throw new TtsException("Qwen synthesis incomplete");
-                URI url=URI.create(response.path("output").path("audio").path("url").asText());
-                validateAudioUrl(url);
+                URI url=validateAudioUrl(URI.create(response.path("output").path("audio").path("url").asText()));
                 var mp3=Mp3Frames.read(call(HttpRequest.newBuilder(url).timeout(remaining(deadline)).GET().build(),deadline));
                 if(rate==0){rate=mp3.sampleRate();channels=mp3.channels();}
                 else if(rate!=mp3.sampleRate()||channels!=mp3.channels()) throw new TtsException("Inconsistent MP3 segment format");
@@ -43,13 +42,23 @@ public class QwenTtsClient implements TtsClient {
             return TtsClient.assemble(audio.toByteArray(),segments,durations);
         } catch(TtsException e){throw e;}
         catch(InterruptedException e){Thread.currentThread().interrupt();throw new TtsException("Qwen synthesis interrupted");}
-        catch(Exception e){throw new TtsException("Qwen synthesis failed");}
+        catch(Exception e){throw new TtsException("Qwen synthesis failed ("+e.getClass().getSimpleName()+")");}
     }
     private byte[] call(HttpRequest request,long deadline) throws Exception {
         var future=http.sendAsync(request,HttpResponse.BodyHandlers.ofByteArray());
         try {
             var response=future.get(remaining(deadline).toNanos(),TimeUnit.NANOSECONDS);
-            if(response.statusCode()!=200) throw new TtsException("Qwen HTTP request failed: "+response.statusCode());
+            if(response.statusCode()!=200) {
+                String details="";
+                try {
+                    var error=mapper.readTree(response.body());
+                    for(String field:List.of("code","request_id")) {
+                        String value=error.path(field).asText("");
+                        if(value.matches("[A-Za-z0-9_.-]{1,128}")) details+=" "+field+"="+value;
+                    }
+                } catch(Exception ignored) { /* Non-JSON errors still report the HTTP status. */ }
+                throw new TtsException("Qwen HTTP request failed: "+response.statusCode()+details);
+            }
             if(response.body().length==0||response.body().length>10*1024*1024) throw new TtsException("Invalid Qwen response size");
             return response.body();
         } finally { if(!future.isDone())future.cancel(true); }
@@ -57,11 +66,13 @@ public class QwenTtsClient implements TtsClient {
     private static Duration remaining(long deadline) {
         long nanos=deadline-System.nanoTime();if(nanos<=0)throw new TtsException("Qwen synthesis timed out");return Duration.ofNanos(nanos);
     }
-    private void validateAudioUrl(URI url) {
+    URI validateAudioUrl(URI url) {
         String host=url.getHost();
-        boolean provider="https".equals(url.getScheme())&&host!=null&&host.endsWith(".aliyuncs.com");
+        boolean provider=("https".equals(url.getScheme())||"http".equals(url.getScheme()))&&host!=null&&host.endsWith(".aliyuncs.com");
         boolean local="http".equals(endpoint.getScheme())&&("127.0.0.1".equals(endpoint.getHost())||"localhost".equals(endpoint.getHost()))
                 &&"http".equals(url.getScheme())&&endpoint.getHost().equals(host)&&endpoint.getPort()==url.getPort();
         if(url.getUserInfo()!=null||(!provider&&!local))throw new TtsException("Invalid Qwen audio URL");
+        // Qwen can return an HTTP OSS URL; keep its signature bytes and download over HTTPS.
+        return provider&&"http".equals(url.getScheme())?URI.create("https"+url.toString().substring(4)):url;
     }
 }

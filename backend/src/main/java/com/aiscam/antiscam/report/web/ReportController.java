@@ -13,7 +13,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/anti.scam/v1/simulations")
+@RequestMapping({"/anti.scam/v1/simulations", "/anti.scam/v1/admin/simulations"})
 public class ReportController {
     private final ReportService service;
     public ReportController(ReportService service) { this.service = service; }

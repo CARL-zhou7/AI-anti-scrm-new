@@ -7,11 +7,11 @@ export function compareVersion(a: string, b: string): number {
 }
 
 const SESSION_SNAPSHOTS = new Set(['session.state', 'session.started', 'session.paused', 'session.resumed',
-  'session.finished', 'session.interrupted'])
+  'session.finished', 'session.interrupted', 'intervention.draft'])
 
 /**
  * De-duplicates SSE events by eventId and drops session-level snapshots older than the newest applied one, so a
- * late frame can never roll local state back. Message/analysis events are object-keyed and always pass through;
+ * late frame can never roll local state or a reviewed draft back. Message/analysis events are object-keyed and always pass through;
  * the director merges them by message id / round number.
  */
 export class EventInbox {

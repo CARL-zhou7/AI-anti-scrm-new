@@ -1,6 +1,7 @@
 package com.aiscam.antiscam.auth.web;
 
 import com.aiscam.antiscam.auth.service.AuthService;
+import com.aiscam.antiscam.auth.service.LoginSessions;
 import com.aiscam.antiscam.auth.web.dto.*;
 import com.aiscam.antiscam.common.api.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,29 +14,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/anti.scam/v1/auth")
 public class AuthController {
     private final AuthService service;
-    private final SessionAuthenticationStrategy loginStrategy;
-    private final HttpSessionSecurityContextRepository contexts;
-    private final HttpSessionCsrfTokenRepository csrf;
+    private final LoginSessions sessions;
     private final boolean secure;
 
-    public AuthController(AuthService service, SessionAuthenticationStrategy loginStrategy,
-            HttpSessionSecurityContextRepository contexts, HttpSessionCsrfTokenRepository csrf,
+    public AuthController(AuthService service, LoginSessions sessions,
             @Value("${app.security.session-cookie-secure:true}") boolean secure) {
         this.service = service;
-        this.loginStrategy = loginStrategy;
-        this.contexts = contexts;
-        this.csrf = csrf;
+        this.sessions = sessions;
         this.secure = secure;
     }
 
@@ -57,11 +48,7 @@ public class AuthController {
         Account account = service.authenticate(body.username(), body.password());
         var auth = UsernamePasswordAuthenticationToken.authenticated(account, null,
                 List.of(new SimpleGrantedAuthority("ROLE_" + account.role())));
-        loginStrategy.onAuthentication(auth, request, response);
-        var context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(auth);
-        SecurityContextHolder.setContext(context);
-        contexts.saveContext(context, request, response);
+        sessions.login(auth, request, response);
         return ApiResponse.ok(account);
     }
 
@@ -73,9 +60,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ApiResponse<LogoutResult> logout(Authentication authentication, HttpServletRequest request,
             HttpServletResponse response) {
-        csrf.saveToken(null, request, response);
-        new SecurityContextLogoutHandler().logout(request, response, authentication);
-        response.addHeader(HttpHeaders.SET_COOKIE, ResponseCookie.from("JSESSIONID", "")
+        if (sessions.logout(request, response)) response.addHeader(HttpHeaders.SET_COOKIE, ResponseCookie.from("JSESSIONID", "")
                 .path("/anti.scam/v1").httpOnly(true).sameSite("Lax").secure(secure).maxAge(0).build().toString());
         return ApiResponse.ok(new LogoutResult(true));
     }

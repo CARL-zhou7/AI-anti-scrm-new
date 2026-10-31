@@ -29,7 +29,7 @@ public class ScriptedLlmClient implements LlmClient {
     @Override
     public String completeJson(LlmRequest request) {
         Category category = switch (request.role()) {
-            case NARRATOR -> Category.ANALYSIS;
+            case NARRATOR, EVENT -> Category.ANALYSIS;
             case REPORT -> Category.REPORT;
             default -> Category.DIALOGUE;
         };
@@ -42,9 +42,12 @@ public class ScriptedLlmClient implements LlmClient {
         if (attempts == null) throw new AgentCallException(category, false, "no scripted output");
         JsonNode entry = attempts.get(Math.min(request.attempt(), attempts.size() - 1));
         if (request.role() == AgentRole.REPORT && request.prompt().contains("\"contentSchemaVersion\":2")
-                && entry.has("output") && !entry.path("output").has("contentSchemaVersion")) {
+                && entry.has("output") && entry.path("output").path("contentSchemaVersion").asInt(1) != 2) {
             entry = attempts(script("report-v2"),0,"report").get(0);
         }
+        if (request.role() == AgentRole.REPORT && request.prompt().contains("\"contentSchemaVersion\":3")
+                && entry.has("output") && entry.path("output").path("contentSchemaVersion").asInt() != 3)
+            entry = attempts(script("report-v3"),0,"report").get(0);
         sleep(entry.path("delayMs").asLong(script.path("delayMs").asLong(0)));
         if (entry.has("error")) throw new AgentCallException(category, true, "scripted " + entry.path("error").asText());
         try {
@@ -55,11 +58,15 @@ public class ScriptedLlmClient implements LlmClient {
                 output = output.replace("\"{{payment_id}}\"", payment.group(1));
             }
             if (request.role() == AgentRole.REPORT && output.contains("{{outcome}}")) {
-                var outcome = java.util.regex.Pattern.compile("(已受骗|已识破|超限结束)（").matcher(request.prompt());
+                var outcome = java.util.regex.Pattern.compile("(?m)^(已受骗|已识破|超限结束|未形成受骗或识破结论|大额投入目标达成|受骗后及时止损|演绎结果未定|未受骗结束)[（：]([^\\r\\n]*)").matcher(request.prompt());
                 if (!outcome.find()) throw new AgentCallException(category,false,"script requires saved outcome");
                 output = output.replace("{{outcome}}",outcome.group(1));
-                for (String field : java.util.List.of("totalPaidYuan","totalRefundedYuan","actualLossYuan")) {
-                    var amount = java.util.regex.Pattern.compile(field+"=([0-9]+)").matcher(request.prompt());
+                output = output.replace("\"{{ending_reason}}\"",mapper.writeValueAsString(outcome.group(2)));
+                for (String field : (request.prompt().contains("\"contentSchemaVersion\":3") ? java.util.List.of("totalPaidYuan","totalRefundedYuan","totalRewardedYuan",
+                        "actualLossYuan","availableBalanceYuan","generalReserveRemainingYuan","emergencyReserveRemainingYuan")
+                        : java.util.List.of("totalPaidYuan","totalRefundedYuan","actualLossYuan"))) {
+                    String label = switch(field) { case "totalPaidYuan" -> "累计支付"; case "totalRefundedYuan" -> "实际返款"; default -> "实际亏损"; };
+                    var amount = java.util.regex.Pattern.compile("(?:"+field+"=|"+label+")([0-9]+)").matcher(request.prompt());
                     if (!amount.find()) throw new AgentCallException(category,false,"script requires saved funds");
                     output = output.replace("\"{{"+field+"}}\"",amount.group(1));
                 }

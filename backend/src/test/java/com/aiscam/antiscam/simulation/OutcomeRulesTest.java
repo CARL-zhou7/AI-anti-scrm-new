@@ -41,5 +41,10 @@ class OutcomeRulesTest {
         assertFalse(ScenarioGoalRules.goalAchieved(ScenarioCode.IMPERSONATION_LOAN,List.of(loan,
                 new ScenarioGoalRules.Fact(FactCode.INDEPENDENT_VERIFICATION_COMPLETED,1,1)),funds(20,0)));
     }
+    @Test void earlyExceptionPreservesFraudAndOrdinaryRefusalStillWaits() {
+        assertEquals(OutcomeCode.IDENTIFIED,OutcomeRules.decide(3,OutcomeCode.IDENTIFIED,"反证并停止",false,false,true).outcome());
+        assertEquals(OutcomeCode.DEFRAUDED,OutcomeRules.decide(3,OutcomeCode.DEFRAUDED,"付款后停止",false,true,true).outcome());
+        assertNull(OutcomeRules.decide(3,OutcomeCode.IDENTIFIED,"一般拒绝",false,false,false));
+    }
     private FundsSummary funds(int loss, int additional) { return new FundsSummary(2000, 2000-loss, loss, 0, loss, additional, 0); }
 }

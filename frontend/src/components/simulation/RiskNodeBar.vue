@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { riskColor, riskClass } from '../../utils/risk'
 import type { RiskScore } from '../../api/types'
-// Five fixed teaching levels; before the first analysis it reads "not scored yet", never 0.
+// The five marks are a scale; the pointer and score move continuously.
 defineProps<{ risk: RiskScore | null }>()
 const levels: RiskScore[] = [0, 25, 50, 75, 100]
 </script>
 
 <template>
   <div class="risk" data-testid="risk-bar" role="img" :aria-label="risk === null ? '风险指数：尚未评分' : '风险指数：' + risk">
-    <div class="risk-head"><span>受害者当前受骗风险</span><strong v-if="risk === null">尚未评分</strong></div>
+    <div class="risk-head"><span>受害者当前受骗风险</span><strong>{{ risk === null ? '尚未评分' : risk + ' / 100' }}</strong></div>
     <ol class="track">
       <li v-for="level in levels" :key="level" :class="['node', riskClass(level), { on: risk === level, past: risk !== null && level < risk }]">
         <span class="dot" :style="risk === level ? { background: riskColor(level) } : undefined" />
       </li>
+      <li v-if="risk !== null" class="cursor" :style="{ left: `calc(10px + (100% - 20px) * ${risk / 100})`, background: riskColor(risk) }" />
     </ol>
   </div>
 </template>
@@ -26,5 +27,5 @@ const levels: RiskScore[] = [0, 25, 50, 75, 100]
 .node { position:relative; display:flex; flex-direction:column; align-items:center; gap:6px; }
 .dot { width:20px; height:20px; border-radius:50%; background:#fff; border:2px solid #c9cedb; transition:transform .3s, background .3s; }
 .past .dot { background:#dfe3ec; }
-.on .dot { transform:scale(1.35); border-color:transparent; }
+.cursor { position:absolute; top:-3px; width:26px; height:26px; border-radius:50%; transform:translateX(-50%); border:2px solid white; transition:left .3s, background .3s; }
 </style>

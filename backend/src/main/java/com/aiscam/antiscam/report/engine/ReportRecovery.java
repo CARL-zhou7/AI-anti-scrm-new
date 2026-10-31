@@ -28,8 +28,8 @@ public class ReportRecovery implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         transitions.failRunningOnRestart(clock.instant());
-        for (var session : sessions.findByStatus(SimulationStatus.FINISHED)) {
-            transitions.repairMissing(session.getId(), clock.instant());
+        for (var status : new SimulationStatus[]{SimulationStatus.FINISHED,SimulationStatus.INTERRUPTED}) {
+            for (var session : sessions.findByStatus(status)) transitions.repairMissing(session.getId(),clock.instant());
         }
         executor.markReady();
     }

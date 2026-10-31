@@ -4,7 +4,7 @@ import com.aiscam.antiscam.common.error.ApiException;
 import com.aiscam.antiscam.common.web.RequestContent;
 import java.util.*;
 
-public record VictimProfileValues(String name, Integer age, String gender, String identity, String description, String familyStatus, String incomeDescription, int monthlyExpenseYuan, int initialSavingsYuan, int availableFundsYuan, int reservedFundsYuan, String reservedFundsNote, String generalDecisionTraits, String contextPlace, String currentState, Level antiFraudAwareness, Level riskTendency, String personalityTraits, String avatarKey, String speakingAvatarKey, List<VictimScenarioProfileValues> scenarioProfiles) {
+public record VictimProfileValues(String name, Integer age, String gender, String identity, String description, String familyStatus, String incomeDescription, int monthlyExpenseYuan, int initialSavingsYuan, int availableFundsYuan, int generalReserveFundsYuan, int emergencyReserveFundsYuan, String reservedFundsNote, String generalDecisionTraits, String contextPlace, String currentState, Level antiFraudAwareness, Level riskTendency, String personalityTraits, String avatarKey, String speakingAvatarKey, List<VictimScenarioProfileValues> scenarioProfiles) {
     public void validate() {
         RequestContent.checkField("familyStatus", familyStatus, RequestContent.MAX_TEXT_CHARS);
         RequestContent.checkField("incomeDescription", incomeDescription, RequestContent.MAX_TEXT_CHARS);
@@ -13,7 +13,9 @@ public record VictimProfileValues(String name, Integer age, String gender, Strin
         if (monthlyExpenseYuan < 0) throw ApiException.field("monthlyExpenseYuan", "VALUE_INVALID", "金额不能为负数");
         if (initialSavingsYuan < 0) throw ApiException.field("initialSavingsYuan", "VALUE_INVALID", "金额不能为负数");
         if (availableFundsYuan < 0 || availableFundsYuan > initialSavingsYuan) throw ApiException.field("availableFundsYuan", "VALUE_INVALID", "可动用资金须在0与初始存款之间");
-        if (reservedFundsYuan < 0 || reservedFundsYuan > initialSavingsYuan) throw ApiException.field("reservedFundsYuan", "VALUE_INVALID", "预留资金须在0与初始存款之间");
+        if (generalReserveFundsYuan<0) throw ApiException.field("generalReserveFundsYuan","VALUE_INVALID","普通预留不能为负数");
+        if (emergencyReserveFundsYuan<0 || (long)generalReserveFundsYuan+emergencyReserveFundsYuan>initialSavingsYuan)
+            throw ApiException.field("emergencyReserveFundsYuan","VALUE_INVALID","两类预留合计不能超过初始存款");
         validateScenarios(scenarioProfiles);
     }
 

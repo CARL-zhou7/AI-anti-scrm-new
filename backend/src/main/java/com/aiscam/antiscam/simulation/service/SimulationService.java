@@ -57,6 +57,12 @@ public class SimulationService {
     public void markRecovered() { recovered = true; }
 
     public SimulationTransitions.StartResult start(long userId, String httpSessionId, StartRequest req) {
+        return start(userId, com.aiscam.antiscam.auth.domain.UserRole.USER, httpSessionId, req);
+    }
+
+    /** Both login roles use the existing review flow during private testing. */
+    public SimulationTransitions.StartResult start(long userId, com.aiscam.antiscam.auth.domain.UserRole role,
+            String httpSessionId, StartRequest req) {
         Instant receivedAt = clock.instant().truncatedTo(ChronoUnit.MILLIS);
         if (!recovered) throw ApiException.serviceUnavailable();
         if (req.startRequestId() == null) throw ApiException.field("startRequestId", "REQUIRED", "此项不能为空");
@@ -64,11 +70,13 @@ public class SimulationService {
         long scenario = id("scenarioId", req.scenarioId());
         long scammer = id("scammerProfileId", req.scammerProfileId());
         long victim = id("victimProfileId", req.victimProfileId());
-        if (req.timing() == null) throw ApiException.field("timing", "REQUIRED", "缺少计时证据");
+        // V1.4 does not require timing evidence; a missing one means the arrival time is the start time.
         String requestId = req.startRequestId().toLowerCase();
         var normalized = new StartRequest(requestId, req.scenarioId(), req.scammerProfileId(), req.victimProfileId(), req.timing());
+        // shortcut: private testing uses ADMIN_TEST for both roles; restore USER automatic runs before public release.
+        var mode = com.aiscam.antiscam.simulation.domain.InterventionMode.ADMIN_TEST;
         try {
-            return transitions.start(userId, httpSessionId, normalized, scenario, scammer, victim, receivedAt);
+            return transitions.start(userId, httpSessionId, normalized, scenario, scammer, victim, receivedAt, mode);
         } catch (DataIntegrityViolationException race) {
             // A concurrent double click won the unique keys: report the committed request or the active session.
             var same = sessions.findByUserIdAndStartRequestId(userId, requestId);

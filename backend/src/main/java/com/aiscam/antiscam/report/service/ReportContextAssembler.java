@@ -10,6 +10,14 @@ import java.util.Map;
 public final class ReportContextAssembler {
     private ReportContextAssembler() {}
 
+    public static String outcomeText(SimulationSession session, List<SimulationRound> rounds) {
+        if (session.getOutcomeCode() == null) return "未形成受骗或识破结论";
+        if (!ConfigurationSnapshots.trustV2(session)) return session.getOutcomeCode().displayText();
+        var last = rounds.stream().filter(SimulationRound::hasAnalysis).max(Comparator.comparingInt(SimulationRound::getRoundNo)).orElse(null);
+        return com.aiscam.antiscam.simulation.rules.OutcomeRules.displayV2(session.getOutcomeCode(),
+                last != null && last.isGoalAchieved(), last != null && last.isActualFraudOccurred() && last.isCooperationStopped());
+    }
+
     public static Map<Integer, List<String>> quotes(List<SimulationRound> rounds, Map<Long, List<SimulationMessage>> messages) {
         var result = new java.util.LinkedHashMap<Integer, List<String>>();
         for (var round : rounds) result.put(round.getRoundNo(), messages.getOrDefault(round.getId(), List.of()).stream()
@@ -20,24 +28,46 @@ public final class ReportContextAssembler {
     public static Map<String, String> variablesV2(SimulationSession session, List<SimulationRound> rounds,
             Map<Long, List<SimulationMessage>> messages, ConfigurationSnapshots snapshots, List<FundFlow> flows) {
         var values = new java.util.LinkedHashMap<>(variables(session,rounds,messages,snapshots));
-        var fundText = new StringBuilder("权威资金摘要：totalPaidYuan=").append(session.getTotalPaidYuan())
-                .append("，totalRefundedYuan=").append(session.getTotalRefundedYuan())
-                .append("，actualLossYuan=").append(session.getActualLossYuan()).append('\n');
+        var fundText = new StringBuilder("资金记录：累计支付").append(session.getTotalPaidYuan())
+                .append("元，实际返款").append(session.getTotalRefundedYuan())
+                .append("元，实际亏损").append(session.getActualLossYuan()).append("元\n");
         for (var flow : flows) fundText.append("顺序").append(flow.getSequenceNo()).append(' ')
-                .append(flow.getFlowType()).append(' ').append(flow.getPurpose()).append(' ')
+                .append(switch(flow.getPurpose()) {
+                    case INITIAL_PAYMENT -> "首笔付款"; case ADDITIONAL_PAYMENT -> "追加付款";
+                    case INVESTMENT_PAYMENT -> "投资款"; case EXTRA_FEE_PAYMENT -> "额外费用";
+                    case LOAN_TRANSFER -> "借款转账"; case OTHER_PAYMENT -> "其他付款";
+                    case REWARD -> "实际报酬"; case REFUND -> "实际返款"; case RESERVE_RELEASE -> "预留释放";
+                }).append(' ')
                 .append(flow.getAmountYuan()).append("元，余额").append(flow.getBalanceAfterYuan()).append("元\n");
+        fundText.append("报告正文请用自然中文描述事实，不照抄字段名、枚举代码或布尔值；JSON键仍按要求保留。");
         values.put("funds", fundText.toString());
         values.put("key_facts", rounds.stream().filter(SimulationRound::hasAnalysis).map(r -> "第"+r.getRoundNo()
-                +"轮：已受骗="+r.isActualFraudOccurred()+"，目标达成="+r.isGoalAchieved()+"，停止配合="+r.isCooperationStopped())
+                +"轮："+(r.isActualFraudOccurred()?"已发生实际受骗行为":"未发生实际受骗行为")
+                +"，"+(r.isGoalAchieved()?"已达到诈骗目标":"尚未达到诈骗目标")
+                +"，"+(r.isCooperationStopped()?"已停止配合":"尚未明确停止配合"))
                 .collect(java.util.stream.Collectors.joining("\n")));
+        return values;
+    }
+
+    public static Map<String,String> variablesV3(SimulationSession session, List<SimulationRound> rounds,
+            Map<Long,List<SimulationMessage>> messages, ConfigurationSnapshots snapshots, List<FundFlow> flows) {
+        var values = new java.util.LinkedHashMap<>(variablesV2(session,rounds,messages,snapshots,flows));
+        var f = com.aiscam.antiscam.agent.AgentModels.ReportFundsSummaryV3.from(session);
+        values.put("funds", "totalPaidYuan="+f.totalPaidYuan()+"\ntotalRefundedYuan="+f.totalRefundedYuan()
+                +"\ntotalRewardedYuan="+f.totalRewardedYuan()+"\nactualLossYuan="+f.actualLossYuan()
+                +"\navailableBalanceYuan="+f.availableBalanceYuan()+"\ngeneralReserveRemainingYuan="+f.generalReserveRemainingYuan()
+                +"\nemergencyReserveRemainingYuan="+f.emergencyReserveRemainingYuan()+"\n"+values.get("funds"));
         return values;
     }
 
     public static Map<String, String> variables(SimulationSession session, List<SimulationRound> rounds,
             Map<Long, List<SimulationMessage>> messagesByRound, ConfigurationSnapshots snapshots) {
         var scenario = snapshots.read(session.getScenarioSnapshot());
-        String outcome = session.getOutcomeCode().displayText() + "（" + session.getOutcomeCode().name() + "）："
-                + session.getOutcomeReason() + (session.getLimitReason() == null ? "" : "；限制：" + session.getLimitReason().name());
+        String outcome = outcomeText(session, rounds) + "：" + ReportViewMapper.text(session.getOutcomeCode()==null
+                        ? com.aiscam.antiscam.report.rules.ReportEligibility.endingReason(session) : session.getOutcomeReason())
+                + (session.getLimitReason() == null ? "" : "；" + switch(session.getLimitReason()) {
+                    case ROUND_LIMIT -> "达到轮数上限"; case TIME_LIMIT -> "达到时长上限"; case BOTH -> "同时达到轮数和时长上限";
+                });
         var text = new StringBuilder();
         for (var round : rounds.stream().sorted(Comparator.comparingInt(SimulationRound::getRoundNo)).toList()) {
             text.append("第").append(round.getRoundNo()).append("轮｜");

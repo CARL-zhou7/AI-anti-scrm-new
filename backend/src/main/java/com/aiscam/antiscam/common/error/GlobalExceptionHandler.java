@@ -78,7 +78,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> unexpected() {
+    public ResponseEntity<?> unexpected(jakarta.servlet.http.HttpServletResponse response) {
+        // A committed response (including a disconnected SSE stream) cannot accept a second JSON body.
+        if (response.isCommitted()) return null;
         return api(new ApiException(500, "INTERNAL_ERROR", "服务暂时不可用，请稍后重试"));
     }
 }

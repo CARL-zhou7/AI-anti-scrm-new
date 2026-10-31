@@ -86,6 +86,16 @@ public class ApiException extends RuntimeException {
         return new ApiException(409, "PRESENTATION_CONFLICT", "该对象已有相反的呈现结果");
     }
 
+    /** The draft belongs to another round than the session's current round (V1.4 API-48/49). */
+    public static ApiException staleDraft() {
+        return new ApiException(409, "STALE_DRAFT", "该草稿不属于当前轮次，请刷新后重试");
+    }
+
+    /** An edit or a regeneration moved the draft revision concurrently. */
+    public static ApiException draftRevisionConflict() {
+        return new ApiException(409, "DRAFT_REVISION_CONFLICT", "草稿已被更新，请刷新后重试");
+    }
+
     public static ApiException audioNotReady() {
         return new ApiException(409, "AUDIO_NOT_READY", "语音尚未就绪");
     }

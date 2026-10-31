@@ -57,10 +57,12 @@ class VictimProfileApiTest {
             request(body(), update ? 200 : 201, update);
             var missing = body(); missing.withArray("scenarioProfiles").remove(2); request(missing, 400, update);
             var duplicate = body(); duplicate.withArray("scenarioProfiles").set(2, duplicate.withArray("scenarioProfiles").get(0)); request(duplicate, 400, update);
-            for (String field : List.of("availableFundsYuan", "reservedFundsYuan")) {
+            for (String field : List.of("availableFundsYuan", "generalReserveFundsYuan", "emergencyReserveFundsYuan")) {
                 request(body().put(field, 2001), 400, update);
                 request(body().put(field, -1), 400, update);
             }
+            request(body().put("reservedFundsYuan", 1000), 400, update);
+            var missingTrust=body(); ((ObjectNode)missingTrust.withArray("scenarioProfiles").get(0)).remove("initialTrustScore"); request(missingTrust,400,update);
             request(body().put("contextTime", "今天"), 400, update);
             request(body().put("monthlyExpenseYuan", 1.5), 400, update);
             request(body().put("initialSavingsYuan", "2000"), 400, update);

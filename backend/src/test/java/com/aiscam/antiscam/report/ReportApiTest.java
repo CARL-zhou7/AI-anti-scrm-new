@@ -38,6 +38,15 @@ class ReportApiTest {
     }
 
     @Test
+    void administratorAliasUsesTheSameOwnershipCheckedReportService() throws Exception {
+        mvc.perform(get("/anti.scam/v1/admin/simulations/1/report").with(authentication(auth(UserRole.ADMIN))))
+                .andExpect(status().isOk());
+        verify(service).view(7, "1");
+        mvc.perform(get("/anti.scam/v1/admin/simulations/1/report").with(authentication(auth(UserRole.USER))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void readAndRetryUseEnvelopeNoStoreAndContractStatusCodes() throws Exception {
         var view = new ReportView("1", "RUNNING", null, "SIMULATION_RUNNING", null, null, List.of(), null);
         when(service.view(7, "1")).thenReturn(view);
@@ -57,14 +66,16 @@ class ReportApiTest {
     @Test
     void rejectsAnonymousAdminMissingCsrfUnexpectedBodyAndQuery() throws Exception {
         mvc.perform(get(PATH)).andExpect(status().isUnauthorized());
-        mvc.perform(get(PATH).with(authentication(auth(UserRole.ADMIN)))).andExpect(status().isForbidden());
+        // V1.4: an administrator runs its own ADMIN_TEST session and may read that report; the service enforces
+        // ownership, so the controller only needs to serve the caller's own session.
+        mvc.perform(get(PATH).with(authentication(auth(UserRole.ADMIN)))).andExpect(status().isOk());
         mvc.perform(post(PATH + "/retry").with(authentication(auth(UserRole.USER))))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID"));
         mvc.perform(post(PATH + "/retry").with(authentication(auth(UserRole.USER))).with(csrf().asHeader())
                 .contentType("application/json").content("{}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.data.fieldErrors[0].field").value("body"));
         mvc.perform(get(PATH + "?x=1").with(authentication(auth(UserRole.USER)))).andExpect(status().isBadRequest());
-        verifyNoInteractions(service);
+        verify(service).view(7, "1");
     }
 
     @Test

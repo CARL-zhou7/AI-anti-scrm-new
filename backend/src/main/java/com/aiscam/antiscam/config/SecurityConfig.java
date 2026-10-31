@@ -1,25 +1,25 @@
 package com.aiscam.antiscam.config;
 
 import com.aiscam.antiscam.common.api.ApiResponse;
+import com.aiscam.antiscam.auth.service.LoginSessions;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.session.SessionRegistry;
-import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.session.*;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.csrf.*;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.web.filter.OncePerRequestFilter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 
 @Configuration
 public class SecurityConfig {
@@ -32,40 +32,19 @@ public class SecurityConfig {
     }
 
     @Bean
-    HttpSessionCsrfTokenRepository csrfRepository() {
-        var repository = new HttpSessionCsrfTokenRepository();
-        repository.setHeaderName("X-CSRF-TOKEN");
-        return repository;
+    LoginSessions loginSessions(org.springframework.context.ApplicationEventPublisher events) {
+        return new LoginSessions(events);
     }
-
-    @Bean
-    HttpSessionSecurityContextRepository contextRepository() {
-        return new HttpSessionSecurityContextRepository();
-    }
-
-    @Bean
-    SessionRegistry sessionRegistry() { return new SessionRegistryImpl(); }
 
     @Bean
     HttpSessionEventPublisher sessionEventPublisher() { return new HttpSessionEventPublisher(); }
 
     @Bean
-    SessionAuthenticationStrategy loginStrategy(SessionRegistry registry, HttpSessionCsrfTokenRepository csrf) {
-        var concurrent = new ConcurrentSessionControlAuthenticationStrategy(registry);
-        concurrent.setMaximumSessions(1);
-        return new CompositeSessionAuthenticationStrategy(List.of(concurrent,
-                new ChangeSessionIdAuthenticationStrategy(),
-                new CsrfAuthenticationStrategy(csrf),
-                new RegisterSessionAuthenticationStrategy(registry)));
-    }
-
-    @Bean
     SecurityFilterChain security(HttpSecurity http, ObjectMapper mapper,
-            HttpSessionCsrfTokenRepository csrf, HttpSessionSecurityContextRepository context,
-            SessionRegistry registry) throws Exception {
-        http.csrf(c -> c.csrfTokenRepository(csrf)
+            LoginSessions sessions) throws Exception {
+        http.csrf(c -> c.csrfTokenRepository(sessions)
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
-                .securityContext(c -> c.securityContextRepository(context))
+                .securityContext(c -> c.securityContextRepository(sessions))
                 .authorizeHttpRequests(a -> a
                         // SSE completes on async/error dispatches; URL rules below are unchanged.
                         .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC, jakarta.servlet.DispatcherType.ERROR).permitAll()
@@ -79,12 +58,19 @@ public class SecurityConfig {
                         .requestMatchers("/anti.scam/v1/home", "/anti.scam/v1/news").hasRole("USER")
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/anti.scam/v1/scenarios",
                                 "/anti.scam/v1/scammer-profiles/**", "/anti.scam/v1/victim-profiles/**",
-                                "/anti.scam/v1/avatars/**").hasRole("USER")
+                                "/anti.scam/v1/avatars/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/anti.scam/v1/scenarios", "/anti.scam/v1/scammer-profiles/**",
                                 "/anti.scam/v1/victim-profiles/**", "/anti.scam/v1/avatars/**").denyAll()
                         .requestMatchers("/anti.scam/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/anti.scam/v1/simulations/**", "/anti.scam/v1/history/**",
-                                "/anti.scam/v1/timing/**").hasRole("USER")
+                        // Personal history stays USER-only: the list and the detail view of the caller's own runs.
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/anti.scam/v1/simulations",
+                                "/anti.scam/v1/simulations/*/detail").hasRole("USER")
+                        // Private testing exposes round review to both roles; the service still checks ownership.
+                        .requestMatchers("/anti.scam/v1/simulations/*/intervention",
+                                "/anti.scam/v1/simulations/*/intervention/**").hasAnyRole("USER", "ADMIN")
+                        // V1.4: an administrator runs their own ADMIN_TEST session; the service checks ownership.
+                        .requestMatchers("/anti.scam/v1/simulations/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/anti.scam/v1/history/**", "/anti.scam/v1/timing/**").hasRole("USER")
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) -> writeError(mapper, req, res, 401,
@@ -94,9 +80,17 @@ public class SecurityConfig {
                             writeError(mapper, req, res, 403, invalidCsrf ? "CSRF_INVALID" : "FORBIDDEN",
                                     invalidCsrf ? "安全令牌已失效，请重新提交" : "无权访问此功能");
                         }))
-                .sessionManagement(s -> s.maximumSessions(1).sessionRegistry(registry)
-                        .expiredSessionStrategy(event -> writeError(mapper, event.getRequest(),
-                                event.getResponse(), 401, "UNAUTHENTICATED", "登录已失效，请重新登录")))
+                .addFilterBefore(new OncePerRequestFilter() {
+                    @Override protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res,
+                            FilterChain chain) throws ServletException, IOException {
+                        if (sessions.expired(req)) {
+                            sessions.logout(req, res);
+                            writeError(mapper, req, res, 401, "UNAUTHENTICATED", "登录已失效，请重新登录");
+                            return;
+                        }
+                        chain.doFilter(req, res);
+                    }
+                }, AuthorizationFilter.class)
                 .formLogin(c -> c.disable()).httpBasic(c -> c.disable())
                 .logout(c -> c.disable()).requestCache(c -> c.disable());
         return http.build();

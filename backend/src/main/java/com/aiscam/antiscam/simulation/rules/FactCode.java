@@ -15,7 +15,8 @@ public enum FactCode {
     ACCOUNT_CONTROL_GRANTED(true),
     OTHER_DANGEROUS_ACTION_EXECUTED(true),
     INDEPENDENT_VERIFICATION_COMPLETED(false),
-    COOPERATION_STOPPED(false);
+    COOPERATION_STOPPED(false),
+    DECISIVE_COUNTEREVIDENCE_FOUND(false);
 
     private final boolean actualFraud;
     FactCode(boolean actualFraud) { this.actualFraud = actualFraud; }

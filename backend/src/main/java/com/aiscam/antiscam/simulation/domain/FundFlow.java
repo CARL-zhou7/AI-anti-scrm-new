@@ -28,6 +28,8 @@ public class FundFlow {
     private int balanceAfterYuan;
     @Column(name = "reason", length = 255)
     private String reason;
+    @Column(name = "reserve_tier", length = 16)
+    private String reserveTier;
     @Column(name = "occurred_at", nullable = false, columnDefinition = "datetime(3)")
     private Instant occurredAt;
 
@@ -43,6 +45,8 @@ public class FundFlow {
         this.amountYuan = posting.amountYuan();
         this.balanceAfterYuan = posting.balanceAfterYuan();
         this.reason = posting.reason();
+        this.reserveTier = posting.reserveTier() != null ? posting.reserveTier().name()
+                : posting.type() == FundFlowType.RESERVE_RELEASE ? "GENERAL" : null;
         this.occurredAt = now;
     }
 
@@ -56,6 +60,8 @@ public class FundFlow {
     public FundPurpose getPurpose() { return purpose; }
     public int getAmountYuan() { return amountYuan; }
     public int getBalanceAfterYuan() { return balanceAfterYuan; }
+    public String getReserveTier() { return reserveTier; }
+    public void setReserveTier(String tier) { reserveTier = tier; }
     public String getReason() { return reason; }
     public Instant getOccurredAt() { return occurredAt; }
 }

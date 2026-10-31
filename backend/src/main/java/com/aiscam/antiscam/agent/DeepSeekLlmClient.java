@@ -36,7 +36,7 @@ public class DeepSeekLlmClient implements LlmClient {
     @Override
     public String completeJson(LlmRequest request) {
         Category category = switch (request.role()) {
-            case NARRATOR -> Category.ANALYSIS;
+            case NARRATOR, EVENT -> Category.ANALYSIS;
             case REPORT -> Category.REPORT;
             default -> Category.DIALOGUE;
         };

@@ -41,7 +41,7 @@ public class SimulationReport {
     }
 
     public static SimulationReport pending(long sessionId, Instant now, int contentSchemaVersion) {
-        if (contentSchemaVersion != 1 && contentSchemaVersion != 2) throw new IllegalArgumentException("Unsupported report version");
+        if (contentSchemaVersion < 1 || contentSchemaVersion > 4) throw new IllegalArgumentException("Unsupported report version");
         var report = new SimulationReport();
         report.sessionId = sessionId;
         report.status = ReportStatus.PENDING;

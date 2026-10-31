@@ -10,6 +10,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.context.event.EventListener;
+import org.springframework.security.core.session.SessionIdChangedEvent;
 
 /** In-memory click-timing samples bound to one HTTP session and user; a restart invalidates all of them. */
 @Component
@@ -38,6 +40,13 @@ public class TimingSampleStore {
     }
 
     public Optional<TimingSample> find(String sampleId) { return Optional.ofNullable(samples.get(sampleId)); }
+
+    @EventListener
+    public void onSessionIdChanged(SessionIdChangedEvent event) {
+        samples.replaceAll((id, sample) -> sample.httpSessionId().equals(event.getOldSessionId())
+                ? new TimingSample(sample.sampleId(), event.getNewSessionId(), sample.userId(),
+                        sample.serverSampledAt(), sample.expiresAt(), sample.methodVersion()) : sample);
+    }
 
     @Scheduled(fixedDelay = 60_000)
     void purge() {

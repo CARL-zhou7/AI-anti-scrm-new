@@ -37,6 +37,20 @@ public class VictimScenarioProfile {
     @Version @Column(name = "row_version", nullable = false)
     private int rowVersion;
 
+    @Column(name = "initial_trust_score", nullable = false, columnDefinition = "tinyint unsigned")
+    private int initialTrustScore = 50;
+    @Column(name = "positive_factor", nullable = false, precision = 3, scale = 2)
+    private java.math.BigDecimal positiveFactor = new java.math.BigDecimal("1.00");
+    @Column(name = "negative_factor", nullable = false, precision = 3, scale = 2)
+    private java.math.BigDecimal negativeFactor = new java.math.BigDecimal("1.00");
+    @Column(name = "small_amount_cap_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int smallAmountCapYuan = 200;
+
+    public int getInitialTrustScore() { return initialTrustScore; }
+    public java.math.BigDecimal getPositiveFactor() { return positiveFactor; }
+    public java.math.BigDecimal getNegativeFactor() { return negativeFactor; }
+    public int getSmallAmountCapYuan() { return smallAmountCapYuan; }
+
     protected VictimScenarioProfile() {}
     public VictimScenarioProfile(VictimProfile victimProfile, VictimScenarioProfileValues values) {
         this.victimProfile = victimProfile;
@@ -56,8 +70,10 @@ public class VictimScenarioProfile {
         sharedExperiences = values.sharedExperiences();
         contactBackground = values.contactBackground();
         initialTrustMode = values.initialTrustMode();
+        initialTrustScore=values.initialTrustScore(); positiveFactor=values.positiveFactor();
+        negativeFactor=values.negativeFactor(); smallAmountCapYuan=values.smallAmountCapYuan();
     }
     public VictimScenarioProfileValues values() {
-        return new VictimScenarioProfileValues(scenarioCode, needs, relevantExperience, judgmentBasis, verificationHabits, actionBoundaries, stopConditions, recentEvents, consultationsTransactions, sharedExperiences, contactBackground, initialTrustMode);
+        return new VictimScenarioProfileValues(scenarioCode, needs, relevantExperience, judgmentBasis, verificationHabits, actionBoundaries, stopConditions, recentEvents, consultationsTransactions, sharedExperiences, contactBackground, initialTrustMode, initialTrustScore, positiveFactor, negativeFactor, smallAmountCapYuan);
     }
 }

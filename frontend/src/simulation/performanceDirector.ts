@@ -1,11 +1,11 @@
 import type {
   Analysis, EffectResult, LiveMessage, PresentationError, PresentationReceipt, RiskScore, SimulationEventEnvelope,
-  SimulationState, Speaker,
+  ScammerDraft, SimulationState, Speaker,
 } from '../api/types'
 import type { AudioLike } from './audioTrack'
 import { visibleCodePoints } from './segmentReveal'
 
-export type Stage = 'OPENING_SCENE' | 'OPENING_CARDS' | 'WAITING' | 'SPEAKING' | 'NARRATING' | 'READING' | 'DEADLINE' | 'TERMINAL'
+export type Stage = 'OPENING_SCENE' | 'OPENING_CARDS' | 'WAITING' | 'REVIEW' | 'SPEAKING' | 'NARRATING' | 'READING' | 'DEADLINE' | 'TERMINAL'
 
 export interface Bubble { messageId: string; roundNo: number; content: string; actionText: string | null; visible: number; done: boolean }
 
@@ -78,6 +78,7 @@ export class PerformanceDirector {
   private readingUntil: number | null = null
   private nextAction: 'NEXT_ROUND' | 'REPORT' | null = null
   private lastProgress = { ms: -1, at: 0 }
+  private recoveredAudio = false
   private finished = false
 
   constructor(private readonly deps: DirectorDeps, view: DirectorView) { this.view = view }
@@ -123,7 +124,8 @@ export class PerformanceDirector {
       case 'session.paused': case 'session.resumed': case 'session.started': this.applyClock(event.data); break
       case 'session.finished': this.finished = true; this.applyClock(event.data); this.deps.onState?.(event.data); break
       case 'session.interrupted': this.terminate(event.data); break
-      case 'round.started': this.roundStarted(event.data.roundNo); break
+      case 'round.started': if (event.data.roundNo > this.view.roundNo) this.prepareRound(); break
+      case 'intervention.draft': this.reviewDraft(event.data.draft); break
       case 'message.saved': this.enqueueMessage(event.data); break
       case 'analysis.saved': this.pendingAnalysis = { roundNo: event.data.roundNo, analysis: event.data.analysis }; this.drain(); break
       case 'round.reading': this.reading(Date.parse(event.data.readingUntil), event.data.nextAction); break
@@ -140,6 +142,9 @@ export class PerformanceDirector {
     if (state.latestRiskScore !== null && this.view.risk === null) this.view.risk = state.latestRiskScore
     const round = state.currentRound
     if (!round || this.view.stage === 'OPENING_SCENE' || this.view.stage === 'OPENING_CARDS') return
+    if (state.intervention?.currentDraft) { this.reviewDraft(state.intervention.currentDraft); return }
+    if (this.view.stage === 'REVIEW') this.toWaiting()
+    if (round.phase === 'SCAMMER_GENERATING') { this.prepareRound(); return }
     if (round.roundNo > this.view.roundNo) this.roundStarted(round.roundNo)
     for (const m of round.messages) {
       if (m.presentationStatus === 'COMPLETED' && !this.view.bubbles[m.speaker]) {
@@ -159,11 +164,23 @@ export class PerformanceDirector {
     this.drain()
   }
 
+  /** Drafts stay in the orb; keep the previous dialogue on stage until adoption. */
+  reviewDraft(draft: ScammerDraft) {
+    if (this.view.stage === 'TERMINAL' || draft.roundNo < this.view.roundNo) return
+    this.clearReading()
+    this.view.stage = 'REVIEW'
+    this.view.waitingSince = null
+  }
+
   private roundStarted(roundNo: number) {
     if (roundNo <= this.view.roundNo) return
     // Clearing the stage bubbles is a display change only; saved history is untouched.
     this.view.roundNo = roundNo
     this.view.bubbles = { SCAMMER: null, VICTIM: null }
+    this.prepareRound()
+  }
+
+  private prepareRound() {
     this.clearReading()
     if (this.view.stage === 'READING' || this.view.stage === 'NARRATING') this.toWaiting()
     this.drain()
@@ -203,10 +220,21 @@ export class PerformanceDirector {
     this.view.bubbles[m.speaker] = { messageId: m.id, roundNo: m.roundNo, content: m.content, actionText: m.actionText, visible: 0, done: false }
     const audio = this.deps.createAudio(m.audioUrl!, this.view.muted)
     this.audio = audio
+    this.recoveredAudio = false
     this.lastProgress = { ms: -1, at: this.deps.monotonicNow() }
     audio.onEnded(() => this.spoken(m))
-    audio.onError(() => this.fail('message', 'AUDIO_LOAD_FAILED', m.id))
-    audio.play().catch(() => { if (this.audio === audio && !this.view.frozen) this.fail('message', 'AUDIO_PLAYBACK_FAILED', m.id) })
+    audio.onError(() => { if (this.audio === audio) this.recoverAudio(m, audio, 'AUDIO_LOAD_FAILED') })
+    // Reloading during recovery aborts the initial play promise; the recovery promise now owns failure.
+    audio.play().catch(() => { if (this.audio === audio && !this.view.frozen && !this.recoveredAudio) this.recoverAudio(m, audio, 'AUDIO_PLAYBACK_FAILED') })
+  }
+
+  private recoverAudio(m: LiveMessage, audio: AudioLike, code: PresentationError) {
+    if (this.recoveredAudio) { this.fail('message', code, m.id); return }
+    this.recoveredAudio = true
+    this.lastProgress = { ms: audio.currentMs, at: this.deps.monotonicNow() }
+    void audio.recover().catch(() => {
+      if (this.audio === audio && !this.view.frozen) this.fail('message', code, m.id)
+    })
   }
 
   private spoken(m: LiveMessage) {
@@ -267,7 +295,9 @@ export class PerformanceDirector {
       this.view.mouthOpen = Math.floor(ms / MOUTH_MS) % 2 === 1
       const now = this.deps.monotonicNow()
       if (ms !== this.lastProgress.ms) this.lastProgress = { ms, at: now }
-      else if (now - this.lastProgress.at > STALL_MS) this.fail('message', 'AUDIO_PLAYBACK_FAILED', m.id)
+      else if (now - this.lastProgress.at > STALL_MS) {
+        this.recoverAudio(m, this.audio, 'AUDIO_PLAYBACK_FAILED')
+      }
     }
     if (!this.paused && !this.finished && this.deadlineAt && this.deps.serverNow() >= this.deadlineAt && this.view.stage !== 'DEADLINE') {
       this.localDeadline()
@@ -290,7 +320,8 @@ export class PerformanceDirector {
   }
 
   private applyClock(state: SimulationState) {
-    this.deadlineAt = Date.parse(state.deadlineAt)
+    // V1.4 sessions have no business deadline: 0 is the sentinel for "no countdown", never Date.parse(null)=NaN.
+    this.deadlineAt = state.deadlineAt ? Date.parse(state.deadlineAt) : 0
     this.paused = state.paused
     if (state.readingUntil && state.nextAction) { this.readingUntil = Date.parse(state.readingUntil); this.nextAction = state.nextAction }
     if (this.readingUntil !== null && this.view.stage === 'READING') this.armReading()

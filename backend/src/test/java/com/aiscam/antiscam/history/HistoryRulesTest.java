@@ -24,7 +24,7 @@ class HistoryRulesTest {
     private final SimulationMessageRepository messages = mock(SimulationMessageRepository.class);
     private final SimulationReportRepository reports = mock(SimulationReportRepository.class);
     private final ConfigurationSnapshots snapshots = new ConfigurationSnapshots(new ObjectMapper());
-    private final SimulationStateAssembler state = new SimulationStateAssembler(rounds, messages, reports, snapshots, mock(TempAudioStore.class));
+    private final SimulationStateAssembler state = new SimulationStateAssembler(rounds, messages, reports, snapshots, mock(TempAudioStore.class), mock(SimulationTrustEventRepository.class));
     private final FundFlowRepository funds = mock(FundFlowRepository.class);
     private final HistoryAssembler assembler = new HistoryAssembler(snapshots, state, rounds, messages, reports, funds);
 
@@ -67,7 +67,9 @@ class HistoryRulesTest {
         assertNull(detail.report()); assertNull(detail.outcome()); assertEquals("USER_EXIT", detail.interruption().code());
         String json = new ObjectMapper().writeValueAsString(detail);
         for (String hidden : List.of("audioUrl", "audioDurationMs", "segments", "internalNote", "INTERNAL-SECRET", "userId")) assertFalse(json.contains(hidden));
-        verifyNoInteractions(reports);
+        // The projection may ask whether a legacy report row exists, but it never reads or invents one.
+        verify(reports, never()).findById(anyLong());
+        verify(reports).existsById(anyLong());
     }
 
     @Test
@@ -167,6 +169,77 @@ class HistoryRulesTest {
         assertEquals(250,detail.rounds().get(1).funds().actualLossYuan());
         String json = new ObjectMapper().writeValueAsString(detail);
         for (String hidden : List.of("relatedPaymentId","related_payment_id","runtime_snapshot","internalNote","prompt")) assertFalse(json.contains(hidden));
+    }
+
+    @Test
+    void v35HistoryKeepsTheFullAnalysisButNeverThePerRoundScore() throws Exception {
+        var s = session(SimulationStatus.FINISHED);
+        when(s.getSnapshotSchemaVersion()).thenReturn(4);
+        when(s.getRuntimeSnapshot()).thenReturn("{\"ruleset_version\":\"PRD-V3.5\",\"fund_ruleset_version\":\"funds-v3\"}");
+        when(s.getInitialTrustScore()).thenReturn(50);
+        when(s.getWinner()).thenReturn("SCAMMER");
+        when(s.getFinalTrustScore()).thenReturn(62);
+        when(s.getOutcomeCode()).thenReturn(OutcomeCode.SCAMMER_WIN);
+        when(s.getOutcomeReason()).thenReturn("第15轮结束时最终受骗倾向分62且无实际损失");
+        when(s.getInterruptionCode()).thenReturn(null);
+        when(s.getInterruptionDetail()).thenReturn(null);
+        when(s.getCurrentRoundNo()).thenReturn(1);
+        when(s.getActualLossYuan()).thenReturn(0);
+        when(s.getInitialAvailableFundsYuan()).thenReturn(10000);
+        when(s.getFundsSummary()).thenReturn(new FundsSummary(10000, 10000, 0, 0, 0, 0, 0));
+
+        var round = mock(SimulationRound.class);
+        when(round.getId()).thenReturn(10L);
+        when(round.getRoundNo()).thenReturn(1);
+        when(round.getPhase()).thenReturn(RoundPhase.COMPLETE);
+        when(round.hasAnalysis()).thenReturn(true);
+        when(round.getFraudStage()).thenReturn("取得信任");
+        when(round.getSpeechAnalysis()).thenReturn("完整话术分析：先建立身份再提出转账");
+        when(round.getMethodAnalysis()).thenReturn("完整手段分析：冒充亲友借款");
+        when(round.getMethodShort()).thenReturn("冒充亲友");
+        when(round.getIntentShort()).thenReturn("借亲属身份让受害人放下戒心后转账");
+        when(round.getVictimPsychology()).thenReturn("半信半疑");
+        when(round.getRiskScore()).thenReturn(60);
+        when(round.getRiskReason()).thenReturn("涉及转账");
+        when(rounds.findBySessionIdOrderByRoundNoAsc(1)).thenReturn(List.of(round));
+        when(rounds.findBySessionIdAndRoundNo(1, 1)).thenReturn(Optional.of(round));
+        when(rounds.countBySessionIdAndPhase(1L, RoundPhase.COMPLETE)).thenReturn(1L);
+        var scammer = new SimulationMessage(10, SpeakerRole.SCAMMER, "台词", null, null, T);
+        var victim = new SimulationMessage(10, SpeakerRole.VICTIM, "回应", null, null, T);
+        ReflectionTestUtils.setField(scammer, "id", 11L);
+        ReflectionTestUtils.setField(victim, "id", 12L);
+        when(messages.findByRoundIdIn(List.of(10L))).thenReturn(List.of(scammer, victim));
+        when(reports.findById(1L)).thenReturn(Optional.of(SimulationReport.pending(1, T)));
+        when(funds.findBySessionIdOrderBySequenceNoAsc(1)).thenReturn(List.of());
+        var trustEvents = mock(SimulationTrustEventRepository.class);
+        var scored = mock(SimulationTrustEvent.class);
+        when(scored.getRoundNo()).thenReturn(1);
+        when(scored.getScoreAfter()).thenReturn(62);
+        when(trustEvents.findBySessionIdOrderByIdAsc(1L)).thenReturn(List.of(scored));
+        var live = new SimulationStateAssembler(rounds, messages, reports, snapshots, mock(TempAudioStore.class),
+                trustEvents);
+        var history = new HistoryAssembler(snapshots, live, rounds, messages, reports, funds);
+
+        var detail = history.detail(s);
+
+        var analysis = detail.rounds().getFirst().analysis();
+        assertNull(analysis.trustChange(), "V3.5 history never exposes a per-round score line");
+        assertEquals("完整话术分析：先建立身份再提出转账", analysis.speechAnalysis());
+        assertEquals("完整手段分析：冒充亲友借款", analysis.methodAnalysis());
+        assertEquals("冒充亲友", analysis.methodShort(), "history keeps both fields, it does not substitute shorts");
+        assertEquals("SCAMMER", detail.outcome().winning());
+        assertEquals(62, detail.outcome().finalTrustScore());
+        assertEquals(new com.aiscam.antiscam.simulation.web.dto.SimulationViews.TrustChange(50, 62, 12),
+                live.analysis(s, round).trustChange(), "the live card still shows the real saved change");
+        String json = new ObjectMapper().writeValueAsString(detail);
+        for (String hidden : List.of("counterevidence", "trust_events", "threshold", "positiveFactor",
+                "negativeFactor", "coefficient")) assertFalse(json.contains(hidden));
+
+        // An old PRD-V3.4 run keeps whatever it recorded; the projection is not rewritten for legacy history.
+        when(s.getRuntimeSnapshot()).thenReturn("{\"ruleset_version\":\"PRD-V3.4\",\"fund_ruleset_version\":\"funds-v3\"}");
+        var legacy = history.detail(s);
+        assertEquals(new com.aiscam.antiscam.simulation.web.dto.SimulationViews.TrustChange(50, 62, 12),
+                legacy.rounds().getFirst().analysis().trustChange());
     }
 
     private SimulationSession session(SimulationStatus status) {

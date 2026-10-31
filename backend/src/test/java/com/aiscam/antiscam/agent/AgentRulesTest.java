@@ -18,6 +18,21 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class AgentRulesTest {
+    @Test
+    void ledgerScriptFinishesWithV12OutcomeWithoutInventingTheAdditionalPaymentGoal() {
+        var client=new ScriptedLlmClient(new com.fasterxml.jackson.databind.ObjectMapper());
+        var victim=AgentOutputParser.victim(client.completeJson(new LlmClient.LlmRequest(AgentRole.VICTIM,"",0,800,
+                Duration.ofSeconds(2),5,0,"剧本:funds-v2")));
+        var narrator=AgentOutputParser.narrator(client.completeJson(new LlmClient.LlmRequest(AgentRole.NARRATOR,"",0,800,
+                Duration.ofSeconds(2),5,0,"剧本:funds-v2")));
+        var saved=List.of(new DialogueLine(1,SpeakerRole.VICTIM,"我已经转账100元",null,null),
+                new DialogueLine(5,SpeakerRole.VICTIM,victim.line(),victim.action(),null));
+        var funds=new FundsSummary(1000,850,300,50,250,1,100);
+        assertNotNull(AgentOutputValidator.validate(narrator,ScenarioCode.TASK_REBATE,5,saved,PriorFacts.none(),funds));
+        assertEquals(OutcomeCode.DEFRAUDED,narrator.candidateOutcome());
+        assertFalse(narrator.goalAchieved());assertTrue(narrator.cooperationStopped());
+    }
+
     private static final String NARRATOR = """
             {"fraudStage":"a","speechAnalysis":"b","methodAnalysis":"c","victimPsychology":"d","riskScore":%d,"riskReason":"e",
              "actualFraudOccurred":false,"goalAchieved":false,"cooperationStopped":%b,"evidence":%s,
@@ -60,7 +75,7 @@ class AgentRulesTest {
         var payment = new FundFlow(1, 1, 1L, new FundPosting(FundFlowType.PAYMENT, FundPurpose.INITIAL_PAYMENT, 100, 1, 900, null, null), Instant.EPOCH);
         ReflectionTestUtils.setField(payment, "id", 772L);
         var funds = new FundsContext(ScenarioCode.TASK_REBATE, 900, 400, 0, 100, 0, List.of(payment));
-        String quote = "先返你50元，剩下的稍后到账";
+        String quote = "已返你50元，剩下的稍后到账";
         var refund = new FundAction(FundFlowType.REFUND, FundPurpose.REFUND, 50, 3, SpeakerRole.SCAMMER, quote, 1, null, 772L);
         assertDoesNotThrow(() -> AgentOutputValidator.funds(SpeakerRole.SCAMMER, quote, null, 500, List.of(refund), 3, funds, List.of()));
         for (Integer claim : java.util.Arrays.asList(null, 49)) assertThrows(AgentCallException.class,

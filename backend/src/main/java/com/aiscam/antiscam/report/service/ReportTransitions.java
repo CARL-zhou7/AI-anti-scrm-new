@@ -20,13 +20,15 @@ public class ReportTransitions {
     private static final Logger log = LoggerFactory.getLogger(ReportTransitions.class);
     private final SimulationReportRepository reports;
     private final SimulationSessionRepository sessions;
+    private final SimulationRoundRepository rounds;
     private final SimulationStateAssembler assembler;
     private final SimulationEventHub hub;
     private final SimulationProperties properties;
     private final com.aiscam.antiscam.simulation.snapshot.ConfigurationSnapshots snapshots;
 
     public ReportTransitions(SimulationReportRepository reports, SimulationSessionRepository sessions,
-            SimulationStateAssembler assembler, SimulationEventHub hub, SimulationProperties properties, com.aiscam.antiscam.simulation.snapshot.ConfigurationSnapshots snapshots) {
+            SimulationStateAssembler assembler, SimulationEventHub hub, SimulationProperties properties, com.aiscam.antiscam.simulation.snapshot.ConfigurationSnapshots snapshots, SimulationRoundRepository rounds) {
+        this.rounds=rounds;
         this.snapshots = snapshots;
         this.reports = reports;
         this.sessions = sessions;
@@ -41,7 +43,7 @@ public class ReportTransitions {
         var row = reports.lockById(sessionId).orElse(null);
         if (row == null || row.getStatus() != ReportStatus.PENDING) return null;
         var session = sessions.findById(sessionId).orElseThrow();
-        if (session.getStatus() != SimulationStatus.FINISHED) return null;
+        if (!eligible(session)) return null;
         row.claim(UUID.randomUUID().toString(), now, now.plusMillis(properties.getReportAttemptTimeoutMs()));
         reports.flush();
         publish(session);
@@ -79,8 +81,9 @@ public class ReportTransitions {
     public boolean repairMissing(long sessionId, Instant now) {
         // Recovery follows the existing parent -> report lock order; normal report work never locks the parent.
         var session = sessions.lockById(sessionId).orElse(null);
-        if (session == null || session.getStatus() != SimulationStatus.FINISHED || reports.existsById(sessionId)) return false;
-        if (session.getOutcomeCode() == null || session.getOutcomeReason() == null || session.getEndedAt() == null) {
+        if (session == null || !eligible(session) || reports.existsById(sessionId)) return false;
+        if (session.getEndedAt() == null || session.getStatus()==SimulationStatus.FINISHED
+                && (session.getOutcomeCode() == null || session.getOutcomeReason() == null)) {
             log.warn("report recovery skipped inconsistent sessionId={}", sessionId);
             return false;
         }
@@ -92,7 +95,7 @@ public class ReportTransitions {
 
     public ReportRetryResult retry(SimulationSession session, Instant now) {
         var row = reports.lockById(session.getId()).orElse(null);
-        var action = ReportRetryRules.decide(session.getStatus(), row == null ? null : row.getStatus());
+        var action = ReportRetryRules.decide(eligible(session), row == null ? null : row.getStatus());
         switch (action) {
             case NOT_APPLICABLE -> throw ApiException.reportNotApplicable();
             case INCONSISTENT -> throw ApiException.dataInconsistent("记录状态异常，请稍后重试");
@@ -104,6 +107,11 @@ public class ReportTransitions {
             }
             default -> { return new ReportRetryResult(200, assembler.reportView(session)); }
         }
+    }
+
+    private boolean eligible(SimulationSession session) {
+        return com.aiscam.antiscam.report.rules.ReportEligibility.isEligible(session,
+                session.getStatus()==SimulationStatus.INTERRUPTED ? rounds.countBySessionIdAndPhase(session.getId(),RoundPhase.COMPLETE) : 0);
     }
 
     private boolean publishIfChanged(long sessionId, int changed) {

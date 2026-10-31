@@ -36,10 +36,10 @@ public class HistoryService {
                 : sessions.findPageBefore(userId, key.startedAt(), key.id(), page);
         boolean more = rows.size() > limit;
         var visible = more ? rows.subList(0, limit) : rows;
-        var finishedIds = visible.stream().filter(s -> s.getStatus() == SimulationStatus.FINISHED)
+        var reportIds = visible.stream().filter(s -> s.getStatus() != SimulationStatus.RUNNING)
                 .map(SimulationSession::getId).toList();
-        var reportRows = finishedIds.isEmpty() ? Map.<Long, SimulationReport>of()
-                : reports.findBySessionIdIn(finishedIds).stream()
+        var reportRows = reportIds.isEmpty() ? Map.<Long, SimulationReport>of()
+                : reports.findBySessionIdIn(reportIds).stream()
                         .collect(Collectors.toMap(SimulationReport::getSessionId, Function.identity()));
         var items = visible.stream().map(s -> assembler.item(s, reportRows.get(s.getId()))).toList();
         var last = more ? visible.getLast() : null;

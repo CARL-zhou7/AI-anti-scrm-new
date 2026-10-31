@@ -20,6 +20,10 @@ public class SimulationRound {
     private String speechAnalysis;
     @Column(name = "method_analysis", columnDefinition = "text")
     private String methodAnalysis;
+    @Column(name = "method_short", columnDefinition = "varchar(32)")
+    private String methodShort;
+    @Column(name = "intent_short", columnDefinition = "varchar(120)")
+    private String intentShort;
     @Column(name = "victim_psychology", columnDefinition = "text")
     private String victimPsychology;
     @Column(name = "risk_score", columnDefinition = "tinyint unsigned")
@@ -51,6 +55,8 @@ public class SimulationRound {
     private int roundPaidYuan;
     @Column(name = "round_refunded_yuan", nullable = false, columnDefinition = "int unsigned")
     private int roundRefundedYuan;
+    @Column(name = "round_rewarded_yuan", nullable = false, columnDefinition = "int unsigned")
+    private int roundRewardedYuan;
     @Column(name = "round_reserve_released_yuan", nullable = false, columnDefinition = "int unsigned")
     private int roundReserveReleasedYuan;
     @Column(name = "round_balance_yuan", nullable = false, columnDefinition = "int unsigned")
@@ -77,6 +83,7 @@ public class SimulationRound {
     }
 
     public int getRoundPaidYuan() { return roundPaidYuan; }
+    public int getRoundRewardedYuan() { return roundRewardedYuan; }
     public int getRoundRefundedYuan() { return roundRefundedYuan; }
     public int getRoundReserveReleasedYuan() { return roundReserveReleasedYuan; }
     public int getRoundBalanceYuan() { return roundBalanceYuan; }
@@ -90,6 +97,8 @@ public class SimulationRound {
     public String getFraudStage() { return fraudStage; }
     public String getSpeechAnalysis() { return speechAnalysis; }
     public String getMethodAnalysis() { return methodAnalysis; }
+    public String getMethodShort() { return methodShort; }
+    public String getIntentShort() { return intentShort; }
     public String getVictimPsychology() { return victimPsychology; }
     public Integer getRiskScore() { return riskScore; }
     public String getRiskReason() { return riskReason; }
@@ -110,6 +119,7 @@ public class SimulationRound {
             switch (p.type()) {
                 case PAYMENT -> roundPaidYuan += p.amountYuan();
                 case REFUND -> roundRefundedYuan += p.amountYuan();
+                case REWARD -> roundRewardedYuan += p.amountYuan();
                 case RESERVE_RELEASE -> roundReserveReleasedYuan += p.amountYuan();
             }
         }
@@ -123,9 +133,23 @@ public class SimulationRound {
     public void saveAnalysis(String fraudStage, String speechAnalysis, String methodAnalysis, String victimPsychology,
             int riskScore, String riskReason, boolean actualFraud, boolean goal, boolean stopped, String evidenceJson,
             OutcomeCode candidateOutcome, String candidateReason, Instant now) {
+        saveAnalysis(fraudStage, speechAnalysis, methodAnalysis, null, null, victimPsychology, riskScore, riskReason,
+                actualFraud, goal, stopped, evidenceJson, candidateOutcome, candidateReason, now);
+    }
+
+    /**
+     * V1.4 saves the short narration fields next to the complete analyses. The full texts stay the only source for
+     * reports and history; the shorts are the real-time three-column card only.
+     */
+    public void saveAnalysis(String fraudStage, String speechAnalysis, String methodAnalysis, String methodShort,
+            String intentShort, String victimPsychology, int riskScore, String riskReason, boolean actualFraud,
+            boolean goal, boolean stopped, String evidenceJson, OutcomeCode candidateOutcome, String candidateReason,
+            Instant now) {
         this.fraudStage = fraudStage;
         this.speechAnalysis = speechAnalysis;
         this.methodAnalysis = methodAnalysis;
+        this.methodShort = methodShort;
+        this.intentShort = intentShort;
         this.victimPsychology = victimPsychology;
         this.riskScore = riskScore;
         this.riskReason = riskReason;
@@ -146,5 +170,9 @@ public class SimulationRound {
     }
 
     public void shiftReading(long millis) { if (readingUntil != null) readingUntil = readingUntil.plusMillis(millis); }
+
+    /** V1.4 resume writes the restored stay directly instead of accumulating pause credit. */
+    public void setReadingUntil(Instant until) { if (readingUntil != null) readingUntil = until; }
+
     public void capReading(Instant at) { if (readingUntil != null && readingUntil.isAfter(at)) readingUntil = at; }
 }

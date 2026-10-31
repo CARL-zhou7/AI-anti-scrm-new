@@ -1,5 +1,6 @@
 import { http } from './http'
 import { csrf } from './csrf'
+import { loginRole } from './loginRole'
 import type { Account, LoginRequest, LogoutResult, RegisterRequest, Registration } from './types'
 
 export const authApi = {
@@ -7,6 +8,7 @@ export const authApi = {
   register: (body: RegisterRequest) => http.post<Registration>('/auth/register', body),
   async login(body: LoginRequest) {
     const account = await http.post<Account>('/auth/login', body)
+    loginRole.set(account.role)
     csrf.clear()
     await csrf.ensure()
     return account

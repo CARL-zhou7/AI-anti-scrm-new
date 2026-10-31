@@ -5,11 +5,13 @@ import static com.aiscam.antiscam.common.time.UtcTime.format;
 import com.aiscam.antiscam.common.error.ApiException;
 import com.aiscam.antiscam.media.TempAudioStore;
 import com.aiscam.antiscam.report.service.ReportViewMapper;
+import com.aiscam.antiscam.report.rules.ReportEligibility;
 import com.aiscam.antiscam.simulation.domain.*;
 import com.aiscam.antiscam.simulation.snapshot.ConfigurationSnapshots;
 import com.aiscam.antiscam.simulation.web.dto.SimulationViews.*;
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /** The only place a SimulationState is built; HTTP responses and SSE frames share it. Call inside a transaction. */
@@ -20,14 +22,26 @@ public class SimulationStateAssembler {
     private final SimulationReportRepository reports;
     private final ConfigurationSnapshots snapshots;
     private final TempAudioStore audio;
+    private final SimulationTrustEventRepository trustEvents;
+    private final InterventionStateAssembler interventions;
 
     public SimulationStateAssembler(SimulationRoundRepository rounds, SimulationMessageRepository messages,
-            SimulationReportRepository reports, ConfigurationSnapshots snapshots, TempAudioStore audio) {
+            SimulationReportRepository reports, ConfigurationSnapshots snapshots, TempAudioStore audio,
+            SimulationTrustEventRepository trustEvents) {
+        this(rounds, messages, reports, snapshots, audio, trustEvents, null);
+    }
+
+    @Autowired
+    public SimulationStateAssembler(SimulationRoundRepository rounds, SimulationMessageRepository messages,
+            SimulationReportRepository reports, ConfigurationSnapshots snapshots, TempAudioStore audio,
+            SimulationTrustEventRepository trustEvents, InterventionStateAssembler interventions) {
+        this.interventions = interventions;
         this.rounds = rounds;
         this.messages = messages;
         this.reports = reports;
         this.snapshots = snapshots;
         this.audio = audio;
+        this.trustEvents = trustEvents;
     }
 
     public State assemble(SimulationSession s) {
@@ -48,40 +62,67 @@ public class SimulationStateAssembler {
                 snapshots.toConfigurationView(s.getScenarioSnapshot(), s.getScammerSnapshot(), s.getVictimSnapshot()),
                 current == null ? null : liveRound(s, current), latestRisk, outcome, interruption,
                 current == null ? null : format(current.getReadingUntil()), nextAction, s.isPaused(), format(s.getPausedAt()),
-                s.getPausedTotalMs(), report, Funds.from(s, false));
+                s.getPausedTotalMs(), report, Funds.from(s, false, snapshots.fundsV3(s)), s.getWinner(), s.getFinalTrustScore(),
+                s.isAdminTest() && interventions != null ? interventions.assemble(s, interventions.currentDraft(s)) : null,
+                snapshots.sceneRuleCount(s.getSceneRuleSnapshot()));
     }
 
     public SessionStateData sessionState(SimulationSession s) {
         return new SessionStateData(assemble(s), reportView(s));
     }
 
-    public ReportView reportView(SimulationSession s) {
-        List<RiskPoint> series = s.getStatus() == SimulationStatus.FINISHED
-                ? rounds.findBySessionIdOrderByRoundNoAsc(s.getId()).stream().filter(SimulationRound::hasAnalysis)
-                        .map(r -> new RiskPoint(r.getRoundNo(), r.getRiskScore())).toList()
-                : List.of();
-        String unavailable = switch (s.getStatus()) {
-            case RUNNING -> "SIMULATION_RUNNING";
-            case INTERRUPTED -> "SIMULATION_INTERRUPTED";
-            case FINISHED -> null;
+    public boolean reportEligible(SimulationSession s) {
+        // An old session whose own rules never produced a report is ineligible, but a report row that really exists
+        // must stay readable: new eligibility rules never hide a saved legacy report.
+        return ReportEligibility.isEligible(s, rounds.countBySessionIdAndPhase(s.getId(),RoundPhase.COMPLETE))
+                || (s.getStatus() != SimulationStatus.RUNNING && reports.existsById(s.getId()));
+    }
+
+    public static Ending ending(SimulationSession s) {
+        if (!ReportEligibility.isBusinessEnd(s) || !ReportEligibility.supportsBusinessReport(s)) return null;
+        String display=switch(s.getInterruptionCode()) {
+            case USER_EXIT -> "用户离开"; case FUNDS_EXHAUSTED -> "资金不足结束"; case CHARACTER_EXIT -> "角色离开";
+            default -> throw new IllegalStateException("Not a business ending");
         };
-        if (unavailable != null) return new ReportView(s.getId().toString(), s.getStatus().name(), null, unavailable, null, null, series, null);
+        return new Ending(s.getInterruptionCode().name(),display,ReportEligibility.endingReason(s));
+    }
+
+    public ReportView reportView(SimulationSession s) {
+        boolean eligible=reportEligible(s);
+        List<RiskPoint> series = eligible
+                ? rounds.findBySessionIdOrderByRoundNoAsc(s.getId()).stream().filter(SimulationRound::hasAnalysis)
+                        .map(r -> new RiskPoint(r.getRoundNo(), r.getRiskScore(), trustChange(s, r.getRoundNo()))).toList()
+                : List.of();
+        String unavailable = eligible ? null : s.getStatus()==SimulationStatus.RUNNING ? "SIMULATION_RUNNING"
+                : ReportEligibility.isLegacyExit(s) ? "LEGACY_NO_REPORT"
+                : ReportEligibility.isBusinessEnd(s) ? "NO_DIALOGUE" : "TECHNICAL_INTERRUPT";
+        if (unavailable != null) return new ReportView(s.getId().toString(), s.getStatus().name(), null, unavailable,
+                null, null, series, null, ending(s));
         var row = reports.findById(s.getId()).orElseThrow(() -> ApiException.dataInconsistent("记录状态异常，请稍后重试"));
         var report = ReportViewMapper.summary(row);
         com.aiscam.antiscam.agent.AgentModels.ReportData content = null;
         if (row.getStatus() == ReportStatus.SUCCEEDED) {
-            if (row.getContentSchemaVersion() == 2) {
+            if (row.getContentSchemaVersion() >= 2) {
                 var savedRounds = rounds.findBySessionIdOrderByRoundNoAsc(s.getId());
                 var byRound = new java.util.HashMap<Long,List<SimulationMessage>>();
                 for (var round : savedRounds) byRound.put(round.getId(),messages.findByRoundId(round.getId()));
-                content = ReportViewMapper.contentV2(row.getContentJson(),s.getOutcomeCode().displayText(),
+                if (row.getContentSchemaVersion() == 4) content = ReportViewMapper.contentV4(row.getContentJson(),
+                        s.getOutcomeCode() == null ? null : com.aiscam.antiscam.report.service.ReportContextAssembler.outcomeText(s,savedRounds),
+                        com.aiscam.antiscam.agent.AgentModels.ReportFundsSummaryV3.from(s),
+                        com.aiscam.antiscam.report.service.ReportContextAssembler.quotes(savedRounds,byRound),
+                        s.getWinner(), s.getFinalTrustScore());
+                else if (row.getContentSchemaVersion() == 3) content = ReportViewMapper.contentV3(row.getContentJson(),
+                        s.getOutcomeCode() == null ? null : com.aiscam.antiscam.report.service.ReportContextAssembler.outcomeText(s,savedRounds),
+                        com.aiscam.antiscam.agent.AgentModels.ReportFundsSummaryV3.from(s),
+                        com.aiscam.antiscam.report.service.ReportContextAssembler.quotes(savedRounds,byRound));
+                else content = ReportViewMapper.contentV2(row.getContentJson(),s.getOutcomeCode().displayText(),
                         com.aiscam.antiscam.agent.AgentModels.ReportFundsSummary.from(s),
                         com.aiscam.antiscam.report.service.ReportContextAssembler.quotes(savedRounds,byRound));
             } else {
                 content = ReportViewMapper.content(row.getContentJson(),rounds.findBySessionIdOrderByRoundNoAsc(s.getId()).size(),s.getOutcomeCode().displayText());
             }
         }
-        return new ReportView(s.getId().toString(), s.getStatus().name(), report, null, outcome(s), content, series, content == null ? null : row.getContentSchemaVersion());
+        return new ReportView(s.getId().toString(), s.getStatus().name(), report, null, outcome(s), content, series, content == null ? null : row.getContentSchemaVersion(), ending(s));
     }
 
     public LiveMessage message(SimulationSession s, SimulationMessage m, int roundNo) {
@@ -102,10 +143,23 @@ public class SimulationStateAssembler {
                 format(m.getCreatedAt()), url, duration, segments);
     }
 
-    public Analysis analysis(SimulationRound r) {
+    public Analysis analysis(SimulationSession s, SimulationRound r) {
         if (!r.hasAnalysis()) return null;
         return new Analysis(r.getFraudStage(), r.getSpeechAnalysis(), r.getMethodAnalysis(), r.getVictimPsychology(),
-                r.getRiskScore(), r.getRiskReason(), format(r.getAnalysisSavedAt()), format(r.getAnalysisPresentedAt()));
+                r.getRiskScore(), r.getRiskReason(), format(r.getAnalysisSavedAt()), format(r.getAnalysisPresentedAt()),
+                trustChange(s, r.getRoundNo()), r.getMethodShort(), r.getIntentShort());
+    }
+
+    private TrustChange trustChange(SimulationSession s, int roundNo) {
+        if (s.getInitialTrustScore() == null) return null;
+        int before = s.getInitialTrustScore();
+        int after = before;
+        for (var event : trustEvents.findBySessionIdOrderByIdAsc(s.getId())) {
+            if (event.getRoundNo() > roundNo) continue;
+            if (event.getRoundNo() < roundNo) before = event.getScoreAfter();
+            after = event.getScoreAfter();
+        }
+        return new TrustChange(before, after, after - before);
     }
 
     public RoundStarted roundStarted(SimulationSession s, SimulationRound r) {
@@ -117,17 +171,22 @@ public class SimulationStateAssembler {
                 .sorted(Comparator.comparing(m -> m.getSpeakerRole().ordinal()))
                 .map(m -> message(s, m, r.getRoundNo())).toList();
         return new LiveRound(r.getRoundNo(), r.getPhase().name(), list.size() == 2, r.getPhase() == RoundPhase.COMPLETE, list,
-                analysis(r), format(r.getReadingUntil()));
+                analysis(s, r), format(r.getReadingUntil()));
     }
 
     public Outcome outcome(SimulationSession s) {
         if (s.getStatus() != SimulationStatus.FINISHED) return null;
-        var round = s.getOutcomeCode().isV12() ? rounds.findBySessionIdAndRoundNo(s.getId(), s.getCurrentRoundNo()).orElse(null) : null;
-        return new Outcome(s.getOutcomeCode().name(), s.getOutcomeCode().displayText(), s.getOutcomeReason(),
+        boolean v2 = ConfigurationSnapshots.trustV2(s);
+        var round = s.getOutcomeCode().isV12() || v2 ? rounds.findBySessionIdAndRoundNo(s.getId(), s.getCurrentRoundNo()).orElse(null) : null;
+        String display = v2 ? com.aiscam.antiscam.simulation.rules.OutcomeRules.displayV2(s.getOutcomeCode(),
+                round != null && round.isGoalAchieved(), round != null && round.isActualFraudOccurred() && round.isCooperationStopped())
+                : s.getOutcomeCode().displayText();
+        return new Outcome(s.getOutcomeCode().name(), display, ReportViewMapper.text(s.getOutcomeReason()),
                 s.getLimitReason() == null ? null : s.getLimitReason().name(),
                 round == null ? null : round.isGoalAchieved(),
                 round == null ? null : round.isActualFraudOccurred() && round.isCooperationStopped(),
-                s.getOutcomeCode().isV12() ? s.getActualLossYuan() : null);
+                s.getOutcomeCode().isV12() || v2 ? s.getActualLossYuan() : null,
+                s.getWinner(), s.getFinalTrustScore());
     }
 
     public static Interruption interruption(SimulationSession s) {

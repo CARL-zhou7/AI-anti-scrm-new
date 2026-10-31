@@ -16,6 +16,13 @@ public class SimulationProperties {
     private final Report report = new Report();
     private String audioTempDir = "var/tmp-audio";
     private long reportAttemptTimeoutMs = 120_000;
+    private long maxActiveDurationMs = 1_800_000;
+
+    public long getMaxActiveDurationMs() { return maxActiveDurationMs; }
+    public void setMaxActiveDurationMs(long value) {
+        if (value <= 0) throw new IllegalArgumentException("max-active-duration-ms must be positive");
+        maxActiveDurationMs = value;
+    }
 
     public Timing getTiming() { return timing; }
     public Llm getLlm() { return llm; }

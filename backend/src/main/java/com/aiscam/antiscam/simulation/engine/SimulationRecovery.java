@@ -15,6 +15,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.web.session.HttpSessionDestroyedEvent;
+import org.springframework.security.authentication.event.LogoutSuccessEvent;
 import org.springframework.stereotype.Component;
 
 /**
@@ -46,6 +47,19 @@ public class SimulationRecovery implements ApplicationRunner {
         audio.releaseAll();
         if (!running.isEmpty()) log.info("Converged {} running simulation(s) as SERVICE_RESTARTED", running.size());
         service.markRecovered();
+    }
+
+    @EventListener
+    public void onScopedLogout(LogoutSuccessEvent event) {
+        try {
+            if (event.getAuthentication().getPrincipal() instanceof Account account
+                    && account.role() == com.aiscam.antiscam.auth.domain.UserRole.USER) {
+                sessions.findFirstByUserIdAndStatus(Long.parseLong(account.id()), SimulationStatus.RUNNING)
+                        .ifPresent(s -> transitions.interrupt(s.getId(), InterruptionCode.USER_EXIT));
+            }
+        } catch (RuntimeException e) {
+            log.warn("Could not converge simulation on logout: {}", e.getClass().getSimpleName());
+        }
     }
 
     @EventListener
