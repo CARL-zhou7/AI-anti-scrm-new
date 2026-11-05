@@ -38,6 +38,8 @@ public class SimulationRound {
     private Integer cooperationStopped;
     @Column(name = "evidence_json", columnDefinition = "json")
     private String evidenceJson;
+    @Column(name = "victim_guidance_json", columnDefinition = "json")
+    private String victimGuidanceJson;
     @Enumerated(EnumType.STRING) @Column(name = "candidate_outcome", length = 24)
     private OutcomeCode candidateOutcome;
     @Column(name = "candidate_reason", columnDefinition = "text")
@@ -106,6 +108,8 @@ public class SimulationRound {
     public boolean isGoalAchieved() { return goalAchieved != null && goalAchieved == 1; }
     public boolean isCooperationStopped() { return cooperationStopped != null && cooperationStopped == 1; }
     public String getEvidenceJson() { return evidenceJson; }
+    public String getVictimGuidanceJson() { return victimGuidanceJson; }
+    public void setVictimGuidanceJson(String value) { victimGuidanceJson = value; }
     public OutcomeCode getCandidateOutcome() { return candidateOutcome; }
     public String getCandidateReason() { return candidateReason; }
     public Instant getAnalysisSavedAt() { return analysisSavedAt; }

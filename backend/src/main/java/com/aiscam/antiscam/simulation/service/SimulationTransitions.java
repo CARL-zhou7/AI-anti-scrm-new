@@ -168,7 +168,7 @@ public class SimulationTransitions {
                 .findByScenarioCodeAndStatusOrderByVersionNoDescIdAsc(scenario.getScenarioCode().name(), 
                         com.aiscam.antiscam.simulation.domain.SceneRuleStatus.ENABLED)
                 .stream().map(r -> new com.aiscam.antiscam.simulation.snapshot.SceneRuleSnapshot(
-                        r.getId().toString(), r.getTitle(), r.getRuleText(), r.getVersionNo())).toList()));
+                        r.getId().toString(), r.getTitle(), r.getRuleText(), r.getVersionNo(), r.getTargetRole().name())).toList()));
         if (!V14_SESSION) session.initializeActiveDuration(properties.getMaxActiveDurationMs());
         session.freezeTrust(active.get(PromptType.EVENT).getId(), trust.getInitialTrustScore(), trust.getPositiveFactor(),
                 trust.getNegativeFactor(), trust.getSmallAmountCapYuan(), policy, V14_SESSION);
@@ -333,6 +333,7 @@ public class SimulationTransitions {
             Instant now) {
         long sessionId = s.getId();
         var context = fundsContext(s);
+        if (role == SpeakerRole.SCAMMER && context != null) context = context.withGuidance(null);
         var priorLines = rounds.findBySessionIdOrderByRoundNoAsc(sessionId).stream().filter(r -> r.getRoundNo() < roundNo)
                 .flatMap(r -> messages.findByRoundId(r.getId()).stream().map(m -> new DialogueLine(r.getRoundNo(),
                         m.getSpeakerRole(), m.getContent(), m.getActionText(), null))).toList();
@@ -374,6 +375,12 @@ public class SimulationTransitions {
             s.applyFunds(application.after(), context.v3());
             round.applyFunds(application);
         }
+        if (role == SpeakerRole.VICTIM && context != null && context.guidance() != null) {
+            var decision = context.guidance();
+            if ((decision.required() && decision.purpose() == null) || fundActions.stream().anyMatch(a ->
+                    a.type() == FundFlowType.PAYMENT && a.amountYuan() == decision.amountYuan() && a.purpose() == decision.purpose()))
+                round.setVictimGuidanceJson(snapshots.write(decision.complete()));
+        }
         round.setPhase(role == SpeakerRole.SCAMMER ? RoundPhase.SCAMMER_PRESENTING : RoundPhase.VICTIM_PRESENTING);
         s.bumpVersion();
         return message.getId();
@@ -382,6 +389,49 @@ public class SimulationTransitions {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public FundsContext fundsContext(long sessionId) {
         return fundsContext(sessions.findById(sessionId).orElseThrow());
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.aiscam.antiscam.simulation.rules.VictimGuidance> victimGuidanceHistory(long sessionId, int beforeRound) {
+        return rounds.findBySessionIdOrderByRoundNoAsc(sessionId).stream().filter(r -> r.getRoundNo() < beforeRound)
+                .map(r -> com.aiscam.antiscam.simulation.rules.VictimGuidance.read(r.getVictimGuidanceJson()))
+                .filter(java.util.Objects::nonNull).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public String victimAcceptedFacts(long sessionId, int beforeRound) {
+        var accepted = new LinkedHashMap<String, com.aiscam.antiscam.simulation.rules.VictimGuidance>();
+        for (var decision : victimGuidanceHistory(sessionId, beforeRound)) if (decision.fulfilled())
+            accepted.put(decision.requestId(), decision);
+        return accepted.values().stream().map(d -> "此前已接受事项：" + d.requestQuote()
+                + (d.amountYuan() > 0 ? "；对应款项已实际支付，不得重复付款。" : "；记住已接受的解释，不重问旧问题。"))
+                .collect(java.util.stream.Collectors.joining("\n"));
+    }
+
+    /** External identification is validated against saved messages under the session lock before it grants anything. */
+    public void recordVictimGuidance(long sessionId, int roundNo,
+            com.aiscam.antiscam.simulation.rules.VictimGuidance.Match match) {
+        var session = sessions.lockById(sessionId).orElseThrow();
+        if (!session.isRunning() || session.getCurrentRoundNo() != roundNo) return;
+        var round = rounds.findBySessionIdAndRoundNo(sessionId, roundNo).orElseThrow();
+        if (round.getVictimGuidanceJson() != null || messages.findByRoundIdAndSpeakerRole(round.getId(), SpeakerRole.VICTIM).isPresent()) return;
+        var current = messages.findByRoundIdAndSpeakerRole(round.getId(), SpeakerRole.SCAMMER).orElseThrow();
+        var savedRounds = rounds.findBySessionIdOrderByRoundNoAsc(sessionId);
+        var history = savedRounds.stream().filter(r -> r.getRoundNo() < roundNo)
+                .flatMap(r -> messages.findByRoundId(r.getId()).stream().map(m -> new DialogueLine(r.getRoundNo(),
+                        m.getSpeakerRole(), m.getContent(), m.getActionText(), null))).toList();
+        boolean blocked = savedRounds.stream().filter(r -> r.getRoundNo() < roundNo).anyMatch(SimulationRound::isCooperationStopped)
+                || trustEvents.hasActiveCounterevidence(sessionId);
+        if (match.ruleId() != null && match.purpose() != null && !FundRules.paymentPurposeAllowed(
+                ScenarioCode.valueOf(snapshots.read(session.getScenarioSnapshot()).path("scenario_code").asText()), match.purpose()))
+            throw new IllegalArgumentException("payment purpose does not belong to this scenario");
+        var decision = com.aiscam.antiscam.simulation.rules.VictimGuidance.decide(roundNo, match,
+                com.aiscam.antiscam.simulation.rules.VictimGuidance.rules(session.getSceneRuleSnapshot()),
+                victimGuidanceHistory(sessionId, roundNo), history,
+                new DialogueLine(roundNo, SpeakerRole.SCAMMER, current.getContent(), current.getActionText(), null), blocked);
+        if (decision != null) decision = decision.requireSmallPayment(fundsContext(session));
+        round.setVictimGuidanceJson(snapshots.write(decision == null ? Map.of() : decision));
+        session.bumpVersion();
     }
 
     // ------------------------------------------------------------------ admin review gate (V1.4 Phase 2)
@@ -516,7 +566,9 @@ public class SimulationTransitions {
                 s.getGeneralReserveTotalYuan(), s.getEmergencyReserveTotalYuan(),
                 s.getGeneralReserveReleasedYuan(), s.getEmergencyReserveReleasedYuan(),
                 new com.aiscam.antiscam.simulation.rules.ActionGate.TrustGate(s.getCurrentTrustScore(), s.getTrustThresholdAccept(),
-                        s.getTrustThresholdSmall(), s.getTrustThresholdLarge(), s.getTrustSmallCapYuan()));
+                        s.getTrustThresholdSmall(), s.getTrustThresholdLarge(), s.getTrustSmallCapYuan()))
+                .withGuidance(rounds.findBySessionIdAndRoundNo(s.getId(), s.getCurrentRoundNo())
+                        .map(r -> com.aiscam.antiscam.simulation.rules.VictimGuidance.read(r.getVictimGuidanceJson())).orElse(null));
         return new FundsContext(ScenarioCode.valueOf(snapshots.read(s.getScenarioSnapshot()).path("scenario_code").asText()),
                 s.getAvailableBalanceYuan(), snapshots.read(s.getVictimSnapshot()).path("reserved_funds_yuan").asInt(),
                 s.getReserveReleasedYuan(), s.getTotalPaidYuan(), s.getTotalRefundedYuan(),

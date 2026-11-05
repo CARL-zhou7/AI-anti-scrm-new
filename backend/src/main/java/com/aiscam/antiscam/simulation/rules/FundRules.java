@@ -5,9 +5,20 @@ import com.aiscam.antiscam.simulation.domain.*;
 import java.util.*;
 
 public final class FundRules {
+    public static final String INVESTMENT_RECIPIENT = "投资平台账户";
     private FundRules() {}
     public static int actualLoss(int paid, int refunded) { return actualLoss(paid, refunded, 0); }
     public static int actualLoss(int paid, int refunded, int rewarded) { return (int) Math.max(0L, (long) paid - refunded - rewarded); }
+
+    public static boolean paymentPurposeAllowed(ScenarioCode scenario, FundPurpose purpose) {
+        return switch (purpose) {
+            case INITIAL_PAYMENT, ADDITIONAL_PAYMENT -> scenario == ScenarioCode.TASK_REBATE;
+            case INVESTMENT_PAYMENT, EXTRA_FEE_PAYMENT -> scenario == ScenarioCode.FAKE_INVESTMENT;
+            case LOAN_TRANSFER -> scenario == ScenarioCode.IMPERSONATION_LOAN;
+            case OTHER_PAYMENT -> true;
+            default -> false;
+        };
+    }
 
     public static FundApplication apply(FundsSummary before, ScenarioCode scenario, int reservedTotal, int roundNo,
             int nextSequenceNo, List<FundAction> actions, List<FundFlow> existing) {
@@ -19,11 +30,17 @@ public final class FundRules {
     public static FundApplication apply(FundsSummary before, FundsContext context, int roundNo,
             int nextSequenceNo, List<FundAction> actions) {
         var scenario = context.scenarioCode();
+        boolean guidedPayment = context.guidance() != null && context.guidance().paymentAllowed(context);
+        if (context.guidance() != null) context.guidance().validateActions(context, roundNo, actions);
         var existing = context.existingFlows();
         long balance = before.availableBalanceYuan(), paid = before.totalPaidYuan(), refunded = before.totalRefundedYuan();
         long rewarded = before.totalRewardedYuan();
         long general = before.generalReserveReleasedYuan(), emergency = before.emergencyReserveReleasedYuan();
         long paymentTotal = actions.stream().filter(a -> a != null && a.type() == FundFlowType.PAYMENT).mapToLong(FundAction::amountYuan).sum();
+        if (context.v3() && before.totalPaidYuan() == 0)
+            require(paymentTotal <= context.gate().smallCapYuan(),
+                    "首次真实付款合计不得超过小额上限" + context.gate().smallCapYuan()
+                            + "元；先协商小额试付，不拆单、不虚构已付款，已完成首次小额付款后的后续轮次才可按信任阈值追加");
         long gap = Math.max(0, paymentTotal - balance), batchReleased = 0;
         int additional = before.additionalPaymentCount();
         var postings = new ArrayList<FundPosting>();
@@ -41,16 +58,13 @@ public final class FundRules {
             require(a.speaker() == (payout ? SpeakerRole.SCAMMER : SpeakerRole.VICTIM), "wrong fund action speaker");
             if (a.type() != FundFlowType.REFUND) require(a.relatedPaymentId() == null, "unexpected related payment");
             if (a.type() != FundFlowType.RESERVE_RELEASE) require(a.reserveTier() == null, "unexpected reserve tier");
-            if (context.v3() && !payout) require(ActionGate.decide(context.gate(), a, (int) (paid - refunded), (int) balance,
+            if (context.v3() && !payout && !guidedPayment) require(ActionGate.decide(context.gate(), a, (int) (paid - refunded), (int) balance,
                     (int) (context.generalReserveTotalYuan() - general), (int) (context.emergencyReserveTotalYuan() - emergency))
                     == ActionGate.GateDecision.ALLOW, "fund action is not permitted");
             switch (a.type()) {
                 case PAYMENT -> {
-                    require(switch (a.purpose()) {
-                        case INITIAL_PAYMENT, ADDITIONAL_PAYMENT -> !context.v3() || scenario == ScenarioCode.TASK_REBATE;
-                        case INVESTMENT_PAYMENT, EXTRA_FEE_PAYMENT -> !context.v3() || scenario == ScenarioCode.FAKE_INVESTMENT;
-                        case LOAN_TRANSFER -> !context.v3() || scenario == ScenarioCode.IMPERSONATION_LOAN;
-                        case OTHER_PAYMENT -> true;
+                    require(context.v3() ? paymentPurposeAllowed(scenario, a.purpose()) : switch (a.purpose()) {
+                        case INITIAL_PAYMENT, ADDITIONAL_PAYMENT, INVESTMENT_PAYMENT, EXTRA_FEE_PAYMENT, LOAN_TRANSFER, OTHER_PAYMENT -> true;
                         default -> false;
                     }, "invalid payment purpose");
                     require(a.amountYuan() <= balance, "payment exceeds balance");

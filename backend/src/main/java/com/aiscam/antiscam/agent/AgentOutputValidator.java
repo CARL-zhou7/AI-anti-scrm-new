@@ -22,18 +22,22 @@ import java.util.regex.Pattern;
  */
 public final class AgentOutputValidator {
     private static final Pattern FUND_NOT_EXECUTED = Pattern.compile(
-            "之前|上轮|上次|昨天|曾经|先前|未|没|准备|打算|(?<!已)(?<!已经)(?<!实际)(?<!成功)(?<!完成)将|稍后|以后|承诺|如果|等会|不会|不要|会[给返转退付]|要[给返转退付]");
+            "之前|上轮|上次|昨天|曾经|先前|未|没|准备|打算|决定|计划|(?<!已)(?<!已经)(?<!实际)(?<!成功)(?<!完成)将|稍后|以后|承诺|如果|等会|不会|不要|会[给返转退付]|要[给返转退付]");
     private static final Pattern FUND_EXECUTED = Pattern.compile(
-            "(已经?|实际|完成|成功).{0,24}(转|付|支付|返|退|发放|到账|释放|动用)|(转账|转款|转|付款|支付|返款|返还|退回|退款|发放|到账|释放|动用)(了|成功|完成)");
-    private static final Pattern FUND_INTENTION = Pattern.compile("愿意|答应|同意|告知先|表示先|声称|承诺|做完|完成任务后|截图后|等.{0,16}(后|再)");
-    private static final Pattern REFUND_EXECUTED = Pattern.compile(
-            "(已经?|实际|完成|成功).{0,12}(返|退|转|到账|到.{0,4}账户)|(返|退|转)(还|回|给|款|账)*了|(返款|退款|转账)(成功|完成)|到账了");
-    private static final Pattern ADDITIONAL_REFUND = Pattern.compile("(又|再次|另外|另行|额外|追加)(已经?|实际)?(返|退|转)");
+            "(已经?|实际|完成|成功).{0,24}(转|付|支付|缴纳|交纳|缴付|充值|入金|投入|返|退|发放|到账|释放|动用)|(转账|转款|转|付款|支付|缴纳|交纳|缴付|充值|入金|投入|返款|返还|退回|退款|发放|到账|释放|动用)(了|成功|完成)");
+    private static final Pattern FUND_INTENTION = Pattern.compile("愿意|答应|同意|告知先|表示先|声称|承诺|做完|完成任务后|截图后|失败|取消|尝试|试着|考虑|等待|点击|输入|填写|是否|能否|(?:付款|支付|转账|缴纳|交纳|缴付|充值|入金|投入|垫付|下单).{0,20}后|(?:需要?|待|想|请|正在|可以|应该|要求).{0,8}(?:支付|付款|转账|缴纳|交纳|缴付|充值|入金|投入)|等.{0,16}(后|再)");
     /** Hard cap per text item (decision D-4); the ~50/~40 character targets live in the prompts. */
     public static final int MAX_CODE_POINTS = 120;
     private static final Set<Integer> RISK_LEVELS = Set.of(0, 25, 50, 75, 100);
     private static final Pattern ACTION_IN_LINE = Pattern.compile("[（(【\\[][^）)】\\]]*?(转账|付款|点击|输入|发送|打开)[^）)】\\]]*?[）)】\\]]");
     private AgentOutputValidator() {}
+
+    static boolean freeSimulation(String line, String action) {
+        String text = line + "\n" + (action == null ? "" : action);
+        return text.matches("(?s).*(模拟盘|模拟资金|虚拟资金).*")
+                && text.matches("(?s).*(模拟资金|虚拟资金|免费|不扣费|无需真实付款|无需充值|不用转账|不需要付款).*")
+                && !text.matches("(?s).*(?:请(?:先)?|(?<!无)(?<!不)需(?:要)?|必须|先)(?:真实)?(?:支付|付款|转账|转|充值).*" );
+    }
 
     public static void trustEvent(TrustEventCandidate event, boolean attitude) {
         trustEvent(event, attitude, false);
@@ -272,6 +276,16 @@ public final class AgentOutputValidator {
             return;
         }
         if (role == SpeakerRole.VICTIM && claimed != null) throw fail(Category.DIALOGUE, "victim cannot claim refunds");
+        if (role == SpeakerRole.VICTIM && context.guidance() != null) {
+            try { context.guidance().validateBehavior(context, action, actions); }
+            catch (IllegalArgumentException e) { throw fail(Category.DIALOGUE, e.getMessage()); }
+            if (context.guidance().awaitingRecipient(context)
+                    && (!line.matches("(?s).*(哪|怎么|如何|请.*(?:提供|发|告知)|[?？]).*")
+                        || !line.matches("(?s).*(收款|账户|账号|转给|转到|充值到|付给).*")
+                        || line.matches("(?s).*(先不|暂不|暂时不|不操作|等.*再|核实后|摸熟.*考虑).*")))
+                throw fail(Category.DIALOGUE, "本事项已决定接受且资金足够，只缺收款对象；本轮须同意并询问收款对象或模拟账户，"
+                        + "不能继续重复旧拒绝，也不能虚构账户或付款");
+        }
         if (claimed != null && claimed < 0) throw fail(Category.DIALOGUE, "negative refund claim");
         if (role == SpeakerRole.SCAMMER && context.scenarioCode() == ScenarioCode.IMPERSONATION_LOAN
                 && (claimed != null || !actions.isEmpty())) throw fail(Category.DIALOGUE, "loan cannot refund or claim structured refund");
@@ -282,65 +296,44 @@ public final class AgentOutputValidator {
                 throw fail(Category.DIALOGUE, "fund quote must belong to current speaker message");
             }
             if ((role == SpeakerRole.SCAMMER) != (a.type() == FundFlowType.REFUND || a.type() == FundFlowType.REWARD)) throw fail(Category.DIALOGUE, "wrong fund action role");
+            if (a.type() == FundFlowType.REFUND || a.type() == FundFlowType.REWARD) {
+                PayoutClaims.validateAction(a, line, action, context, history, roundNo);
+                refund += a.amountYuan();
+                continue;
+            }
             // shortcut: lexical execution checks cannot resolve every paraphrase; extend with real-model regression cases when observed.
             var amount = Pattern.compile("(?<![0-9.])" + a.amountYuan() + "(?![0-9.])");
             boolean executed = java.util.Arrays.stream(a.quote().split("[，。；,;！!？?]"))
                     .anyMatch(clause -> amount.matcher(clause).find()
-                            && clause.matches(".*(转|付|返|到账|释放|动用|发放).*" )
+                            && clause.matches(".*(转|付|缴纳|交纳|充值|入金|投入|返|到账|释放|动用|发放).*" )
                             && !FUND_NOT_EXECUTED.matcher(clause).find());
-            if (a.type() == FundFlowType.REFUND) {
-                String source = line.contains(a.quote()) ? line : action;
-                var quotedClauses = java.util.Arrays.stream(a.quote().split("[，。；,;！!？?]"))
-                        .filter(clause -> amount.matcher(clause).find()).toList();
-                boolean alreadyPosted = context.existingFlows().stream().anyMatch(f -> f.getFlowType() == FundFlowType.REFUND
-                        && java.util.Objects.equals(f.getRelatedPaymentId(), a.relatedPaymentId()) && f.getAmountYuan() == a.amountYuan());
-                executed = executed && java.util.Arrays.stream(source.split("[，。；,;！!？?]"))
-                        .anyMatch(clause -> quotedClauses.stream().anyMatch(clause::contains)
-                        && REFUND_EXECUTED.matcher(clause).find() && !FUND_NOT_EXECUTED.matcher(clause).find()
-                        && !clause.matches(".*(愿意|答应|同意|告知先|表示先).*" )
-                        && (!alreadyPosted || ADDITIONAL_REFUND.matcher(clause).find()));
-            }
             boolean historical = a.quote().matches(".*(之前|上轮|上次|昨天|曾经|先前).*")
                     || history.stream().anyMatch(l -> l.roundNo() < roundNo && l.speaker() == role
                     && (l.content().contains(a.quote()) || (l.action() != null && l.action().contains(a.quote()))));
             if (!executed || historical) {
                 String reason = !amount.matcher(a.quote()).find() ? "quote is missing the Arabic amount matching amountYuan"
-                        : historical ? "quote repeats a historical action; do not post it again"
+                        : historical ? "quote repeats a historical action; do not post it again; 若只是复述旧款，fundActions=[]，台词和action明确为历史付款。"
+                            + "只有本轮存在尚未执行的新请求且资金规则允许、本人确已再次执行时，才在action独立句明确本轮再次实际支付的金额和用途，quote逐字引用完整新执行句。"
+                            + "不能只换措辞把同一笔旧付款重新入账，不得为通过校验虚构新请求或付款"
                         : "quote has no current non-negated execution clause; a promise or preparation must use fundActions=[]";
                 throw fail(Category.DIALOGUE, "fund quote is not a new executed action; " + reason);
             }
-            if (a.type() != FundFlowType.REFUND) {
-                // Inspect the containing clause too: a quote may omit a preceding negation or condition.
-                String source = line.contains(a.quote()) ? line : action;
-                boolean completed = java.util.Arrays.stream(a.quote().split("[，。；,;！!？?]"))
-                        .filter(clause -> amount.matcher(clause).find() && FUND_EXECUTED.matcher(clause).find())
-                        .anyMatch(quoted -> java.util.Arrays.stream(source.split("[，。；,;！!？?]"))
-                                .anyMatch(clause -> clause.contains(quoted) && !FUND_NOT_EXECUTED.matcher(clause).find()
-                                        && !FUND_INTENTION.matcher(clause).find()));
-                boolean paidBefore = a.type() == FundFlowType.REWARD && context.existingFlows().stream()
-                        .anyMatch(f -> f.getFlowType() == FundFlowType.REWARD && f.getAmountYuan() == a.amountYuan());
-                if (!completed || (paidBefore && !a.quote().matches(".*(又|再次|另外|另行|额外).*(支付|转|发放).*"))) {
-                    throw fail(Category.DIALOGUE, a.type() == FundFlowType.REWARD
-                            ? "reward is not a new executed payout" : "fund quote requires a completed payment or reserve release");
-                }
-            }
-            if (a.type() == FundFlowType.REFUND || a.type() == FundFlowType.REWARD) refund += a.amountYuan();
+            // Inspect the containing clause too: a quote may omit a preceding negation or condition.
+            boolean quoteInAction = !line.contains(a.quote());
+            String source = quoteInAction ? action : line;
+            // Action narration describes execution without requiring a spoken perfect-tense marker.
+            var narratedPayment = Pattern.compile("(?:转账|付款|支付|缴纳|交纳|缴付|充值|入金|投入)\\s*" + amount.pattern());
+            boolean completed = java.util.Arrays.stream(a.quote().split("[，。；,;！!？?]"))
+                    .filter(clause -> amount.matcher(clause).find() && (FUND_EXECUTED.matcher(clause).find()
+                            || (quoteInAction && a.type() == FundFlowType.PAYMENT && narratedPayment.matcher(clause).find())))
+                    .anyMatch(quoted -> java.util.Arrays.stream(source.split("[，。；,;！!？?]"))
+                            .anyMatch(clause -> clause.contains(quoted) && !FUND_NOT_EXECUTED.matcher(clause).find()
+                                    && !FUND_INTENTION.matcher(clause).find()));
+            if (!completed) throw fail(Category.DIALOGUE, "fund quote requires a completed payment or reserve release; 若确已执行，在action用独立句写明本轮已实际执行的金额" + a.amountYuan()
+                    + "元、用途及完成动作，quote逐字引用完整执行句。意愿、条件和未来计划另句表达；仅承诺或准备时fundActions=[]，不得虚构付款");
         }
         if (role == SpeakerRole.SCAMMER && context.v3()) {
-            for (String clause : line.split("[，。；,;！!？?]")) {
-                if (!FUND_EXECUTED.matcher(clause).find() || FUND_NOT_EXECUTED.matcher(clause).find()
-                        || FUND_INTENTION.matcher(clause).find() || clause.matches(".*(截图|界面|显示|承诺).*") ) continue;
-                var amounts = Pattern.compile("(?<![0-9.])([0-9]+)元").matcher(clause);
-                while (amounts.find()) {
-                    String amount = amounts.group(1);
-                    boolean posted = actions.stream().anyMatch(a -> Integer.toString(a.amountYuan()).equals(amount))
-                            || context.existingFlows().stream().anyMatch(f ->
-                                    (f.getFlowType() == FundFlowType.REFUND || f.getFlowType() == FundFlowType.REWARD)
-                                    && Integer.toString(f.getAmountYuan()).equals(amount));
-                    if (!posted) throw fail(Category.DIALOGUE,
-                            "completed payout claim requires a matching fund action; 已出款台词必须对应资金动作，未执行时改为尚未到账，不得编造出款");
-                }
-            }
+            PayoutClaims.validate(line, action, actions, context);
         }
         if (refund > 0 && (claimed == null || refund > claimed)) throw fail(Category.DIALOGUE, "actual refund exceeds claim");
         try {
@@ -380,6 +373,11 @@ public final class AgentOutputValidator {
      */
     public static ValidatedJudgement validate(NarratorJudgement j, ScenarioCode scenario, int roundNo,
             List<DialogueLine> lines, PriorFacts prior, FundsSummary funds, Boolean v2Goal, boolean trustV3) {
+        // The ledger-backed goal is program-owned; a model boolean must not terminate an otherwise valid round.
+        if (trustV3 && v2Goal != null) j = new NarratorJudgement(j.fraudStage(),j.speechAnalysis(),j.methodAnalysis(),
+                j.victimPsychology(),j.riskScore(),j.riskReason(),j.actualFraudOccurred(),prior.goalAchieved() || v2Goal,
+                j.cooperationStopped(),j.evidence(),j.candidateOutcome(),j.candidateReason(),j.characterExit(),
+                j.characterExitReason(),j.attitudeEvents(),j.waitingUpdates(),j.methodShort(),j.intentShort());
         boolean v12 = funds != null;
         var c = Category.ANALYSIS;
         for (var event : j.attitudeEvents()) {

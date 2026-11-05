@@ -9,6 +9,12 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class V12AgentRulesTest {
+    @Test void v3UsesProgramGoalEvenWhenNarratorClaimsSuccess() {
+        var result = AgentOutputValidator.validate(judgement(false,true,false,null,false,null),
+                ScenarioCode.FAKE_INVESTMENT,7,List.of(),PriorFacts.none(),empty,false,true);
+        assertFalse(result.judgement().goalAchieved());
+        assertFalse(result.judgement().actualFraudOccurred());
+    }
     private final FundsSummary empty = new FundsSummary(100,100,0,0,0,0,0);
     private NarratorJudgement judgement(boolean fraud, boolean goal, boolean stopped, OutcomeCode outcome, boolean exit, String reason) {
         return new NarratorJudgement("a","b","c","d",25,"e",fraud,goal,stopped,List.of(),outcome,

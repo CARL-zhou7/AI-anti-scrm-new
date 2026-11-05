@@ -14,9 +14,15 @@ public interface SceneRuleRepository extends JpaRepository<SceneRule, Long> {
 
     List<SceneRule> findByScenarioCodeOrderByVersionNoDescIdAsc(String scenarioCode);
 
-    boolean existsByScenarioCodeAndTitle(String scenarioCode, String title);
+    @Query("select count(r) > 0 from SceneRule r where r.scenarioCode=:scenarioCode and r.title=:title and r.targetRole=com.aiscam.antiscam.simulation.domain.SpeakerRole.SCAMMER")
+    boolean existsByScenarioCodeAndTitle(@Param("scenarioCode") String scenarioCode, @Param("title") String title);
 
-    boolean existsByScenarioCodeAndTitleAndIdNot(String scenarioCode, String title, long id);
+    @Query("select count(r) > 0 from SceneRule r where r.scenarioCode=:scenarioCode and r.title=:title and r.id<>:id and r.targetRole=com.aiscam.antiscam.simulation.domain.SpeakerRole.SCAMMER")
+    boolean existsByScenarioCodeAndTitleAndIdNot(@Param("scenarioCode") String scenarioCode, @Param("title") String title, @Param("id") long id);
+
+    boolean existsByScenarioCodeAndTargetRoleAndTitle(String scenarioCode, SpeakerRole targetRole, String title);
+
+    boolean existsByScenarioCodeAndTargetRoleAndTitleAndIdNot(String scenarioCode, SpeakerRole targetRole, String title, long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from SceneRule r where r.id = :id")

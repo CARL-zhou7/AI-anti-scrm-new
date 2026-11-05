@@ -7,7 +7,22 @@ public record FundsContext(ScenarioCode scenarioCode, int availableBalanceYuan, 
         int reserveReleasedYuan, int totalPaidYuan, int totalRefundedYuan, List<FundFlow> existingFlows,
         int totalRewardedYuan, int generalReserveTotalYuan, int emergencyReserveTotalYuan,
         int generalReserveReleasedYuan, int emergencyReserveReleasedYuan,
-        com.aiscam.antiscam.simulation.rules.ActionGate.TrustGate gate) {
+        com.aiscam.antiscam.simulation.rules.ActionGate.TrustGate gate,
+        com.aiscam.antiscam.simulation.rules.VictimGuidance guidance) {
+    public FundsContext(ScenarioCode scenarioCode, int availableBalanceYuan, int reservedFundsTotalYuan,
+            int reserveReleasedYuan, int totalPaidYuan, int totalRefundedYuan, List<FundFlow> existingFlows,
+            int totalRewardedYuan, int generalReserveTotalYuan, int emergencyReserveTotalYuan,
+            int generalReserveReleasedYuan, int emergencyReserveReleasedYuan,
+            com.aiscam.antiscam.simulation.rules.ActionGate.TrustGate gate) {
+        this(scenarioCode, availableBalanceYuan, reservedFundsTotalYuan, reserveReleasedYuan, totalPaidYuan,
+                totalRefundedYuan, existingFlows, totalRewardedYuan, generalReserveTotalYuan, emergencyReserveTotalYuan,
+                generalReserveReleasedYuan, emergencyReserveReleasedYuan, gate, null);
+    }
+    public FundsContext withGuidance(com.aiscam.antiscam.simulation.rules.VictimGuidance decision) {
+        return new FundsContext(scenarioCode, availableBalanceYuan, reservedFundsTotalYuan, reserveReleasedYuan,
+                totalPaidYuan, totalRefundedYuan, existingFlows, totalRewardedYuan, generalReserveTotalYuan,
+                emergencyReserveTotalYuan, generalReserveReleasedYuan, emergencyReserveReleasedYuan, gate, decision);
+    }
     public FundsContext(ScenarioCode scenarioCode, int availableBalanceYuan, int reservedFundsTotalYuan,
             int reserveReleasedYuan, int totalPaidYuan, int totalRefundedYuan, List<FundFlow> existingFlows) {
         this(scenarioCode, availableBalanceYuan, reservedFundsTotalYuan, reserveReleasedYuan, totalPaidYuan,

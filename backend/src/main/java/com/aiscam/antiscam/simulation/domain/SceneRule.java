@@ -12,6 +12,8 @@ public class SceneRule {
     private Long id;
     @Column(name = "scenario_code", nullable = false, length = 32)
     private String scenarioCode;
+    @Enumerated(EnumType.STRING) @Column(name = "target_role", nullable = false, length = 16)
+    private SpeakerRole targetRole;
     @Column(name = "title", nullable = false, length = 128)
     private String title;
     @Column(name = "rule_text", nullable = false, columnDefinition = "text")
@@ -30,7 +32,12 @@ public class SceneRule {
     protected SceneRule() {}
 
     public SceneRule(String scenarioCode, String title, String ruleText, long createdBy) {
+        this(scenarioCode, title, ruleText, createdBy, SpeakerRole.SCAMMER);
+    }
+
+    public SceneRule(String scenarioCode, String title, String ruleText, long createdBy, SpeakerRole targetRole) {
         this.scenarioCode = scenarioCode;
+        this.targetRole = targetRole;
         this.title = title;
         this.ruleText = ruleText;
         this.createdBy = createdBy;
@@ -40,6 +47,7 @@ public class SceneRule {
 
     public Long getId() { return id; }
     public String getScenarioCode() { return scenarioCode; }
+    public SpeakerRole getTargetRole() { return targetRole; }
     public String getTitle() { return title; }
     public String getRuleText() { return ruleText; }
     public int getVersionNo() { return versionNo; }

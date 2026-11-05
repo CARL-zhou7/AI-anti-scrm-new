@@ -39,6 +39,11 @@ public class ScriptedLlmClient implements LlmClient {
         JsonNode script = script(name);
         String role = request.role().name().toLowerCase(Locale.ROOT);
         JsonNode attempts = attempts(script, request.roundNo(), role);
+        // Existing scripts have no victim-rule track; explicitly model no match unless the fixture defines one.
+        if (attempts == null && request.role() == AgentRole.VICTIM_RULE) return """
+                {"ruleId":null,"sameRequestRound":0,"requestSource":"CONTENT","amountYuan":0,"purpose":null,"recipient":"",
+                 "previousResponse":"NONE","responseSource":"NONE","blocked":false,"blockingQuote":""}
+                """;
         if (attempts == null) throw new AgentCallException(category, false, "no scripted output");
         JsonNode entry = attempts.get(Math.min(request.attempt(), attempts.size() - 1));
         if (request.role() == AgentRole.REPORT && request.prompt().contains("\"contentSchemaVersion\":2")

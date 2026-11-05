@@ -10,6 +10,15 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FundRulesV3Test {
+    @Test void firstRoundCannotPayLargeOrSplitButLaterRoundCan() {
+        var before = new FundsSummary(1000,1000,0,0,0,0,0,0,0);
+        assertThrows(IllegalArgumentException.class, () -> FundRules.apply(before,context(before,100,List.of()),2,1,
+                List.of(action(FundFlowType.PAYMENT,101,1,null))));
+        assertThrows(IllegalArgumentException.class, () -> FundRules.apply(before,context(before,100,List.of()),2,1,
+                List.of(action(FundFlowType.PAYMENT,60,1,null),action(FundFlowType.PAYMENT,60,2,null))));
+        var first = FundRules.apply(before,context(before,100,List.of()),2,1,List.of(action(FundFlowType.PAYMENT,100,1,null))).after();
+        assertDoesNotThrow(() -> FundRules.apply(first,context(first,100,List.of()),2,2,List.of(action(FundFlowType.PAYMENT,500,1,null))));
+    }
     @Test void completedPayoutCannotBypassLedgerWithAnEmptyActionList() {
         var f = new FundsSummary(1000,1000,0,0,0,0,0,0,0);
         var ctx = context(f,50,List.of());
@@ -50,7 +59,7 @@ class FundRulesV3Test {
         assertThrows(IllegalArgumentException.class,()->FundRules.apply(f,loan,2,1,List.of(action(FundFlowType.REWARD,1,1,null))));
     }
     @Test void reservesOnlyCoverSameMessageGapAndUseGeneralFirst() {
-        var f=new FundsSummary(10,10,0,0,0,0,0,0,0); var ctx=context(f,90,List.of());
+        var f=new FundsSummary(110,10,100,0,0,0,0,0,0); var ctx=context(f,90,List.of());
         var general=action(FundFlowType.RESERVE_RELEASE,100,1,FundReserveTier.GENERAL);
         var emergency=action(FundFlowType.RESERVE_RELEASE,40,2,FundReserveTier.EMERGENCY);
         var payment=action(FundFlowType.PAYMENT,150,3,null);

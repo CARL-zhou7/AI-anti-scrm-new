@@ -11,7 +11,7 @@ import java.util.List;
 public final class AgentModels {
     private AgentModels() {}
 
-    public enum AgentRole { SCAMMER, VICTIM, NARRATOR, REPORT, EVENT }
+    public enum AgentRole { SCAMMER, VICTIM, NARRATOR, REPORT, EVENT, VICTIM_RULE }
 
     public enum Speed { SLOW, NORMAL, FAST }
 

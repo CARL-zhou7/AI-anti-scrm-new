@@ -292,10 +292,12 @@ export interface InterventionRecord {
   status: InterventionStatus; createdAt: string; ruleId: string | null
 }
 export interface RuleDraft { scenarioCode: string; title: string; ruleText: string; sourceInterventionIds: string[] }
-export interface SceneRuleWrite { scenarioCode: string; title: string; ruleText: string; sourceInterventionIds: string[] }
+export type SceneRuleTargetRole = 'SCAMMER' | 'VICTIM'
+export interface SceneRuleWrite { scenarioCode: string; title: string; ruleText: string; sourceInterventionIds: string[]; targetRole?: SceneRuleTargetRole }
 export interface SceneRuleUpdate { title?: string | null; ruleText?: string | null; status?: SceneRuleStatus; version?: number }
 export type SceneRuleStatus = 'ENABLED' | 'DISABLED'
 export interface SceneRuleView {
+  targetRole?: SceneRuleTargetRole
   ruleId: string; scenarioCode: string; title: string; ruleText: string; version: number
   status: SceneRuleStatus; sourceCount: number; updatedAt: string
 }

@@ -18,6 +18,15 @@ public final class AgentContextAssembler {
     public static final int ANALYSIS_TARGET_CHARS = 40;
     private AgentContextAssembler() {}
 
+    public static String investmentAccount(AgentScene scene) {
+        return scene.trustV3() && scene.scenarioCode() == com.aiscam.antiscam.content.domain.ScenarioCode.FAKE_INVESTMENT
+                ? "\n【本次投资收款约定】实盘投入默认转入虚构的“"
+                    + com.aiscam.antiscam.simulation.rules.FundRules.INVESTMENT_RECIPIENT
+                    + "”，仅用于本次演绎记账，不需要真实账号。已有明确实盘请求时此对象已知，不因缺少真实账号阻止执行；"
+                    + "模拟盘虚拟资金操作仍不是实盘投入，不产生真实资金动作。对方明确另指收款对象时保留原文，不擅自覆盖。"
+                : "";
+    }
+
     public static Map<String, String> scammer(AgentScene scene, List<DialogueLine> history, int roundNo, long remainingSeconds) {
         Map<String, String> v = new LinkedHashMap<>();
         v.put("line_target_chars", Integer.toString(LINE_TARGET_CHARS));
@@ -42,6 +51,11 @@ public final class AgentContextAssembler {
                 + "轮。第1至4轮建立联系、建立信任并铺垫，不急于收网；第5至12轮每轮围绕对方一个真实顾虑推进；"
                 + "第13至15轮收束，不再引入无关支线或更换主事件，围绕剩余顾虑与是否继续展开，不为轮数虚构对方配合。"
                 + (roundNo >= 13 ? "已进入收束阶段。" : "");
+        if (scene.scenarioCode() == com.aiscam.antiscam.content.domain.ScenarioCode.TASK_REBATE)
+            pacing += "【任务金额与对话衔接】先回应受话者上一轮的实际问题；若其把需垫付的任务误解为免费或把本金当收益，先澄清再推进。"
+                    + "提出新任务时明确谁先垫付多少元、完成后返还总额是否含本金、净赚多少元及模拟收款对象；不能只说接X元单返Y元。"
+                    + "不要为满足台词字数省略出资条件。此前免费体验或由你垫付只适用于已说明的任务，转为对方出资时明确区分；"
+                    + "同笔任务已承诺由你承担的费用不能悄悄改成对方垫付。未实际付款不称对方已垫付，未入账不称已返款。";
         v.put("pacing_hint", pacing);
         // The v19 scammer prompt carries {{scene_rules}}; older pinned prompts do not, and the renderer rejects an
         // unused variable, so the rule text is only handed to a template that can actually consume it.
@@ -69,6 +83,19 @@ public final class AgentContextAssembler {
         v.put("dialogue_history", scene.trustV1() ? personalHistory(history) : publicHistory(history));
         v.put("scammer_line", scene.trustV1() ? scammerLine.content()
                 + (scammerLine.action() == null ? "" : "\n对方的行动：" + scammerLine.action()) : publicLine(scammerLine));
+        if (scene.scenarioCode() == com.aiscam.antiscam.content.domain.ScenarioCode.TASK_REBATE)
+            v.put("scammer_line", v.get("scammer_line") + "\n【理解任务与回应】结合此前往来确认当前同笔任务是谁垫付、本金多少、承诺返还总额与净收益多少。"
+                    + "按每条发言的说话人理解我和你：联系人说‘我垫付／由我垫付／全由我垫付’是联系人自己出钱，你回应时应理解为‘你垫付’，不能说成‘现在要我垫付’。"
+                    + "联系人说‘你垫付’才是要求你出钱；自己此前说的‘我垫付’才指自己。联系人承担本笔费用不构成你的付款请求，不因自己的付款意愿而主动替他付款。"
+                    + "只有对方明确改为要求你出资，才可指出与同笔任务先前承诺的矛盾；不能仅因出现‘垫付’二字就认定规则改变。"
+                    + "此前已明确要求你垫付的同笔任务，本轮简称金额或催接单时仍沿用该出资条件，不能理解为免费报酬；"
+                    + "此前免费体验不代表后续任务也免垫付。含本金的返还总额不是净收益，承诺返还不是实际到账。"
+                    + "区分每笔任务的先后条件：对方明确说完成操作或确认后才返款，本笔尚未完成这些步骤时，未到账只是条件未满足，不是漏付或违约，不能把先到账再操作说成原有约定。"
+                    + "可以理解规则但不接受先操作；此时直接说明不接受该顺序或暂停本笔，不再循环以尚未操作所以没到账要求对方重复解释。已解释清楚且没有新变化的条件不重问。"
+                    + "愿意继续且当前步骤已明确、安全边界及资金权限允许时，实际推进该步骤；步骤不明只问具体卡点，不虚构已完成。拒绝或暂停后保持决定，无新条件不反复试探同一步骤。"
+                    + "逐笔区分上一单应返未返与本单完成后才应返的款项；已经满足原约定条件却未返款时仍可追问，不能把新加的付款、解冻或追加任务当作原有前提。"
+                    + "先回应本轮具体问题或步骤，不只复述刚收过报酬并说再试试。条件不清楚时只问尚缺的信息，不擅自假定免垫付或编造金额。"
+                    + "理解需要垫付不等于必须付款；实际接受、拒绝或执行仍按自己的资金事实与本轮行动决定，line、action和fundActions保持一致。");
         if (scene.trustV1() && roundNo <= 4) v.put("minimum_round_constraint",
                 "前几轮通常不要仅为结束聊天而终止往来，但已有明确付款意愿且执行条件齐备时可以本轮付款，不必等待更多轮次。若已有确切反证并明确停止，或已实际付款后决定止损、拒绝追加，可以如实停止。不要为了继续聊天而否认事实。");
         v.put("round_no", Integer.toString(roundNo));
@@ -92,6 +119,10 @@ public final class AgentContextAssembler {
         v.put("dialogue_history", fullHistory(lines.stream().filter(l -> l.roundNo() < roundNo).toList()));
         v.put("round_no", Integer.toString(roundNo));
         v.put("current_round", fullHistory(lines.stream().filter(l -> l.roundNo() == roundNo).toList()));
+        if (scene.scenarioCode() == com.aiscam.antiscam.content.domain.ScenarioCode.TASK_REBATE)
+            v.put("current_round", v.get("current_round") + "\n【出资主体核对】按原始发言的说话人理解我和你：骗子说‘我垫付／全由我垫付’指骗子出钱，‘你垫付’才指受害者出钱。"
+                    + "受害者把前者理解为自己出钱时，应识别为受害者误解，不能据此断言骗子改变规则或要求受害者付款；是否改变出资条件须对照骗子的实际原话。承诺垫付不等于已经付款。"
+                    + "逐笔核对返款前提及实际完成情况：原约定操作后返款而本笔尚未操作，不能仅因未到账判定违约；受害者要求先到账可以是不接受该顺序，不代表对方未解释。已完成前提却未返款、或事后新增收费条件时仍须如实指出，不能混用上一单和本单的款项。");
         v.put("previous_facts", facts(prior));
         v.put("analysis_target_chars", Integer.toString(ANALYSIS_TARGET_CHARS));
         return v;
@@ -105,9 +136,11 @@ public final class AgentContextAssembler {
         if (f.v3()) {
             var gate = f.gate();
             long available = (long) f.availableBalanceYuan() + f.generalReserveTotalYuan() - f.generalReserveReleasedYuan();
-            long willing = gate.score() < gate.small() ? 0 : gate.score() < gate.large()
+            long willing = f.guidance() != null && (f.guidance().paymentAllowed(f) || f.guidance().awaitingRecipient(f)) ? f.guidance().amountYuan()
+                    : gate.score() < gate.small() ? 0 : gate.score() < gate.large()
                     ? Math.min(available, Math.max(0L, (long) gate.smallCapYuan() - f.totalPaidYuan() + f.totalRefundedYuan()))
                     : available + f.emergencyReserveTotalYuan() - f.emergencyReserveReleasedYuan();
+            if (f.totalPaidYuan() == 0) willing = Math.min(willing, gate.smallCapYuan());
             return "当前可动用余额：" + f.availableBalanceYuan() + "元；普通预留剩余："
                 + (f.generalReserveTotalYuan() - f.generalReserveReleasedYuan()) + "元；应急预留剩余："
                 + (f.emergencyReserveTotalYuan() - f.emergencyReserveReleasedYuan())
@@ -122,7 +155,11 @@ public final class AgentContextAssembler {
                 + "若暂不愿付，应表达不放心转、暂不转或不愿追加，不编造资金不足、限额、账户冻结、家人管钱等理由。"
                 + "此前说过没钱但与真实资金不符时，本轮纠正为暂不愿转，不能为保持前文而继续虚构穷困。内部付款意愿额度不向联系人报数。"
                 + "\n【你此刻的判断倾向，仅用于形成自然回应】\n"
-                + (v2 ? victimInclinationV2(f, previousScore) : victimInclination(f));
+                + (f.guidance() != null && f.guidance().paymentAllowed(f)
+                        ? "本事项已经决定按本轮请求付款，执行条件齐备时直接实际执行；其余请求仍按原意愿判断。"
+                        : f.guidance() != null && f.guidance().awaitingRecipient(f)
+                            ? "本事项已决定接受，当前只缺收款对象；同意后只问应转给谁或哪个模拟账户，不再回到旧拒绝。信息齐全前不付款、不释放预留。"
+                        : v2 ? victimInclinationV2(f, previousScore) : victimInclination(f));
         }
         return "当前可动用余额：" + f.availableBalanceYuan() + "元；尚可释放预留：" + f.releasableReserveYuan()
                 + "元。只记录本轮新执行付款/预留释放，不将旧转账复述作为新动作。";

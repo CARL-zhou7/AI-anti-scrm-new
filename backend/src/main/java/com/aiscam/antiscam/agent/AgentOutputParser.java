@@ -148,7 +148,9 @@ public final class AgentOutputParser {
         if (n.has("reserveTier")) fields.add("reserveTier");
         exactFields(n, fields, c);
         try {
-            return new FundAction(enumValue(n,"type",FundFlowType.class,c), enumValue(n,"purpose",FundPurpose.class,c),
+            var purposes = "SCAMMER".equals(n.path("speaker").asText())
+                    ? java.util.EnumSet.of(FundPurpose.REFUND, FundPurpose.REWARD) : java.util.EnumSet.allOf(FundPurpose.class);
+            return new FundAction(enumValue(n,"type",FundFlowType.class,c), enumValue(n,"purpose",FundPurpose.class,purposes,c),
                     integer(n, "amountYuan"), integer(n, "roundNo"), enumValue(n,"speaker",SpeakerRole.class,c),
                     text(n, "quote", c), integer(n, "eventOrder"), nullableText(n, "reason", c),
                     n.get("relatedPaymentId").isNull() ? null : paymentId(n),
@@ -168,7 +170,15 @@ public final class AgentOutputParser {
         return value.intValue();
     }
 
+    public static NarratorJudgement narrator(String raw, List<DialogueLine> lines) {
+        return narrator(raw, lines, true);
+    }
+
     public static NarratorJudgement narrator(String raw) {
+        return narrator(raw, List.of(), false);
+    }
+
+    private static NarratorJudgement narrator(String raw, List<DialogueLine> lines, boolean bindSources) {
         var c = Category.ANALYSIS;
         JsonNode n = narratorObject(raw, c, Set.of("fraudStage", "speechAnalysis", "methodAnalysis", "victimPsychology",
                 "riskScore", "riskReason", "actualFraudOccurred", "goalAchieved", "cooperationStopped", "evidence",
@@ -176,7 +186,19 @@ public final class AgentOutputParser {
         if (!risk.isIntegralNumber() || !risk.canConvertToInt()) throw fail(c, "riskScore must be an integer");
         List<EvidenceItem> evidence = new ArrayList<>();
         if (!n.get("evidence").isArray()) throw fail(c, "evidence must be an array");
-        for (JsonNode e : n.get("evidence")) evidence.add(evidence(e));
+        for (JsonNode e : n.get("evidence")) {
+            var item = evidence(e);
+            if (bindSources && "@SOURCE".equals(item.quote())) {
+                var cited = item;
+                var line = lines.stream().filter(l -> l.roundNo() == cited.roundNo() && l.speaker() == cited.speaker())
+                        .findFirst().orElseThrow(() -> fail(c, "evidence cites a missing line"));
+                String source = item.source() == EvidenceSource.CONTENT ? line.content() : line.action();
+                if (source == null || source.isBlank() || "null".equals(source.strip()))
+                    throw fail(c, "evidence cites an empty source");
+                item = new EvidenceItem(item.factCode(), item.speaker(), item.source(), item.roundNo(), source, item.eventOrder());
+            }
+            evidence.add(item);
+        }
         String candidate = nullableText(n, "candidateOutcome", c);
         OutcomeCode outcome = null;
         if (candidate != null) {

@@ -70,7 +70,8 @@ class TrustInfluenceTest {
         assertTrue(AgentContextAssembler.victimFunds(funds(59,50,60,70,0)).contains("总额最多为0元"));
         assertTrue(AgentContextAssembler.victimFunds(funds(60,50,60,70,0)).contains("总额最多为2000元"));
         assertTrue(AgentContextAssembler.victimFunds(funds(69,50,60,70,1500)).contains("总额最多为500元"));
-        assertTrue(AgentContextAssembler.victimFunds(funds(70,50,60,70,0)).contains("总额最多为100000元"));
+        assertTrue(AgentContextAssembler.victimFunds(funds(70,50,60,70,0)).contains("总额最多为2000元"));
+        assertTrue(AgentContextAssembler.victimFunds(funds(70,50,60,70,100)).contains("总额最多为100000元"));
         var noEmergency = new FundsContext(ScenarioCode.IMPERSONATION_LOAN,10,150,0,0,0,List.of(),
                 0,100,50,0,0,new TrustGate(60,50,60,70,2000));
         assertTrue(AgentContextAssembler.victimFunds(noEmergency).contains("总额最多为110元"));
@@ -89,7 +90,7 @@ class TrustInfluenceTest {
                     """;
         },new SimulationProperties().getLlm());
         var line = new DialogueLine(9,SpeakerRole.SCAMMER,"爸，借12000元处理事故，转到我这张模拟工资卡。",null,"");
-        var turn = runner.victim(scene,List.of(),line,9,10000,false,0,funds(70,50,60,70,0),"","");
+        var turn = runner.victim(scene,List.of(),line,9,10000,false,0,funds(70,50,60,70,100),"","");
         assertEquals(12000,turn.fundActions().getFirst().amountYuan());
         assertThrows(AgentCallException.class, () -> runner.victim(scene,List.of(),line,9,10000,false,0,
                 funds(69,50,60,70,0),"",""));
@@ -112,7 +113,7 @@ class TrustInfluenceTest {
     }
 
     @Test void eightyAllowsTheNewDepositDespiteOrdinaryUnresolvedFeeDoubts() throws Exception {
-        var context = new FundsContext(ScenarioCode.TASK_REBATE,3136,9000,0,0,0,List.of(),
+        var context = new FundsContext(ScenarioCode.TASK_REBATE,3136,9000,0,100,0,List.of(),
                 136,7500,1500,0,0,new TrustGate(80,30,60,70,100));
         var scene = new AgentScene(ScenarioCode.TASK_REBATE,"刷单返利","简介","联系人",
                 "林晓，希望补充生活费；疑问未完全解决时也可能尝试，付款由实际交流推动。","test",
@@ -135,7 +136,7 @@ class TrustInfluenceTest {
         var line=new DialogueLine(20,SpeakerRole.SCAMMER,"第二单要先缴纳120元保证金到这个任务账户",null,"");
         var turn=runner.victim(scene,history,line,20,10000,false,0,context,"已收到报酬","");
         var after=com.aiscam.antiscam.simulation.rules.FundRules.apply(context.summary(),context,20,1,turn.fundActions()).after();
-        assertEquals(120,after.totalPaidYuan());
+        assertEquals(220,after.totalPaidYuan());
         assertEquals(3016,after.availableBalanceYuan());
         assertEquals(com.aiscam.antiscam.simulation.rules.ActionGate.GateDecision.NEED_LARGE,
                 com.aiscam.antiscam.simulation.rules.ActionGate.decide(new TrustGate(69,30,60,70,100),

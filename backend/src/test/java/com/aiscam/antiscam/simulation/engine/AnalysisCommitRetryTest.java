@@ -50,8 +50,9 @@ class AnalysisCommitRetryTest {
                         return judgement;
                     });
             var lanes = mock(SessionLanes.class);
+            var scheduler = mock(org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler.class);
             var engine = new SimulationOrchestrator(transitions,sessions,rounds,null,null,null,runner,null,null,null,
-                    props,null,lanes,Clock.systemUTC(),null,null);
+                    props,scheduler,lanes,Clock.systemUTC(),null,null);
             var live = new SimulationOrchestrator.Live(63);
             live.fundsV2 = true;
             live.scene = new AgentScene(ScenarioCode.TASK_REBATE,"场景","简介","联系人","本人","test",
@@ -69,7 +70,9 @@ class AnalysisCommitRetryTest {
                 }
                 assertEquals(expectedSaves,saves.get());
                 assertEquals(expectedSaves,live.finalAnalysisCalls.get(5).get());
-                verify(transitions,persistent ? times(1) : never()).interrupt(63L,InterruptionCode.ANALYSIS_FAILED);
+                verify(transitions,never()).interrupt(63L,InterruptionCode.ANALYSIS_FAILED);
+                assertEquals(persistent, live.recoveryScheduled);
+                if (persistent) verify(scheduler).schedule(any(Runnable.class),any(Instant.class));
                 verify(lanes,timeout(2000).atLeastOnce()).run(eq(63L),any());
             } finally {
                 ((ExecutorService) ReflectionTestUtils.getField(engine,"io")).shutdownNow();

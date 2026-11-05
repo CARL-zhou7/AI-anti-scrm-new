@@ -41,6 +41,16 @@ public class TrustEventService {
     }
 
     @Transactional(readOnly = true)
+    public boolean hasActiveCounterevidence(long sessionId) {
+        var active = new java.util.HashSet<String>();
+        for (var event : events.findBySessionIdOrderByIdAsc(sessionId)) {
+            if (TrustEventType.DECISIVE_COUNTEREVIDENCE.name().equals(event.getEventType())) active.add(event.getSubjectKey());
+            if (TrustEventType.COUNTEREVIDENCE_RESOLVED.name().equals(event.getEventType())) active.remove(event.getSubjectKey());
+        }
+        return !active.isEmpty();
+    }
+
+    @Transactional(readOnly = true)
     public String priorEventFacts(long sessionId, int roundNo) {
         return "此前已记录的事件主题（沿用同一事由的主题键，不重复认定）：\n"
                 + events.findBySessionIdOrderByIdAsc(sessionId).stream().filter(e -> e.getRoundNo() < roundNo)

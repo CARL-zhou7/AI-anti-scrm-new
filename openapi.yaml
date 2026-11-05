@@ -16099,8 +16099,12 @@ components:
       additionalProperties: false
     SceneRuleWrite:
       type: object
-      description: 提交规则并关联来源（API-53）；一条来源只能归入一条规则，只合并不拆分
+      description: 新建角色场景规则；默认SCAMMER，两个角色均可直接编写。SCAMMER可选关联干预来源，VICTIM来源为空。仅影响新场次。
       properties:
+        targetRole:
+          type: string
+          enum: [SCAMMER, VICTIM]
+          default: SCAMMER
         scenarioCode:
           type: string
           enum: [TASK_REBATE, FAKE_INVESTMENT, IMPERSONATION_LOAN]
@@ -16111,13 +16115,24 @@ components:
         ruleText:
           type: string
           minLength: 1
+          maxLength: 4000
         sourceInterventionIds:
           type: array
-          minItems: 1
+          minItems: 0
           maxItems: 50
           items:
             $ref: '#/components/schemas/Id'
-      required: [scenarioCode, title, ruleText, sourceInterventionIds]
+      required: [scenarioCode, title, ruleText]
+      allOf:
+      - if:
+          required: [targetRole]
+          properties:
+            targetRole:
+              const: VICTIM
+        then:
+          properties:
+            sourceInterventionIds:
+              maxItems: 0
       additionalProperties: false
     SceneRuleUpdate:
       type: object
@@ -16133,6 +16148,7 @@ components:
           anyOf:
           - type: string
             minLength: 1
+            maxLength: 4000
           - type: 'null'
         status:
           anyOf:
@@ -16149,6 +16165,9 @@ components:
       type: object
       description: 场景规则（API-52～54）；规则按场景生效，只影响之后新开的同场景场次
       properties:
+        targetRole:
+          type: string
+          enum: [SCAMMER, VICTIM]
         ruleId:
           $ref: '#/components/schemas/Id'
         scenarioCode:
@@ -16161,6 +16180,7 @@ components:
         ruleText:
           type: string
           minLength: 1
+          maxLength: 4000
         version:
           type: integer
           minimum: 1
@@ -16172,7 +16192,7 @@ components:
           minimum: 0
         updatedAt:
           $ref: '#/components/schemas/UtcMillis'
-      required: [ruleId, scenarioCode, title, ruleText, version, status, sourceCount, updatedAt]
+      required: [targetRole, ruleId, scenarioCode, title, ruleText, version, status, sourceCount, updatedAt]
       additionalProperties: false
     SceneRulePage:
       type: object

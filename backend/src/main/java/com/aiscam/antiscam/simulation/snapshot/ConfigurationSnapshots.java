@@ -250,12 +250,17 @@ public class ConfigurationSnapshots {
      * snapshot renders nothing, so a rule problem can never stop a session.
      */
     public String sceneRuleText(String json) {
+        return sceneRuleText(json, "SCAMMER");
+    }
+
+    public String sceneRuleText(String json, String targetRole) {
         if (json == null || json.isBlank()) return "";
         com.fasterxml.jackson.databind.JsonNode node;
         try { node = read(json); } catch (IllegalStateException e) { return ""; }
         if (!node.isArray()) return "";
         StringBuilder text = new StringBuilder();
         for (var rule : node) {
+            if (!targetRole.equals(rule.path("targetRole").asText("SCAMMER"))) continue;
             String body = rule.path("ruleText").asText("");
             if (body.isBlank()) continue;
             if (!text.isEmpty()) text.append('\n');

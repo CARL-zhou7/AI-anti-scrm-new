@@ -115,10 +115,14 @@ assert.ok(s.InterventionRecord.required.includes('ruleId'), 'InterventionRecord.
 assert.ok(s.InterventionRecord.required.includes('finalContent'))
 assert.ok(s.SimulationState.required.includes('ruleSnapshotCount'), 'SimulationState.ruleSnapshotCount')
 for (const field of ['scenarioCode', 'title', 'ruleText', 'sourceInterventionIds']) {
-  assert.ok(s.SceneRuleWrite.required.includes(field), `SceneRuleWrite.${field}`)
+  if (field !== 'sourceInterventionIds') assert.ok(s.SceneRuleWrite.required.includes(field), `SceneRuleWrite.${field}`)
   assert.ok(s.RuleDraft.required.includes(field), `RuleDraft.${field}`)
 }
 assert.deepEqual(new Set(s.SceneRule.properties.status.enum), new Set(['ENABLED', 'DISABLED']))
 for (const field of ['ruleId', 'version', 'sourceCount']) assert.ok(s.SceneRule.required.includes(field), `SceneRule.${field}`)
 assert.ok(s.SceneRulePage.required.includes('items'))
 console.log('OpenAPI valid; 56 operations (V1.4), 12 SSE event types, report v1/v2/v3/v4, 15-round verdict, narration shorts, admin intervention gate, knowledge base rules and snapshots, trust policy and public profile isolation checked.')
+
+assert.deepEqual(s.SceneRuleWrite.properties.targetRole.enum, ['SCAMMER', 'VICTIM'])
+assert.equal(s.SceneRuleWrite.properties.sourceInterventionIds.minItems, 0)
+assert.ok(s.SceneRule.required.includes('targetRole'))

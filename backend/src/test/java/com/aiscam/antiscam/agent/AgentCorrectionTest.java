@@ -11,6 +11,68 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AgentCorrectionTest {
+    @Test void regenerationRejectsOppositeArrivalAndDiscardedCandidates() {
+        var raw = new java.util.concurrent.atomic.AtomicReference<>("已到账！现在可以交易。");
+        var runner = new AgentRunner(request -> "{\"line\":\"" + raw.get()
+                + "\",\"action\":null,\"intent\":\"回应\",\"tone\":{\"speed\":\"NORMAL\",\"style\":\"自然\"},\"claimedRefundYuan\":null,\"fundActions\":[]}",
+                new SimulationProperties().getLlm());
+        var scene = new AgentScene(ScenarioCode.FAKE_INVESTMENT,"投资","简介","联系人","本人","test",
+                template("v7/scammer"), "", "", "公开背景", false, "", false);
+        assertThrows(AgentCallException.class, () -> runner.scammer(scene,List.of(),8,60000,0,new FundsContext(ScenarioCode.FAKE_INVESTMENT,3000,0,0,0,0,List.of()),"","","没有到账",List.of()));
+        raw.set("还没有到账，请稍候。");
+        assertThrows(AgentCallException.class, () -> runner.scammer(scene,List.of(),8,60000,0,new FundsContext(ScenarioCode.FAKE_INVESTMENT,3000,0,0,0,0,List.of()),"","","没有到账",List.of(raw.get())));
+        assertEquals(raw.get(), runner.scammer(scene,List.of(),8,60000,0,new FundsContext(ScenarioCode.FAKE_INVESTMENT,3000,0,0,0,0,List.of()),"","","没有到账",List.of("上一版未到账，请等待。")).line());
+    }
+    @Test void investmentStageTimingComesFromRulesInsteadOfHardcodedRoundFiveGate() {
+        var prompts = new ArrayList<String>();
+        var runner = new AgentRunner(request -> {
+            prompts.add(request.prompt());
+            return "{\"line\":\"先给您介绍产品资料。\",\"action\":null,\"intent\":\"介绍资料\","
+                    + "\"tone\":{\"speed\":\"NORMAL\",\"style\":\"自然\"},\"claimedRefundYuan\":null,\"fundActions\":[]}";
+        }, new SimulationProperties().getLlm());
+        String rules = "前4轮不进行模拟盘体验；第5轮起体验模拟盘，体验结束后再邀请实盘。";
+        var scene = new AgentScene(ScenarioCode.FAKE_INVESTMENT,"投资","简介","联系人","本人","test",
+                template("v19/scammer"), "", "", "公开背景", true, "", true, false, true, rules);
+        var funds = new FundsContext(ScenarioCode.FAKE_INVESTMENT, 50000, 0, 0, 0, 0, List.of());
+        for (int round : List.of(1, 4, 5, 6)) {
+            assertDoesNotThrow(() -> runner.scammer(scene, List.of(), round, 60000, 0, funds));
+            assertTrue(prompts.getLast().contains(rules));
+            assertTrue(prompts.getLast().contains("轮次、先后顺序、禁止行为优先于通用推进建议"));
+            assertFalse(prompts.getLast().contains("前4轮完成联系、介绍及一次具体模拟演示"));
+            assertFalse(prompts.getLast().contains("第5轮起不能继续只做模拟盘"));
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(ScenarioCode.class)
+    void narratorBindsEvidenceToSavedSourceAcrossScenarios(ScenarioCode scenario) {
+        String raw = """
+                {"fraudStage":"沟通","speechAnalysis":"对方提出要求","methodAnalysis":"继续劝说",
+                 "victimPsychology":"决定停止","riskScore":25,"riskReason":"受害者停止配合",
+                 "actualFraudOccurred":false,"goalAchieved":false,"cooperationStopped":true,
+                 "evidence":[{"factCode":"COOPERATION_STOPPED","speaker":"VICTIM","source":"CONTENT",
+                 "roundNo":7,"quote":"@SOURCE","eventOrder":1}],"candidateOutcome":null,"candidateReason":null}
+                """;
+        var runner = new AgentRunner(request -> raw, new SimulationProperties().getLlm());
+        var scene = new AgentScene(scenario,"场景","简介","联系人","本人","test",
+                "", "", template("v17/narrator"), "公开背景", true, "", true, false, true);
+        var lines = List.of(new DialogueLine(7, SpeakerRole.VICTIM, "我不再继续，也不会转账。", null, null));
+        var funds = new FundsContext(scenario, 50000, 0, 0, 0, 0, List.of());
+        var result = runner.narrator(scene, lines, 7, PriorFacts.none(), 60000, 0, funds, null, false, List.of());
+        assertEquals(lines.getFirst().content(), result.judgement().evidence().getFirst().quote());
+        var withAction = List.of(new DialogueLine(7, SpeakerRole.VICTIM, "不再继续。", "已关闭聊天并停止配合", null));
+        assertEquals(withAction.getFirst().action(), AgentOutputParser.narrator(raw.replace("CONTENT", "ACTION"),
+                withAction).evidence().getFirst().quote());
+        assertThrows(AgentCallException.class, () -> AgentOutputParser.narrator(raw.replace("CONTENT", "ACTION"), lines));
+        assertThrows(AgentCallException.class, () -> AgentOutputParser.narrator(raw.replace("CONTENT", "ACTION"),
+                List.of(new DialogueLine(7, SpeakerRole.VICTIM, "不再继续。", "null", null))));
+        assertThrows(AgentCallException.class, () -> AgentOutputParser.narrator(raw.replace("VICTIM", "SCAMMER"), lines));
+        assertThrows(AgentCallException.class, () -> AgentOutputParser.narrator(raw.replace("\"roundNo\":7", "\"roundNo\":8"), lines));
+        var forged = AgentOutputParser.narrator(raw.replace("@SOURCE", "改写后的停止台词"), lines);
+        assertThrows(AgentCallException.class, () -> AgentOutputValidator.validate(forged, scenario, 7, lines,
+                PriorFacts.none(), funds.summary(), false, true));
+    }
+
     @Test void victimCorrectsRejectedPaymentToNoActionWhenTrustDoesNotPermitIt() {
         String payment = """
                 {"line":"爸已转账五千元","action":null,"psychology":"担心孩子",
@@ -43,7 +105,7 @@ class AgentCorrectionTest {
         assertTrue(prompts.getFirst().contains("意愿额度为0时，fundActions必须为[]"));
         var permissionError = assertThrows(AgentCallException.class, () -> runner.victim(scene,List.of(),line,2,
                 10000,false,1,funds,"",formatError.retryFeedback()));
-        assertTrue(permissionError.getMessage().contains("fund action is not permitted"));
+        assertTrue(permissionError.getMessage().contains("首次真实付款合计不得超过"));
         assertTrue(prompts.get(1).contains("先核对本轮付款意愿和资金权限，再修正金额格式"));
         var corrected = runner.victim(scene,List.of(),line,2,10000,false,2,funds,"",permissionError.retryFeedback());
         assertTrue(corrected.fundActions().isEmpty());
@@ -69,6 +131,29 @@ class AgentCorrectionTest {
         assertNotEquals(invitation, corrected.line());
     }
 
+    @Test void repeatedVictimLineWithoutANewActionIsRejectedButActualProgressIsAccepted() {
+        String line = "指南我已下载，正按步骤试操作，有卡点再麻烦您截图指导。";
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        var output = new java.util.concurrent.atomic.AtomicReference<>(new VictimTurn(line, null, "继续体验",
+                new ToneHint(Speed.NORMAL, "自然"), List.of()));
+        var runner = new AgentRunner(request -> {
+            try { return json.writeValueAsString(output.get()); } catch (Exception e) { throw new RuntimeException(e); }
+        }, new SimulationProperties().getLlm());
+        var scene = new AgentScene(ScenarioCode.FAKE_INVESTMENT,"投资","简介","联系人","本人","test",
+                "", template("v17/victim"), "", "公开背景", true, "", true);
+        var history = List.of(new DialogueLine(4, SpeakerRole.VICTIM, line, null, null));
+        var current = new DialogueLine(5, SpeakerRole.SCAMMER, "我帮您演示模拟操作。", null, null);
+        var funds = new FundsContext(ScenarioCode.FAKE_INVESTMENT, 3000, 9000, 0, 0, 0, List.of());
+        var error = assertThrows(AgentCallException.class, () -> runner.victim(scene, history, current, 5, 10000, false, 0, funds));
+        assertTrue(error.retryFeedback().contains("不要重复上一轮台词"));
+        output.set(new VictimTurn("已按指南完成模拟买入，现在显示持仓了。", "已在模拟盘完成买入操作", "继续体验",
+                new ToneHint(Speed.NORMAL, "自然"), List.of()));
+        assertDoesNotThrow(() -> runner.victim(scene, history, current, 5, 10000, false, 1, funds));
+        output.set(new VictimTurn(line, "已在模拟盘完成买入操作", "继续体验",
+                new ToneHint(Speed.NORMAL, "自然"), List.of()));
+        assertDoesNotThrow(() -> runner.victim(scene, history, current, 5, 10000, false, 1, funds));
+    }
+
     @Test void victimPromptDistinguishesFreeSimulationFromRequestsForRealFunds() {
         var prompts = new ArrayList<String>();
         var runner = new AgentRunner(request -> {
@@ -90,6 +175,79 @@ class AgentCorrectionTest {
         assertThrows(AgentCallException.class, () -> AgentOutputParser.scammer(raw.replace("\"reserveTier\":null", "\"relatedPaymentId\":123")));
         assertThrows(AgentCallException.class,()->AgentOutputParser.scammer(raw.replace("\"reserveTier\":null","\"reserveTier\":\"GENERAL\"")));
         assertThrows(AgentCallException.class,()->AgentOutputParser.scammer(raw.replace("reserveTier","unknown")));
+    }
+
+    @Test void unsupportedPayoutClaimIsCorrectedToLedgerFactsWithoutCreatingAnotherPayment() {
+        String raw = """
+                {"line":"38元佣金已经到账，请查收","action":null,"intent":"确认佣金",
+                 "tone":{"speed":"NORMAL","style":"自然"},"claimedRefundYuan":38,"fundActions":[]}
+                """;
+        var runner = new AgentRunner(request -> raw, new SimulationProperties().getLlm());
+        var scene = new AgentScene(ScenarioCode.TASK_REBATE,"刷单","简介","联系人","本人","test",
+                template("v19/scammer"), "", "", "公开背景", true, "", true, true, true);
+        var funds = new FundsContext(ScenarioCode.TASK_REBATE,1000,0,0,0,0,List.of(),
+                0,0,0,0,0,new com.aiscam.antiscam.simulation.rules.ActionGate.TrustGate(60,40,70,85,200));
+        assertThrows(AgentCallException.class, () -> runner.scammer(scene,List.of(),5,60000,0,funds));
+        var corrected = runner.scammer(scene,List.of(),5,60000,2,funds);
+        assertTrue(corrected.line().contains("还没有实际出款"));
+        assertTrue(corrected.fundActions().isEmpty()); assertNull(corrected.claimedRefundYuan());
+        assertNull(corrected.action());
+        var saved = org.mockito.Mockito.mock(FundFlow.class);
+        org.mockito.Mockito.when(saved.getFlowType()).thenReturn(FundFlowType.REWARD);
+        var partiallyPaid = new FundsContext(ScenarioCode.TASK_REBATE,1012,0,0,0,0,List.of(saved),
+                12,0,0,0,0,funds.gate());
+        org.mockito.Mockito.when(saved.getAmountYuan()).thenReturn(12);
+        var before = partiallyPaid.summary();
+        assertThrows(AgentCallException.class, () -> runner.scammer(scene,List.of(),5,60000,0,partiallyPaid));
+        var partialRunner = new AgentRunner(request -> raw.replace("38", "126"),new SimulationProperties().getLlm());
+        var partialCorrection = partialRunner.scammer(scene,List.of(),5,60000,2,partiallyPaid);
+        assertTrue(partialCorrection.line().contains("累计报酬12元、本金返款0元"));
+        assertFalse(partialCorrection.line().contains("还没有实际出款"));
+        assertTrue(partialCorrection.fundActions().isEmpty()); assertNull(partialCorrection.action());
+        assertNull(partialCorrection.claimedRefundYuan()); assertEquals(before, partiallyPaid.summary());
+        String currentAction = """
+                {"line":"126元已经到账","action":"已实际发放8元报酬","intent":"确认出款",
+                 "tone":{"speed":"NORMAL","style":"自然"},"claimedRefundYuan":126,
+                 "fundActions":[{"type":"REWARD","purpose":"REWARD","amountYuan":8,"roundNo":5,
+                 "speaker":"SCAMMER","quote":"已实际发放8元报酬","eventOrder":1,
+                 "reason":null,"relatedPaymentId":null,"reserveTier":null}]}
+                """;
+        var withAction = new AgentRunner(request -> currentAction,new SimulationProperties().getLlm());
+        assertThrows(AgentCallException.class, () -> withAction.scammer(scene,List.of(),5,60000,2,partiallyPaid));
+    }
+
+    @Test void victimAcknowledgesSavedRewardWithoutPostingOrForcingAnotherPayment() {
+        var credited = org.mockito.Mockito.mock(FundFlow.class);
+        org.mockito.Mockito.when(credited.getFlowType()).thenReturn(FundFlowType.REWARD);
+        org.mockito.Mockito.when(credited.getAmountYuan()).thenReturn(24);
+        var funds = new FundsContext(ScenarioCode.TASK_REBATE,1024,0,0,0,0,List.of(credited),
+                24,0,0,0,0,new com.aiscam.antiscam.simulation.rules.ActionGate.TrustGate(60,40,70,85,200));
+        var scene = new AgentScene(ScenarioCode.TASK_REBATE,"刷单","简介","联系人","本人","test",
+                "", template("v17/victim"), "", "公开背景", true, "", true, true, true);
+        var runner = new AgentRunner(request -> """
+                {"line":"我没看到24元到账。等它真落袋了，下一步怎么操作？","action":null,"psychology":"仍有顾虑",
+                 "tone":{"speed":"NORMAL","style":"自然"},"fundActions":[]}
+                """, new SimulationProperties().getLlm());
+        var turn = runner.victim(scene,List.of(),new DialogueLine(6,SpeakerRole.SCAMMER,"24元已真实到账",null,null),
+                6,60000,false,0,funds);
+        assertEquals("这笔24元已收到。下一步怎么操作？", turn.line());
+        assertEquals("仍有顾虑",turn.psychology()); assertTrue(turn.fundActions().isEmpty());
+    }
+
+    @Test void frozenScammerRulesAlsoReachOlderTemplatesWithoutARulePlaceholder() {
+        var captured = new java.util.concurrent.atomic.AtomicReference<String>();
+        var scene = new AgentScene(ScenarioCode.TASK_REBATE,"刷单","简介","联系人","本人","test",
+                template("v7/scammer"), "", "", "公开背景", true, "", true, false, false, "RULE_SENTINEL");
+        var runner = new AgentRunner(request -> {
+            captured.set(request.prompt());
+            return """
+                    {"line":"你好，请先了解任务安排。","action":null,"intent":"建立联系",
+                    "tone":{"speed":"NORMAL","style":"自然"},"claimedRefundYuan":null,"fundActions":[]}
+                    """;
+        },new SimulationProperties().getLlm());
+        runner.scammer(scene,List.of(),1,60000,0,new FundsContext(ScenarioCode.TASK_REBATE,1000,0,0,0,0,List.of()));
+        assertTrue(captured.get().contains("RULE_SENTINEL"));
+        assertTrue(captured.get().contains("条件未发生或尚未知时不执行对应行为"));
     }
 
     @Test void eventContextDoesNotExposeInternalIntentAsObservableEvidence() {
@@ -115,6 +273,49 @@ class AgentCorrectionTest {
             assertTrue(error.retryFeedback().contains(raw));assertFalse(error.getMessage().contains(quote));
             assertTrue(error.getMessage().contains("source=CONTENT"));
         }
+    }
+
+    @Test void wholeRoundEventRetryCanRemoveUnsupportedQuotesWithoutInventingEvidence() {
+        var scene = new AgentScene(ScenarioCode.TASK_REBATE, "刷单", "简介", "联系人", "本人", "test",
+                "", "", "", "公开背景", true, template("v18/event"), true, true, true);
+        var lines = List.of(new DialogueLine(4, SpeakerRole.SCAMMER, "我发你新版链接", "发送模拟链接", null),
+                new DialogueLine(4, SpeakerRole.VICTIM, "还是空白页", null, null));
+        String rejected = """
+                {"events":[{"type":"NEW_EFFECTIVE_EXPLANATION","subjectKey":"链接","progressKey":"新版",
+                "quote":"新版链接已经解决问题","source":"CONTENT","speaker":"SCAMMER","eventOrder":1}]}
+                """;
+        var prompts = new ArrayList<String>();
+        var runner = new AgentRunner(request -> {
+            prompts.add(request.prompt());
+            return request.attempt() == 0 ? rejected : "{\"events\":[]}";
+        }, new SimulationProperties().getLlm());
+        var error = assertThrows(AgentCallException.class, () -> runner.event(scene, lines, 4, 10000, 0, null));
+        assertTrue(runner.event(scene, lines, 4, 10000, 1, null, "", error.retryFeedback()).isEmpty());
+        assertTrue(prompts.getLast().contains("逐条核对"));
+        assertTrue(prompts.getLast().contains("无法支持该事件则删除该条"));
+        assertTrue(prompts.getLast().contains("[SCAMMER] CONTENT：我发你新版链接"));
+        assertTrue(prompts.getLast().contains(rejected));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(ScenarioCode.class)
+    void finalEventAttemptOmitsUnsupportedQuotesAndKeepsValidEvidence(ScenarioCode code) {
+        var scene = new AgentScene(code, "场景", "简介", "联系人", "本人", "test",
+                "", "", "", "公开背景", true, template("v18/event"), true, true, true);
+        String raw = """
+                {"events":[{"type":"NEW_EFFECTIVE_EXPLANATION","subjectKey":"链接","progressKey":"新版",
+                "quote":"不存在的说法","source":"CONTENT","speaker":"SCAMMER","eventOrder":1},
+                {"type":"INDEPENDENT_SUPPORT","subjectKey":"态度","progressKey":"接受解释",
+                "quote":"我相信这个解释","source":"CONTENT","speaker":"VICTIM","eventOrder":1}]}
+                """;
+        var runner = new AgentRunner(request -> raw, new SimulationProperties().getLlm());
+        var lines = List.of(new DialogueLine(4, SpeakerRole.SCAMMER, "这是新版说明", null, null),
+                new DialogueLine(4, SpeakerRole.VICTIM, "我相信这个解释", null, null));
+        assertThrows(AgentCallException.class, () -> runner.event(scene, lines, 4, 10000, 0, null));
+        var accepted = runner.event(scene, lines, 4, 10000, 2, null);
+        assertEquals(1, accepted.size());
+        assertEquals(SpeakerRole.VICTIM, accepted.getFirst().speaker());
+        assertEquals("我相信这个解释", accepted.getFirst().quote());
     }
 
     @Test void familyIdentityJudgementDoesNotUseFatherOrScammerNameAsAnUnspecifiedSonName() {

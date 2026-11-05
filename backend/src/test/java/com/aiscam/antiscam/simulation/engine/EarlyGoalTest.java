@@ -33,7 +33,7 @@ class EarlyGoalTest {
         }
     }
     private FundsContext funds() {
-        return new FundsContext(ScenarioCode.IMPERSONATION_LOAN,30000,0,0,0,0,List.of(),
+        return new FundsContext(ScenarioCode.IMPERSONATION_LOAN,30000,0,0,100,0,List.of(),
                 0,0,0,0,0,new ActionGate.TrustGate(70,40,50,60,2000));
     }
     private SimulationSession session() {

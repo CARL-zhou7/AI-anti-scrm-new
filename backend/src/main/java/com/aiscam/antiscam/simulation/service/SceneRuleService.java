@@ -99,12 +99,28 @@ public class SceneRuleService {
     /** Commits a reviewed rule and links every selected source in one transaction. */
     @Transactional
     public SceneRuleView create(long adminUserId, SceneRuleWrite request) {
+        try { ScenarioCode.valueOf(request.scenarioCode()); }
+        catch (IllegalArgumentException | NullPointerException e) {
+            throw ApiException.field("scenarioCode", "VALUE_INVALID", "请选择有效场景");
+        }
+        SpeakerRole targetRole;
+        try { targetRole = request.targetRole() == null ? SpeakerRole.SCAMMER : SpeakerRole.valueOf(request.targetRole()); }
+        catch (IllegalArgumentException e) {
+            throw ApiException.field("targetRole", "VALUE_INVALID", "角色只允许SCAMMER或VICTIM");
+        }
         if (request.scenarioCode() == null || request.title() == null || request.title().isBlank()
                 || request.ruleText() == null || request.ruleText().isBlank())
             throw ApiException.field("title", "REQUIRED", "场景、标题与正文不能为空");
-        if (rules.existsByScenarioCodeAndTitle(request.scenarioCode(), request.title().strip()))
+        validateText(request.title(), request.ruleText());
+        if (targetRole == SpeakerRole.SCAMMER
+                ? rules.existsByScenarioCodeAndTitle(request.scenarioCode(), request.title().strip())
+                : rules.existsByScenarioCodeAndTargetRoleAndTitle(request.scenarioCode(), targetRole, request.title().strip()))
             throw new ApiException(409, "RULE_TITLE_CONFLICT", "同一场景已有同名规则");
-        var selected = waiting(adminUserId, request.sourceInterventionIds(), true);
+        if (targetRole == SpeakerRole.VICTIM && request.sourceInterventionIds() != null && !request.sourceInterventionIds().isEmpty())
+            throw ApiException.field("sourceInterventionIds", "VALUE_INVALID", "受害者规则请直接编写，不关联骗子干预来源");
+        var selected = targetRole == SpeakerRole.VICTIM || request.sourceInterventionIds() == null
+                || request.sourceInterventionIds().isEmpty() ? List.<SimulationIntervention>of()
+                : waiting(adminUserId, request.sourceInterventionIds(), true);
         for (var record : selected) {
             if (!record.getSceneCode().equals(request.scenarioCode()))
                 throw ApiException.field("sourceInterventionIds", "VALUE_INVALID", "来源必须与规则同场景");
@@ -112,7 +128,7 @@ public class SceneRuleService {
                 throw new ApiException(409, "SOURCE_ALREADY_LINKED", "该来源已归入其他规则");
         }
         var rule = rules.saveAndFlush(new SceneRule(request.scenarioCode(), request.title().strip(),
-                request.ruleText().strip(), adminUserId));
+                request.ruleText().strip(), adminUserId, targetRole));
         for (var record : selected) {
             sources.save(new SceneRuleSource(rule.getId(), record.getId(), adminUserId));
             record.linkToRule();
@@ -127,9 +143,12 @@ public class SceneRuleService {
         if (rule.getCreatedBy() != adminUserId) throw ApiException.notFound();
         if (request.version() != null && request.version() != rule.getVersionNo())
             throw ApiException.versionConflict(rule.getVersionNo());
+        validateText(request.title(), request.ruleText());
         String title = request.title() == null || request.title().isBlank() ? rule.getTitle() : request.title().strip();
         if (!title.equals(rule.getTitle())
-                && rules.existsByScenarioCodeAndTitleAndIdNot(rule.getScenarioCode(), title, ruleId))
+                && (rule.getTargetRole() == SpeakerRole.SCAMMER
+                    ? rules.existsByScenarioCodeAndTitleAndIdNot(rule.getScenarioCode(), title, ruleId)
+                    : rules.existsByScenarioCodeAndTargetRoleAndTitleAndIdNot(rule.getScenarioCode(), rule.getTargetRole(), title, ruleId)))
             throw new ApiException(409, "RULE_TITLE_CONFLICT", "同一场景已有同名规则");
         rule.update(title, request.ruleText(), request.status() == null ? null
                 : com.aiscam.antiscam.simulation.web.dto.SceneRuleViews.status(request.status()));
@@ -189,5 +208,12 @@ public class SceneRuleService {
 
     private SceneRuleView view(SceneRule rule) {
         return SceneRuleView.from(rule, sources.countByRuleId(rule.getId()));
+    }
+
+    private static void validateText(String title, String text) {
+        if (title != null && (title.isBlank() || title.length() > 128))
+            throw ApiException.field("title", "VALUE_INVALID", "规则标题应为1—128字");
+        if (text != null && (text.isBlank() || text.length() > 4000))
+            throw ApiException.field("ruleText", "VALUE_INVALID", "规则正文应为1—4000字");
     }
 }

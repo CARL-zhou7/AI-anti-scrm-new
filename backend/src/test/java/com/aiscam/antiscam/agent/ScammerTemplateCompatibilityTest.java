@@ -23,6 +23,8 @@ class ScammerTemplateCompatibilityTest {
                 template,"","","公开背景",true,null,true,false,modern,"不虚构到账");
         var runner = new AgentRunner(request -> {
             assertFalse(request.prompt().contains("{{"));
+            assertTrue(request.prompt().contains("type=REWARD、purpose=REWARD、relatedPaymentId=null"));
+            assertTrue(request.prompt().contains("type=REFUND、purpose=REFUND"));
             assertTrue(request.prompt().contains(modern ? "固定15轮" : "剩余有效演绎时长约10秒"));
             return "{\"line\":\"你好，先给你介绍一下\",\"action\":null,\"intent\":\"介绍\","
                     + "\"tone\":{\"speed\":\"NORMAL\",\"style\":\"自然\"},\"claimedRefundYuan\":null,\"fundActions\":[]}";

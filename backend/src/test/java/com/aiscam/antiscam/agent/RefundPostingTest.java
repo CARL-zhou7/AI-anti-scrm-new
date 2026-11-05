@@ -11,6 +11,17 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RefundPostingTest {
+    @Test void conditionalVictimPaymentsAreNotCompletedScammerPayouts() {
+        var context = new FundsContext(ScenarioCode.TASK_REBATE, 3000, 9000, 0, 0, 0, List.of(),
+                0, 7500, 1500, 0, 0, new com.aiscam.antiscam.simulation.rules.ActionGate.TrustGate(58, 40, 70, 85, 200));
+        for (String line : List.of("您完成18元付款后，我再返3元", "完成18元支付后，返利3元会原路退回微信",
+                "您已经支付18元，返利3元稍后到账", "您这边18元付款已完成，我随后安排返利"))
+            assertDoesNotThrow(() -> AgentOutputValidator.funds(SpeakerRole.SCAMMER, line, null, 3,
+                    List.of(), 4, context, List.of()), line);
+        for (String line : List.of("已实际返款3元", "已给你转账3元", "已实际发放3元报酬", "3元已经到账"))
+            assertThrows(AgentCallException.class, () -> AgentOutputValidator.funds(SpeakerRole.SCAMMER, line, null, 3,
+                    List.of(), 4, context, List.of()), line);
+    }
     private final FundFlow payment = flow(1, FundFlowType.PAYMENT, 50, 2950, null);
     private final FundFlow refund = flow(2, FundFlowType.REFUND, 20, 2970, 1L);
     private final FundsContext paid = new FundsContext(ScenarioCode.TASK_REBATE, 2950, 9000, 0, 50, 0, List.of(payment));

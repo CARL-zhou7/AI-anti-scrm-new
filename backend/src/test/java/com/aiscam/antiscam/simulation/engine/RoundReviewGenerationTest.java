@@ -49,7 +49,7 @@ class RoundReviewGenerationTest {
                 .thenAnswer(call -> { started.countDown(); assertTrue(release.await(3, TimeUnit.SECONDS)); return List.of(); });
         when(runner.narrator(any(), anyList(), eq(1), any(), anyLong(), anyInt(), any(), any(), eq(false), anyList(), anyString(), anyString()))
                 .thenAnswer(call -> { started.countDown(); assertTrue(release.await(3, TimeUnit.SECONDS)); return judgement; });
-        when(runner.scammer(any(), anyList(), eq(2), anyLong(), anyInt(), any(), anyString(), anyString(), anyString()))
+        when(runner.scammer(any(), anyList(), eq(2), anyLong(), anyInt(), any(), anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(new ScammerTurn("下一轮草稿", null, "意图", new ToneHint(Speed.NORMAL, "自然"), null, List.of()));
         var engine = new SimulationOrchestrator(transitions, sessions, rounds, mock(SimulationMessageRepository.class), null, null, runner,
                 null, mock(TempAudioStore.class), null, new SimulationProperties(), mock(org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler.class),
@@ -178,6 +178,8 @@ class RoundReviewGenerationTest {
             assertEquals("发送平台备案截图", prepared.action());
             assertTrue(prompt.get().contains(guidance));
             assertTrue(prompt.get().contains("完整话术line和行为action"));
+            assertTrue(prompt.get().contains("旧台词"));
+            assertEquals(List.of("旧台词"), live.discardedScammerLines.get(2));
             verify(transitions, timeout(2000)).saveDraft(53, 2, prepared.line(), prepared.action(), guidance, 7, prepared.claimedRefundYuan(), prepared.fundActions());
         } finally {
             ((ExecutorService) ReflectionTestUtils.getField(engine, "io")).shutdownNow();

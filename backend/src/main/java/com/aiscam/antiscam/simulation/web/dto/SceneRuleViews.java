@@ -11,16 +11,25 @@ public final class SceneRuleViews {
     /** Induction result: a proposal the administrator reviews before submitting. Nothing is written yet. */
     public record RuleDraft(String scenarioCode, String title, String ruleText, List<String> sourceInterventionIds) {}
 
-    public record SceneRuleWrite(String scenarioCode, String title, String ruleText, List<String> sourceInterventionIds) {}
+    public record SceneRuleWrite(String scenarioCode, String title, String ruleText, List<String> sourceInterventionIds,
+            String targetRole) {
+        public SceneRuleWrite(String scenarioCode, String title, String ruleText, List<String> sourceInterventionIds) {
+            this(scenarioCode, title, ruleText, sourceInterventionIds, "SCAMMER");
+        }
+    }
 
     public record SceneRuleUpdate(String title, String ruleText, String status, Integer version) {}
 
     public record SceneRuleView(String ruleId, String scenarioCode, String title, String ruleText, int version,
-            String status, long sourceCount, String updatedAt) {
+            String status, long sourceCount, String updatedAt, String targetRole) {
+        public SceneRuleView(String ruleId, String scenarioCode, String title, String ruleText, int version,
+                String status, long sourceCount, String updatedAt) {
+            this(ruleId, scenarioCode, title, ruleText, version, status, sourceCount, updatedAt, "SCAMMER");
+        }
         public static SceneRuleView from(SceneRule rule, long sourceCount) {
             return new SceneRuleView(rule.getId().toString(), rule.getScenarioCode(), rule.getTitle(), rule.getRuleText(),
                     rule.getVersionNo(), rule.getStatus().name(), sourceCount,
-                    com.aiscam.antiscam.common.time.UtcTime.format(rule.getUpdatedAt()));
+                    com.aiscam.antiscam.common.time.UtcTime.format(rule.getUpdatedAt()), rule.getTargetRole().name());
         }
     }
 

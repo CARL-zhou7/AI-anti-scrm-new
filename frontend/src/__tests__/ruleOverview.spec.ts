@@ -9,3 +9,10 @@ it('reads complete saved fields and recomputes after edits without rewriting exe
   expect(ruleOverview('适用情况：' + '长'.repeat(81) + '\n话术指导：原文')).toBeNull()
   expect(text).toContain('沿用既定身份和称谓')
 })
+
+
+it('reads explicit short summaries while retaining a long complete rule', () => {
+  const text = '何时适用：达到返款条件时。\n规则作用：实际付款并避免重复出款。\n\n' + '完整执行约束。'.repeat(30)
+  expect(ruleOverview(text)).toEqual({ condition: '达到返款条件时。', guidance: '实际付款并避免重复出款。' })
+  expect(ruleOverview(text.replaceAll('\n', '\r\n'))).toEqual(ruleOverview(text))
+})
