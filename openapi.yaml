@@ -795,7 +795,7 @@ paths:
       - 首页
       summary: 用户首页
       operationId: getHome
-      description: '返回固定介绍、资讯空状态及语义入口；管理员不获得用户体验权限。
+      description: '返回固定介绍、资讯可用状态及语义入口；管理员不获得用户体验权限。
 
 
         需求依据：PRD§8.2、FR-HOME-01～03'
@@ -819,7 +819,7 @@ paths:
                 data:
                   title: AI反诈情景推演平台
                   introduction: 观看AI情景演绎，结合逐轮解说、风险与复盘学习反诈知识。
-                  newsState: EMPTY
+                  newsState: AVAILABLE
                   entries:
                   - CONFIGURATION
                   - HISTORY
@@ -934,9 +934,9 @@ paths:
     get:
       tags:
       - 首页
-      summary: 资讯空结构
+      summary: 反诈资讯列表
       operationId: listNews
-      description: 'data固定为[]；无分页、不加载真实或虚构资讯。
+      description: '返回精选反诈新闻、真实案例和防骗提醒，按原文发布日期从新到旧排列。
 
 
         需求依据：PRD§8.2、PC-P03'
@@ -954,11 +954,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NewsResponse'
-              example:
-                code: OK
-                message: 成功
-                data: []
-                requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
           headers:
             Cache-Control:
               schema:
@@ -10492,7 +10487,7 @@ components:
       - loggedOut: true
     Home:
       type: object
-      description: 普通用户首页，无真实资讯
+      description: 普通用户首页
       properties:
         title:
           type: string
@@ -10502,7 +10497,7 @@ components:
           description: 固定项目介绍
         newsState:
           type: string
-          const: EMPTY
+          enum: [EMPTY, AVAILABLE]
         entries:
           type: array
           items:
@@ -10521,18 +10516,34 @@ components:
       examples:
       - title: AI反诈情景推演平台
         introduction: 观看AI情景演绎，结合逐轮解说、风险与复盘学习反诈知识。
-        newsState: EMPTY
+        newsState: AVAILABLE
         entries:
         - CONFIGURATION
         - HISTORY
     News:
       type: array
       items:
-        type: object
-      description: 本期固定空数组，不接入资讯服务
-      maxItems: 0
-      examples:
-      - []
+        $ref: '#/components/schemas/NewsItem'
+      description: 服务端维护的固定资讯列表
+    NewsItem:
+      type: object
+      properties:
+        title:
+          type: string
+        category:
+          type: string
+        source:
+          type: string
+        publishedAt:
+          type: string
+          format: date
+          description: 原文发布日期
+        url:
+          type: string
+          format: uri
+          description: 文章正文的 HTTPS 地址
+      required: [title, category, source, publishedAt, url]
+      additionalProperties: false
     AvatarKey:
       type: string
       description: URL安全的不透明资源键；服务端映射实际文件，不是文件路径
@@ -14053,7 +14064,7 @@ components:
         data:
           title: AI反诈情景推演平台
           introduction: 观看AI情景演绎，结合逐轮解说、风险与复盘学习反诈知识。
-          newsState: EMPTY
+          newsState: AVAILABLE
           entries:
           - CONFIGURATION
           - HISTORY
@@ -14081,7 +14092,12 @@ components:
       examples:
       - code: OK
         message: 成功
-        data: []
+        data:
+        - title: 江汉警方拦截两起投资诈骗现金交付，止损20万元
+          category: 真实案例
+          source: 武汉市公安局
+          publishedAt: '2026-11-04'
+          url: https://gaj.wuhan.gov.cn/jmzx/jwdt/202611/t20261104_2873716.html
         requestId: 4aca43db-cd49-4b77-9abc-7e3490b55185
     AvatarUploadResponse:
       type: object

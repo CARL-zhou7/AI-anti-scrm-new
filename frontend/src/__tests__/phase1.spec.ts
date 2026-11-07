@@ -85,6 +85,29 @@ describe('phase 1 smoke', () => {
     failed.unmount()
   })
 
+  it('renders each news item as a link to its original article', async () => {
+    vi.spyOn(homeApi, 'getHome').mockResolvedValue({ title: '平台首页', introduction: '平台介绍',
+      newsState: 'AVAILABLE', entries: [] })
+    vi.spyOn(homeApi, 'getNews').mockResolvedValue([
+      { title: '警方拦截虚假理财诈骗', category: '真实案例', source: '市公安局',
+        publishedAt: '2026-11-04', url: 'https://example.com/articles/1' },
+      { title: '购物季防骗提醒', category: '防骗提醒', source: '市公安局',
+        publishedAt: '2026-10-28', url: 'https://example.com/articles/2' },
+    ])
+    const view = mount(HomeView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+    const links = view.findAll('.news-card a')
+    expect(links.map(link => link.attributes('href'))).toEqual([
+      'https://example.com/articles/1', 'https://example.com/articles/2',
+    ])
+    expect(links[0].text()).toContain('警方拦截虚假理财诈骗')
+    expect(links[0].text()).toContain('2026-11-04')
+    expect(links[0].attributes('target')).toBe('_blank')
+    expect(links[0].attributes('rel')).toContain('noopener')
+    expect(view.find('[data-testid="home-news-empty"]').exists()).toBe(false)
+    view.unmount()
+  })
+
   it('validates confirmation then returns to login without authenticating', async () => {
     const router = createRouter({ history: createMemoryHistory(), routes: [
       { path: '/register', component: RegisterView }, { path: '/login', component: { template: '<div>登录</div>' } },

@@ -244,10 +244,13 @@ class AuthHomeSmokeTest {
         mvc.perform(get(BASE + "/auth/me?userId=999").session(session))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value("101"));
         mvc.perform(get(BASE + "/home").session(session)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.newsState").value("EMPTY"))
+                .andExpect(jsonPath("$.data.newsState").value("AVAILABLE"))
                 .andExpect(jsonPath("$.data.entries[0]").value("CONFIGURATION"));
         mvc.perform(get(BASE + "/news").session(session)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isEmpty());
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[0].publishedAt").value("2026-11-04"))
+                .andExpect(jsonPath("$.data[0].category").value("真实案例"))
+                .andExpect(jsonPath("$.data[0].url").value("https://gaj.wuhan.gov.cn/jmzx/jwdt/202611/t20261104_2873716.html"));
         mvc.perform(post(BASE + "/auth/logout").session(session).header("X-CSRF-TOKEN", oldToken))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID"));
         String fresh = token(csrf(session));

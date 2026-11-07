@@ -3,6 +3,7 @@ package com.aiscam.antiscam.home.web;
 import com.aiscam.antiscam.common.api.ApiResponse;
 import com.aiscam.antiscam.home.service.HomeService;
 import com.aiscam.antiscam.home.web.dto.Home;
+import com.aiscam.antiscam.home.web.dto.NewsItem;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,5 +19,5 @@ public class HomeController {
     public ApiResponse<Home> home() { return ApiResponse.ok(service.getHome()); }
 
     @GetMapping("/news")
-    public ApiResponse<List<Object>> news() { return ApiResponse.ok(service.listNews()); }
+    public ApiResponse<List<NewsItem>> news() { return ApiResponse.ok(service.listNews()); }
 }

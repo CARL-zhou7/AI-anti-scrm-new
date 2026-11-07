@@ -8,10 +8,17 @@ export interface LogoutResult { loggedOut: true }
 export interface HomePayload {
   title: string
   introduction: string
-  newsState: 'EMPTY'
+  newsState: 'EMPTY' | 'AVAILABLE'
   entries: ('CONFIGURATION' | 'HISTORY')[]
 }
-export type NewsPayload = []
+export interface NewsItem {
+  title: string
+  category: string
+  source: string
+  publishedAt: string
+  url: string
+}
+export type NewsPayload = NewsItem[]
 export interface FieldError { field: string; code: string; message: string }
 export interface ErrorDetail { fieldErrors: FieldError[]; activeSessionId: string | null; currentVersion: number | null }
 export interface Envelope<T> { code: string; message: string; data: T; requestId: string }
