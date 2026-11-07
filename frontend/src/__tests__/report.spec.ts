@@ -8,7 +8,7 @@ import { historyApi } from '../api/history'
 import { ApiError } from '../api/http'
 import type { ReportView } from '../api/types'
 
-vi.mock('vue-router', async original => ({ ...(await original<typeof import('vue-router')>()), useRoute: () => ({ params: { id: '1' } }) }))
+vi.mock('vue-router', async original => ({ ...(await original<typeof import('vue-router')>()), useRoute: () => ({ params: { id: '1' }, meta: {} }) }))
 
 function report(status: 'PENDING' | 'SUCCEEDED' | 'FAILED' = 'SUCCEEDED'): ReportView {
   return {

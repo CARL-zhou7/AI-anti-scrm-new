@@ -116,8 +116,8 @@ onMounted(load)
     <div v-if="busy" class="loading-state" data-testid="configuration-loading" role="status">正在加载场景与画像…</div>
     <section v-else-if="error" class="load-error" data-testid="configuration-error" role="alert"><h2>配置加载失败</h2><p>{{ error }}</p>
       <button class="button button-primary" data-testid="configuration-retry" @click="load">重新加载</button></section>
-    <template v-else>
-      <section class="configuration-section"><h2>01 选择诈骗场景</h2><p class="field-help">内容侧重不限制人物选择，也不会改变人物属性。</p>
+    <div v-else class="configuration-grid">
+      <section class="configuration-section scenario-list"><h2>01 选择诈骗场景</h2><p class="field-help">内容侧重不限制人物选择，也不会改变人物属性。</p>
         <ScenarioPicker :scenarios="scenarios" :selected="selectedScenarioId" :disabled="checking" @select="select('scenario', $event)" /></section>
       <section class="configuration-section"><h2>02 选择双方画像</h2>
         <div class="profile-columns">
@@ -135,45 +135,61 @@ onMounted(load)
           </section>
         </div>
       </section>
-      <ConfigurationSummary :scenario="scenario" :scammer="scammer" :victim="victim" @avatar-error="avatarError" />
+      <ConfigurationSummary class="configuration-summary" :scenario="scenario" :scammer="scammer" :victim="victim" @avatar-error="avatarError" />
       <div class="configuration-actions">
         <p v-if="reselect" class="error-message" data-testid="configuration-reselect-hint" role="alert">所选画像已不可用，请重新选择</p>
         <p v-if="notice" class="success-message" role="status">{{ notice }}</p>
         <p id="configuration-start-help" class="field-help">{{ ready ? '进入演绎页后，资源加载完成即可点击开始演绎。' : '请选择一个场景和双方画像，并等待所选头像加载成功。' }}</p>
         <button class="button button-primary" data-testid="configuration-start" :disabled="!ready || checking" aria-describedby="configuration-start-help" @click="start">{{ checking ? '正在核验…' : '进入演绎' }}</button>
       </div>
-    </template>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.configuration-heading { margin-bottom:28px; }
-.configuration-heading h1 { margin-bottom:12px; }
-.configuration-heading p { color:var(--muted); }
+.configuration-heading { margin-bottom:20px; padding:18px 22px; background:var(--ice); border-top:3px solid var(--navy); }
+.configuration-heading h1 { margin-bottom:8px; }
+.configuration-heading p { color:var(--muted); max-width:64ch; margin-bottom:10px; }
 .configuration-toolbar { display:flex; flex-wrap:wrap; gap:12px; }
-.configuration-section { padding:28px; margin-bottom:24px; background:white; border:1px solid var(--border); border-radius:12px; }
+@media(min-width:761px) {
+  .configuration-heading { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:0 20px; }
+  .configuration-heading > :not(.configuration-toolbar) { grid-column:1; }
+  .configuration-toolbar { grid-column:2; grid-row:1/4; align-self:center; }
+}
+.configuration-grid { display:grid; grid-template-columns:minmax(225px,265px) minmax(0,1fr); gap:16px; align-items:start; }
+.configuration-grid > .configuration-section { margin:0; }
+.configuration-grid > .scenario-list { grid-row:1 / span 3; }
+.configuration-summary,.configuration-actions { grid-column:2; }
 .configuration-section h2 { font-size:20px; }
-.configuration-actions { text-align:right; padding:0 8px 24px; }
-.configuration-layout :deep(.scenario-options) { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-.configuration-layout :deep(.scenario-option) { padding:22px; border:1px solid var(--border); border-radius:10px; background:#fbfcf8; color:inherit; text-align:left; }
-.configuration-layout :deep(.scenario-option h3) { margin:12px 0; font-size:17px; }
-.configuration-layout :deep(.scenario-option p) { font-size:13px; }
-.configuration-layout :deep([aria-pressed=true]) { border-color:var(--green); box-shadow:inset 0 0 0 1px var(--green); background:#f0f4e7; }
+.configuration-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; background:var(--ice); border:1px solid var(--border); padding:12px 16px; }
+.configuration-actions [role] { flex-basis:100%; }
+.scenario-list { background:#172943; border-color:#172943; color:#f4f8fc; padding:16px; }
+.scenario-list :deep(.field-help), .scenario-list :deep(.quiet-label) { color:#bed3e5; }
+.scenario-list :deep(.scenario-options) { display:grid; gap:5px; }
+.scenario-list :deep(.scenario-option) { padding:11px 10px; border:1px solid #455f7a; border-radius:4px; background:#1e3550; color:inherit; text-align:left; }
+.scenario-list :deep(.scenario-option h3) { margin:4px 0; font-size:16px; }
+.scenario-list :deep(.scenario-option p) { font-size:13px; margin-bottom:4px; }
+.scenario-list :deep(.scenario-option .selection-label) { color:#e4f0fa; }
+.scenario-list :deep([aria-pressed=true]) { border-color:#7193b0; box-shadow:inset 3px 0 var(--accent); background:#294661; }
+.configuration-layout :deep(.profile-card[aria-pressed=true]) { border-color:#4f7c9d; box-shadow:inset 3px 0 #4f7c9d; background:#e6f0f7; }
 .configuration-layout :deep(.profile-columns) { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
-.configuration-layout :deep(.profile-card) { width:100%; padding:16px; display:flex; align-items:center; gap:16px; margin-bottom:12px; border:1px solid var(--border); border-radius:10px; text-align:left; background:#fbfcf8; color:inherit; }
-.configuration-layout :deep(.profile-card img) { width:76px; height:76px; flex-shrink:0; border-radius:10px; object-fit:cover; }
+.configuration-layout :deep(.profile-card) { width:100%; padding:16px; display:flex; align-items:center; gap:16px; margin-bottom:12px; border:1px solid var(--border); border-radius:4px; text-align:left; background:var(--surface); color:inherit; }
+.configuration-layout :deep(.profile-card img) { width:54px; height:54px; flex-shrink:0; border-radius:4px; object-fit:cover; }
 .configuration-layout :deep(.profile-card-copy) { min-width:0; overflow-wrap:anywhere; }
 .configuration-layout :deep(.profile-identity) { display:block; font-size:12px; color:var(--muted); margin:5px 0; }
-.configuration-layout :deep(.selection-label) { font-size:12px; color:var(--green); }
-.configuration-layout :deep(.recommendation-label) { flex-shrink:0; margin-left:auto; padding:6px 12px; border:1px solid #c5d49b; border-radius:6px; background:#e7efc5; color:var(--green); font-size:14px; font-weight:600; }
+.configuration-layout :deep(.selection-label) { font-size:12px; color:var(--navy); }
+.configuration-layout :deep(.recommendation-label) { flex-shrink:0; margin-left:auto; padding:6px 12px; border:1px solid #b9cddb; border-radius:6px; background:#e2edf3; color:var(--navy); font-size:14px; font-weight:600; }
 .configuration-layout :deep(.profile-detail) { border-top:1px solid var(--border); padding-top:18px; }
-.configuration-layout :deep(.detail-avatar) { width:88px; height:88px; object-fit:cover; border-radius:10px; margin-bottom:12px; }
+.configuration-layout :deep(.detail-avatar) { width:88px; height:88px; object-fit:cover; border-radius:4px; margin-bottom:12px; }
 .configuration-layout :deep(.profile-detail small) { font-size:12px; font-weight:400; color:var(--muted); }
 .configuration-layout :deep(dl) { display:grid; grid-template-columns:100px 1fr; gap:10px; font-size:13px; }
 .configuration-layout :deep(dt) { color:var(--muted); }
 .configuration-layout :deep(dd) { margin:0; overflow-wrap:anywhere; white-space:pre-wrap; }
 @media(max-width:760px) {
-  .configuration-section { padding:20px; }
+  .configuration-section { padding:16px; }
+  .configuration-grid { grid-template-columns:minmax(0,1fr); }
+  .configuration-grid > .scenario-list { grid-row:auto; }
+  .configuration-summary,.configuration-actions { grid-column:auto; }
   .configuration-layout :deep(.scenario-options), .configuration-layout :deep(.profile-columns) { grid-template-columns:1fr; }
 }
 </style>

@@ -43,7 +43,7 @@ const presentations: Record<PresentationStatus, string> = { PENDING: '尚未呈�
 
 <style scoped>
 .history-rounds-scroll { height: 560px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding: .25rem .75rem .25rem .25rem; }
-.history-rounds-scroll:focus-visible { outline: 3px solid var(--green); outline-offset: 4px; }
+.history-rounds-scroll:focus-visible { outline: 3px solid var(--navy); outline-offset: 4px; }
 .history-round { border-left: 5px solid var(--risk-color); padding: .75rem 1rem; background: white; min-width: 0; overflow-wrap: anywhere; }
 .history-round + .history-round { border-top: 1px solid var(--border); margin-top: 1.5rem; }
 @media (max-width: 700px) { .history-rounds-scroll { height: 440px; padding-right: .25rem; } .history-round { padding: .75rem; } }

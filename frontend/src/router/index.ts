@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/auth'
 import { loginRole } from '../api/loginRole'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
+import RegistrationPracticeView from '../views/RegistrationPracticeView.vue'
 import HomeView from '../views/HomeView.vue'
 import HistoryView from '../views/HistoryView.vue'
 import HistoryDetailView from '../views/HistoryDetailView.vue'
@@ -24,6 +25,8 @@ const router = createRouter({
     { path: '/', redirect: '/home' },
     { path: '/login', component: LoginView, meta: { title: '登录', public: true } },
     { path: '/register', component: RegisterView, meta: { title: '注册', public: true } },
+    { path: '/register/practice', component: RegistrationPracticeView, meta: { title: '注册学习账号', public: true } },
+    { path: '/register/practice/result', component: RegistrationPracticeView, props: { revealed: true }, meta: { title: '反诈练习结果', public: true } },
     { path: '/home', component: HomeView, meta: { title: '首页', role: 'USER' } },
     { path: '/configuration', component: ConfigurationView, meta: { title: '开始体验', role: 'USER' } },
     { path: '/simulation', component: SimulationView, meta: { title: '情景演绎', role: 'USER', fullscreen: true } },
@@ -57,7 +60,8 @@ router.beforeEach(async to => {
 window.addEventListener('session-expired', () => {
   const auth = useAuthStore()
   auth.reset()
-  if (!router.currentRoute.value.meta.public) void router.replace('/login')
+  const current = router.currentRoute.value
+  if (current.matched.length && !current.meta.public) void router.replace('/login')
 })
 
 export default router

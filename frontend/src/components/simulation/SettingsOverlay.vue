@@ -29,8 +29,8 @@ const confirming = ref(false)
 </template>
 
 <style scoped>
-.overlay { position:absolute; inset:0; z-index:20; display:grid; place-items:center; background:rgb(13 16 30 / 0.72); backdrop-filter:blur(3px); }
-.panel { width:min(360px, calc(100vw - 32px)); display:grid; gap:12px; padding:28px; border-radius:16px; background:var(--sim-paper); color:var(--sim-ink); }
+.overlay { position:fixed; inset:0; z-index:30; display:grid; place-items:center; overflow:auto; background:rgb(13 16 30 / 0.72); backdrop-filter:blur(3px); }
+.panel { width:min(360px, calc(100vw - 32px)); display:grid; gap:12px; padding:28px; border-radius:5px; background:var(--sim-paper); color:var(--sim-ink); }
 h2 { margin:0 0 8px; font-family:var(--sim-display); font-size:26px; font-weight:400; letter-spacing:0.1em; }
 .row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #e3ddcd; }
 button { padding:12px; border-radius:10px; border:1px solid transparent; font-size:15px; cursor:pointer; }

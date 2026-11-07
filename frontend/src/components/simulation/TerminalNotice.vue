@@ -23,8 +23,8 @@ defineProps<{ message: string; code?: string; reportSessionId?: string; winner?:
 </template>
 
 <style scoped>
-.terminal { position:absolute; inset:0; z-index:30; display:grid; place-items:center; background:rgb(13 16 30 / 0.78); }
-.panel { width:min(420px, calc(100vw - 32px)); display:grid; gap:12px; padding:28px; border-radius:16px; background:var(--sim-paper); color:var(--sim-ink); text-align:center; }
+.terminal { position:fixed; inset:0; z-index:30; display:grid; place-items:center; overflow:auto; background:rgb(13 16 30 / 0.78); }
+.panel { width:min(420px, calc(100vw - 32px)); display:grid; gap:12px; padding:28px; border-radius:5px; background:var(--sim-paper); color:var(--sim-ink); text-align:center; }
 h2 { margin:0; font-family:var(--sim-display); font-size:28px; font-weight:400; color:var(--sim-warn); letter-spacing:0.1em; }
 p { margin:0; line-height:1.7; }
 .hint { font-size:13px; color:#6b6f80; }

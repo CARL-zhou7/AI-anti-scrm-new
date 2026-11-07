@@ -2,12 +2,13 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import SimulationView from '../views/SimulationView.vue'
+import SimulationStage from '../components/simulation/SimulationStage.vue'
 import { useAuthStore } from '../stores/auth'
 import { contentApi } from '../api/content'
 import { simulationApi } from '../api/simulation'
 import { adminApi } from '../api/admin'
 import { ApiError } from '../api/http'
-import { CARDS_MS } from '../simulation/performanceDirector'
+import { CARDS_MS, PerformanceDirector } from '../simulation/performanceDirector'
 import type { Configuration, ScammerDraft, SimulationEventEnvelope, SimulationState } from '../api/types'
 
 const push = vi.hoisted(() => vi.fn())
@@ -61,6 +62,26 @@ async function open(admin: boolean, review = true) {
   await vi.advanceTimersByTimeAsync(CARDS_MS)
   return wrapper
 }
+
+it('flaps the stage sprite only for the active speaker and respects an uploaded frame', async () => {
+  const scammer = { ...configuration.scammer,
+    avatar: { ...common.avatar, key: '48d6c708ae546f4d0ca4d17d9f98eda89177ddcc480133070a89f7e42dc642ec' },
+    speakingAvatar: { ...common.speakingAvatar, key: 'd32624d7261baaeb14726fdcc1332a1b1865b57341d6c0e6b1f940f7b2b849e5' } }
+  const selected = { ...configuration, scammer }
+  const view = PerformanceDirector.initialView()
+  const wrapper = mount(SimulationStage, { props: { configuration: selected, view } })
+  const left = wrapper.get('[data-testid="stage-character-left"]')
+  expect(left.get('.sprite').classes()).not.toContain('mouth-open')
+
+  await wrapper.setProps({ view: { ...view, speaking: 'SCAMMER', mouthOpen: true } })
+  expect(left.get('.sprite').classes()).toContain('mouth-open')
+  expect(wrapper.get('[data-testid="stage-character-right"] .open').classes()).not.toContain('show')
+
+  await wrapper.setProps({ configuration: { ...selected, scammer: { ...scammer, speakingAvatar: common.speakingAvatar } } })
+  expect(left.find('.sprite').exists()).toBe(false)
+  expect(left.get('.open.show').attributes('src')).toBe(common.speakingAvatar.url)
+  wrapper.unmount()
+})
 
 it.each([true, false])('wires draft events to the floating orb and waits for a click (admin=%s)', async admin => {
   const wrapper = await open(admin)
@@ -144,7 +165,7 @@ it.each(['http-first', 'event-first', 'failure'])('keeps the orb open throughout
   const adopt = vi.spyOn(simulationApi, 'adoptDraft')
   await wrapper.get('[data-testid="magic-orb-guidance"]').setValue('先解释流程')
   await wrapper.get('[data-testid="magic-orb-regenerate"]').trigger('click')
-  expect(wrapper.get('[data-testid="magic-orb-regenerating"]').text()).toBe('重新生成ing...')
+  expect(wrapper.get('[data-testid="magic-orb-regenerating"]').text()).toBe('正在重新生成话术与动作…')
   expect(wrapper.get('[data-testid="magic-orb-toggle"]').attributes('aria-expanded')).toBe('true')
   expect(wrapper.find('[data-testid="magic-orb-draft"]').exists()).toBe(false)
   await wrapper.get('[data-testid="narration-panel"]').trigger('click')
@@ -166,7 +187,7 @@ it.each(['http-first', 'event-first', 'failure'])('keeps the orb open throughout
   respond({ ...state(true).intervention!, currentRoundNo: 2, phase: 'SCAMMER_GENERATING', currentDraft: null })
   await flushPromises()
   if (order === 'http-first') {
-    expect(wrapper.get('[data-testid="magic-orb-regenerating"]').text()).toBe('重新生成ing...')
+    expect(wrapper.get('[data-testid="magic-orb-regenerating"]').text()).toBe('正在重新生成话术与动作…')
     expect(wrapper.get('[data-testid="magic-orb-toggle"]').attributes('aria-expanded')).toBe('true')
     deliverDraft()
     await flushPromises()

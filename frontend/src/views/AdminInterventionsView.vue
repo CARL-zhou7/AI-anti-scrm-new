@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../api/admin'
 import { ApiError } from '../api/http'
 import type { InterventionRecord, RuleDraft } from '../api/types'
-import AdminNav from '../components/AdminNav.vue'
 
 // Waiting-for-knowledge-base records (API-50/51). Only adopted interventions of this administrator appear here; a
 // proposal is read-only until the administrator submits it, and a failure never claims "已入库".
@@ -14,6 +13,8 @@ const selected = ref<string[]>([])
 const draft = ref<RuleDraft | null>(null)
 const title = ref(''), ruleText = ref('')
 
+const previewId = ref<string | null>(null)
+const previewedRecord = computed(() => records.value.find(record => record.interventionId === previewId.value) ?? records.value[0])
 const groups = computed(() => {
   const scenes = [...new Set(records.value.map(record => record.sceneCode))]
   return scenes.map(scene => ({ scene, items: records.value.filter(record => record.sceneCode === scene) }))
@@ -75,7 +76,6 @@ onMounted(load)
 
 <template>
   <div class="home-layout admin-layout" data-testid="admin-interventions" :aria-busy="loading || busy">
-    <AdminNav />
     <span class="eyebrow">知识库 · 待入库</span>
     <h1>待入库记录</h1>
     <p class="admin-intro">只显示本人演示测试场次中已采用、尚未归入规则的干预记录。勾选同一场景的多条记录后可归纳为一条场景规则；系统只合并，不拆分，一条来源只能归入一条规则。</p>
@@ -99,6 +99,8 @@ onMounted(load)
 
     <p v-if="!loading && records.length === 0" class="field-help" data-testid="interventions-empty">暂无待入库记录。在演示测试中采用一条改写的骗子台词后，这里会出现可归纳的来源。</p>
 
+    <div class="admin-split" v-if="records.length">
+      <div>
     <section v-for="group in groups" :key="group.scene" class="admin-panel" data-testid="intervention-group">
       <div class="admin-row-heading">
         <h2>{{ sceneName(group.scene) }}</h2>
@@ -109,15 +111,12 @@ onMounted(load)
           {{ group.items.every(item => isSelected(item.interventionId)) ? '取消全选' : '全选本场景' }}
         </button>
       </div>
-      <article v-for="record in group.items" :key="record.interventionId" class="admin-panel" data-testid="intervention-row">
+      <article v-for="record in group.items" :key="record.interventionId" class="admin-record" :class="{ 'admin-row-active': previewedRecord?.interventionId === record.interventionId }" data-testid="intervention-row">
         <label class="intervention-check">
           <input type="checkbox" data-testid="intervention-select" :checked="isSelected(record.interventionId)" :disabled="busy" @change="toggle(record.interventionId)" />
           第 {{ record.roundNo }} 轮 · 编号 {{ record.interventionId }}
         </label>
-        <p class="field-help">上一轮对话</p><p class="admin-description" style="white-space: pre-line">{{ record.previousContext || '暂无上一轮对话' }}</p>
-        <p class="field-help">原台词</p><p class="admin-description">{{ record.originalContent }}</p>
-        <p class="field-help">干预要求</p><p class="admin-description">{{ record.interventionNote || '（未填写）' }}</p>
-        <p class="field-help">最终台词</p><p class="admin-description">{{ record.finalContent }}</p>
+        <button type="button" class="text-button" :aria-pressed="previewedRecord?.interventionId === record.interventionId" @click="previewId = record.interventionId">查看干预对照</button>
       </article>
     </section>
 
@@ -126,6 +125,16 @@ onMounted(load)
         {{ busy ? '归纳中…' : `归纳选中的 ${selected.length} 条记录` }}
       </button>
       <span v-if="selected.length > 0 && selectedScene === null" class="field-help">只能归纳同一场景的来源。</span>
+    </div>
+      </div>
+      <aside v-if="previewedRecord" class="admin-panel admin-inspector">
+        <h2>第 {{ previewedRecord.roundNo }} 轮干预对照</h2>
+        <p class="quiet-label">记录 {{ previewedRecord.interventionId }}</p>
+        <p class="field-help">上一轮对话</p><p class="admin-description" style="white-space: pre-line">{{ previewedRecord.previousContext || '暂无上一轮对话' }}</p>
+        <p class="field-help">原台词</p><p class="admin-description">{{ previewedRecord.originalContent }}</p>
+        <p class="field-help">干预要求</p><p class="admin-description">{{ previewedRecord.interventionNote || '（未填写）' }}</p>
+        <p class="field-help">最终台词</p><p class="admin-description record-final">{{ previewedRecord.finalContent }}</p>
+      </aside>
     </div>
   </div>
 </template>

@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../api/admin'
 import { ApiError } from '../api/http'
 import type { AdminProfile, AvatarUpload, FieldError, ProfileFormValues, ProfileKind, ScammerWrite, VictimWrite } from '../api/types'
-import AdminNav from '../components/AdminNav.vue'
 import AvatarUploader from '../components/AvatarUploader.vue'
 import ProfileFormFields from '../components/ProfileFormFields.vue'
 import ProfileDetail from '../components/ProfileDetail.vue'
@@ -18,6 +17,7 @@ const formOpen = ref(false), editing = ref<AdminProfile | null>(null), previewUr
 const speakingPreviewUrl = ref(''), speakingReady = ref(false)
 const portraitsReady = computed(() => avatarReady.value && speakingReady.value && !!form.value.avatarKey && !!form.value.speakingAvatarKey)
 const expanded = ref<string | null>(null), failedAvatars = ref(new Set<string>())
+const selectedProfile = computed(() => rows.value.find(row => row.id === expanded.value))
 const busy = computed(() => loading.value || saving.value || uploading.value)
 function blank(): ProfileFormValues {
   return { name: '', age: '', gender: '', identity: '', description: '', contextPlace: '', currentState: '', avatarKey: '', speakingAvatarKey: '',
@@ -159,14 +159,16 @@ onMounted(() => load())
 
 <template>
   <div class="home-layout admin-layout" :data-testid="'admin-' + kind + 's'" :aria-busy="busy">
-    <AdminNav /><div class="admin-row-heading"><h1>{{ title }}管理</h1><button class="button button-primary" :data-testid="kind + '-new'" :disabled="busy || formOpen" @click="create">新增{{ title }}</button></div>
+    <div class="admin-row-heading"><h1>{{ title }}管理</h1><button class="button button-primary" :data-testid="kind + '-new'" :disabled="busy || formOpen" @click="create">新增{{ title }}</button></div>
     <p class="admin-intro">维护完整人物信息。画像不提供永久删除；每类至少保留一个可用画像，停用的画像可重新启用。</p>
     <p v-if="loading" role="status">正在加载…</p>
     <VersionConflictNotice v-if="conflict" :current-version="currentVersion" :disabled="busy" @reload="reloadConflict" />
     <p v-else-if="error" class="error-message" role="alert" :data-testid="kind + '-error'">{{ error }}</p>
     <button v-if="error && !formOpen && !conflict" class="button button-light" :disabled="busy" @click="load()">重新加载</button>
     <p v-if="success" class="success-message" role="status">{{ success }}</p>
-    <section v-for="row in displayedRows" :key="row?.id ?? 'new'" class="admin-panel" data-testid="admin-profile-row">
+    <div :class="{ 'admin-split': selectedProfile && !formOpen }">
+      <div>
+    <section v-for="row in displayedRows" :key="row?.id ?? 'new'" class="admin-panel" data-testid="admin-profile-row" :class="{ 'admin-row-active': !formOpen && expanded === row?.id }">
       <template v-if="formOpen && (editing?.id ?? null) === (row?.id ?? null)">
       <h2>{{ editing ? '编辑' : '新增' }}{{ title }}</h2>
       <form :data-testid="kind + '-form'" @submit.prevent="save">
@@ -184,12 +186,18 @@ onMounted(() => load())
         <img v-if="!failedAvatars.has(row.id)" :key="row.avatar.key" class="admin-profile-avatar" :src="row.avatar.url" :alt="row.name + '的头像'" @error="failedAvatars.add(row.id)" />
         <span v-else class="field-error">头像加载失败</span>
         <div class="admin-profile-copy"><h2>{{ row.name }}</h2><p>{{ row.identity }}</p><span :class="['admin-badge', { inactive: !row.enabled }]" data-testid="profile-enabled-badge">{{ row.enabled ? '启用' : '停用' }}</span> <span class="quiet-label" data-testid="profile-version">版本 {{ row.version }}</span></div>
-        <div class="admin-actions"><button class="text-button" :aria-expanded="expanded === row.id" @click="expanded = expanded === row.id ? null : row.id">{{ expanded === row.id ? '收起详情' : '完整详情' }}</button><button class="button button-light" data-testid="profile-edit" :disabled="busy || formOpen" @click="edit(row)">编辑</button><button class="button admin-toggle" data-testid="profile-toggle" :disabled="busy || formOpen" @click="toggle(row)">{{ row.enabled ? '停用' : '启用' }}</button></div>
+        <div class="admin-actions"><button class="text-button" :aria-expanded="expanded === row.id" @click="expanded = expanded === row.id ? null : row.id">{{ expanded === row.id ? '收起详情' : '查看详情' }}</button><button class="button button-light" data-testid="profile-edit" :disabled="busy || formOpen" @click="edit(row)">编辑</button><button class="button admin-toggle" data-testid="profile-toggle" :disabled="busy || formOpen" @click="toggle(row)">{{ row.enabled ? '停用' : '启用' }}</button></div>
       </div>
-      <div v-if="expanded === row.id"><ProfileDetail :profile="row" @avatar-error="failedAvatars.add(row.id)" /><p class="field-help">创建时间：{{ row.createdAt }}<br />更新时间：{{ row.updatedAt }}</p></div>
       </template>
     </section>
     <p v-if="!loading && !error && !rows.length && !formOpen" class="empty-state">暂无画像，请新增。</p>
     <button v-if="cursor" class="button button-light" :disabled="busy || formOpen" @click="load(true)">加载更多</button>
+      </div>
+      <aside v-if="selectedProfile && !formOpen" class="admin-panel admin-inspector">
+        <h2>画像详情 · {{ selectedProfile.name }}</h2>
+        <ProfileDetail :profile="selectedProfile" @avatar-error="failedAvatars.add(selectedProfile.id)" />
+        <p class="field-help">创建时间：{{ selectedProfile.createdAt }}<br />更新时间：{{ selectedProfile.updatedAt }}</p>
+      </aside>
+    </div>
   </div>
 </template>

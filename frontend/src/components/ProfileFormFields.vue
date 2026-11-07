@@ -67,5 +67,5 @@ const traits = computed(() => props.kind === 'scammer' ? 'behaviorTraits' : 'per
 <style scoped>
 .scenario-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
 .scenario-tabs button { padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:white; color:inherit; cursor:pointer; }
-.scenario-tabs [aria-selected=true] { border-color:var(--green); background:#f0f4e7; }
+.scenario-tabs [aria-selected=true] { border-color:var(--navy); background:#e6f0f7; }
 </style>

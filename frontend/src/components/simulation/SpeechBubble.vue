@@ -14,13 +14,14 @@ const shown = computed(() => sliceCodePoints(props.bubble.content, props.bubble.
 </template>
 
 <style scoped>
-.bubble { position:relative; max-width:100%; max-height:28vh; overflow-y:auto; padding:16px 20px; border-radius:16px; background:var(--sim-paper); color:var(--sim-ink);
-  box-shadow:0 10px 24px rgb(0 0 0 / 0.3); animation:in .25s ease-out; }
-.bubble.left { border-left:5px solid var(--sim-warn); border-top-left-radius:4px; }
-.bubble.right { border-right:5px solid var(--sim-celadon); border-top-right-radius:4px; }
-.line { margin:0; font-size:20px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; min-height:1.7em; }
+.bubble { position:relative; min-width:0; max-height:28vh; overflow-y:auto; padding:8px 11px; border-radius:0 4px 4px 0; background:#111e30eb; color:#f4f8fc; animation:in .2s ease-out; }
+.bubble.left { border-left:3px solid #ff936d; }
+.bubble.right { border-left:3px solid #a7d9f0; }
+.line { margin:0; font-size:18px; line-height:1.55; font-weight:650; white-space:pre-wrap; overflow-wrap:anywhere; min-height:1.55em; }
 .caret { display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-2px; background:currentColor; animation:blink 1s steps(1) infinite; }
-.action { margin:8px 0 0; font-size:14px; font-style:italic; color:#6b6f80; }
-@keyframes in { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
+.action { margin:5px 0 0; font-size:14px; color:#bdd3e5; overflow-wrap:anywhere; }
+@keyframes in { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:none } }
 @keyframes blink { 50% { opacity:0 } }
+@media(max-width:760px) { .line { font-size:16px; } .action { font-size:13px; } }
+@media(prefers-reduced-motion:reduce) { .bubble,.caret { animation:none; } }
 </style>

@@ -5,11 +5,12 @@ defineProps<{ configuration: Configuration }>()
 </script>
 
 <template>
-  <section class="configuration-section" data-testid="history-configuration">
-    <h2>当时配置 · {{ configuration.scenario.name }}</h2>
-    <p>{{ configuration.scenario.description }}</p><p>内容侧重：{{ configuration.scenario.focus }}</p>
-    <div class="history-profiles"><div><h3>骗子画像</h3><ProfileDetail :profile="configuration.scammer" /></div><div><h3>受害者画像</h3><ProfileDetail :profile="configuration.victim" :selected-scenario-code="configuration.scenario.code" /></div></div>
-  </section>
+  <p>{{ configuration.scenario.description }}</p>
+  <p>内容侧重：{{ configuration.scenario.focus }}</p>
+  <div class="history-profiles">
+    <div><h3>骗子画像</h3><ProfileDetail :profile="configuration.scammer" /></div>
+    <div><h3>受害者画像</h3><ProfileDetail :profile="configuration.victim" :selected-scenario-code="configuration.scenario.code" /></div>
+  </div>
 </template>
 
 <style scoped>

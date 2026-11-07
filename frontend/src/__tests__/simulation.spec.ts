@@ -430,7 +430,7 @@ it('continues from narration content or keyboard only while enabled', async () =
   await panel.trigger('click')
   expect(wrapper.emitted('continue')).toBeUndefined()
   await wrapper.setProps({ awaitingContinue: true })
-  expect(wrapper.get('[data-testid="review-hint"]').text()).toBe('点击任意位置继续对话')
+  expect(wrapper.get('[data-testid="review-hint"]').text()).toBe('点击解说区任意位置继续对话')
   await wrapper.get('.empty').trigger('click')
   await wrapper.get('[data-testid="risk-bar"]').trigger('click')
   await panel.trigger('keydown', { key: 'Enter' })
@@ -443,16 +443,19 @@ it('continues from narration content or keyboard only while enabled', async () =
   wrapper.unmount()
 })
 
-it.each(['left', 'right', 'top', 'bottom'])('docks the orb halfway onto the %s edge without opening it', async edge => {
+it.each(['left', 'right', 'top', 'bottom'])('docks the orb at the %s edge without opening it', async edge => {
   const { mount } = await import('@vue/test-utils')
   const { default: MagicOrbPanel } = await import('../components/simulation/MagicOrbPanel.vue')
   const wrapper = mount(MagicOrbPanel, { props: { draft: null, busy: false } })
   const orb = wrapper.get('[data-testid="magic-orb-toggle"]')
-  Object.assign(orb.element, { setPointerCapture: () => {} })
   const width = window.innerWidth, height = window.innerHeight
+  Object.assign(orb.element, {
+    setPointerCapture: () => {},
+    getBoundingClientRect: () => new DOMRect(width - 52, height / 2 - 26, 52, 52),
+  })
   const target = { left: [0, height / 2], right: [width, height / 2], top: [width / 2, 0], bottom: [width / 2, height] }[edge]!
   // Start from the right edge; move inward first so a return to that edge is also a drag.
-  await orb.trigger('pointerdown', { pointerId: 1, button: 0, clientX: width, clientY: height / 2 })
+  await orb.trigger('pointerdown', { pointerId: 1, button: 0, clientX: width - 26, clientY: height / 2 })
   await orb.trigger('pointermove', { pointerId: 1, clientX: width / 2, clientY: height / 2 })
   await orb.trigger('pointermove', { pointerId: 1, clientX: target[0], clientY: target[1] })
   await orb.trigger('pointerup', { pointerId: 1 })
@@ -460,11 +463,11 @@ it.each(['left', 'right', 'top', 'bottom'])('docks the orb halfway onto the %s e
   await wrapper.vm.$nextTick()
   expect(wrapper.find('#magic-orb-panel').exists()).toBe(false)
   const style = wrapper.get('[data-testid="magic-orb"]').attributes('style')
-  expect(style).toContain(`left: calc(${target[0]! / width * 100}vw - 24px)`)
-  expect(style).toContain(`top: calc(${target[1]! / height * 100}dvh - 24px)`)
+  expect(style).toContain(`--orb-x: ${target[0]! / width * 100}vw`)
+  expect(style).toContain(`--orb-y: ${target[1]! / height * 100}dvh`)
   orb.element.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
   await wrapper.vm.$nextTick()
   expect(wrapper.find('#magic-orb-panel').exists()).toBe(true)
-  expect(wrapper.get('#magic-orb-panel').classes('panel-left')).toBe(edge === 'left')
+  expect(wrapper.get('[data-testid="magic-orb"]').classes()).toContain('expanded')
   wrapper.unmount()
 })

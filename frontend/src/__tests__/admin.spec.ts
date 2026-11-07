@@ -153,6 +153,7 @@ it('induces one rule from the selected waiting records and only reports入库 af
   await flushPromises()
   expect(wrapper.findAll('[data-testid=intervention-row]')).toHaveLength(2)
   expect(wrapper.text()).toContain('原台词1')
+  await wrapper.findAll('[data-testid=intervention-row]')[1]!.get('button').trigger('click')
   expect(wrapper.text()).toContain('最终台词二')
   expect(wrapper.text()).toContain('受害者：需要付款吗')
   await wrapper.findAll('[data-testid=intervention-select]')[0]!.setValue(true)

@@ -9,6 +9,7 @@ import { ApiError } from '../api/http'
 import { simulationApi } from '../api/simulation'
 import type { Configuration, InterventionRecord, InterventionState, ScammerDraft, ScammerProfilePayload, Scenario, SimulationState, StartRequest, VictimProfilePayload } from '../api/types'
 import { preloadImages } from '../simulation/assetPreloader'
+import { stagePortrait } from '../simulation/stagePortrait'
 import { createAudioTrack } from '../simulation/audioTrack'
 import { EventInbox } from '../simulation/eventInbox'
 import { PerformanceDirector } from '../simulation/performanceDirector'
@@ -67,6 +68,10 @@ function reportPath(id: string) {
 
 function block(text: string, action: typeof blockedAction.value) { phase.value = 'blocked'; notice.value = text; blockedAction.value = action }
 
+function preloadPortraits(...profiles: (ScammerProfilePayload | VictimProfilePayload)[]) {
+  return preloadImages(profiles.flatMap(profile => [profile.avatar.url, stagePortrait(profile) ?? profile.speakingAvatar.url]))
+}
+
 async function load() {
   phase.value = 'loading'; notice.value = ''
   const { scenario, scammer, victim } = ids.value
@@ -76,7 +81,7 @@ async function load() {
     const sc = scenarios.find(x => x.id === scenario)
     if (!sc) { block('所选场景不存在，请返回重新选择', 'configuration'); return }
     preview.value = { scenario: sc, scammer: s, victim: v }
-    await preloadImages([s.avatar.url, s.speakingAvatar.url, v.avatar.url, v.speakingAvatar.url]).catch(() => { throw new Error('人物形象加载失败，请重试') })
+    await preloadPortraits(s, v).catch(() => { throw new Error('人物形象加载失败，请重试') })
     phase.value = 'ready'
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) block('所选画像已不可用，请返回重新选择', 'configuration')
@@ -121,7 +126,7 @@ async function start() {
   phase.value = 'running'
   const c = state.configuration
   // Snapshot portraits may differ from the preloaded ones (edited meanwhile): load them now; the clock is already running.
-  void preloadImages([c.scammer.avatar.url, c.scammer.speakingAvatar.url, c.victim.avatar.url, c.victim.speakingAvatar.url])
+  void preloadPortraits(c.scammer, c.victim)
     .catch(() => director?.openingFailed('AVATAR_LOAD_FAILED'))
   director.begin(state)
   openStream()
@@ -304,9 +309,13 @@ onBeforeUnmount(() => {
 <template>
   <div class="sim" :aria-busy="phase === 'loading'">
     <header class="sim-top">
-      <span class="brand">知诈 · 情景演绎</span>
+      <div class="sim-brand">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s7-3 7-9V5l-7-3-7 3v8c0 6 7 9 7 9Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+        <strong>知诈<small>AI 反诈情景推演</small></strong>
+        <span class="mode">{{ auth.account?.role === 'ADMIN' ? '管理员演示' : '情景演绎' }}</span>
+      </div>
       <button v-if="phase === 'running' && view.stage !== 'TERMINAL'" class="settings" data-testid="settings-button" aria-label="设置（暂停演绎）" @click="openSettings">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm7.4-2.5.1-1-.1-1 2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6-.1 1 .1 1-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6Z" /></svg>
+        暂停与设置
       </button>
     </header>
 
@@ -332,11 +341,19 @@ onBeforeUnmount(() => {
         <CharacterCards v-else-if="view.stage === 'OPENING_CARDS'" :scammer="configuration.scammer" :victim="configuration.victim" :frozen="view.frozen"
           @avatar-error="avatarFailed" />
         <div v-else class="play">
-          <div class="play-meta"><span v-if="view.roundNo">第 {{ view.roundNo }} 轮</span><span class="scenario-name">{{ configuration.scenario.name }}</span></div>
+          <header class="play-meta">
+            <div>
+              <h1>{{ configuration.scenario.name }}</h1>
+              <p v-if="view.roundNo">第 {{ view.roundNo }} 轮<span v-if="view.stage === 'REVIEW' && intervention?.currentDraft"> · 等待确认第 {{ intervention.currentDraft.roundNo }} 轮草稿</span></p>
+            </div>
+            <span v-if="view.stage === 'REVIEW' && intervention?.currentDraft" class="review-status">{{ regeneratingDraft ? '生成中' : orbEditing ? '编辑中' : '待确认' }}</span>
+          </header>
           <SimulationStage class="play-stage" :configuration="configuration" :view="view" @media-error="avatarFailed" />
           <p v-if="showWaiting" class="waiting" role="status" data-testid="waiting-hint">{{ view.stage === 'DEADLINE' ? '已达到时长上限，正在确认结果…' : view.bubbles.VICTIM?.done ? (view.narration?.roundNo === view.roundNo ? '正在准备下一轮对话…' : '正在生成本轮解说…') : '对方正在组织语言…' }}</p>
           <NarrationPanel :narration="view.narration" :risk="view.risk" :awaiting-continue="view.stage === 'REVIEW' && !!intervention?.currentDraft"
-            :disabled="orbBusy || !!regeneratingDraft || orbEditing || view.frozen" :error="orbError" @continue="orbAction('continue')" />
+            :disabled="orbBusy || !!regeneratingDraft || orbEditing || view.frozen"
+            :disabled-hint="regeneratingDraft ? '请等待新草稿生成' : orbEditing ? '请先保存或取消修改' : undefined"
+            :error="orbError" @continue="orbAction('continue')" />
           <MagicOrbPanel v-if="intervention?.interventionMode === 'ADMIN_TEST' && view.stage !== 'TERMINAL'" :draft="intervention.currentDraft" :busy="orbBusy || !!regeneratingDraft || view.frozen" :regenerating="!!regeneratingDraft" :show-pending="auth.account?.role === 'ADMIN'" :error="orbError" :pending-records="pendingRecords" :pending-loading="pendingLoading"
             @editing-change="orbEditing = $event" @edit="c => orbAction('edit', c)" @cancel-edit="orbError = ''"
             @regenerate="g => orbAction('regenerate', g)" @open-pending="openPending" />
@@ -352,34 +369,57 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .sim {
-  --sim-night:#262d4a; --sim-night-deep:#161a2e; --sim-ink:#1e2235; --sim-paper:#fbf8f1; --sim-warn:#c8553d;
-  --sim-celadon:#4f9c8f; --sim-gold:#e9b44c; --sim-mist:#e8ecf3;
-  --sim-display:'STKaiti', 'KaiTi', 'Kaiti SC', 'BiauKai', serif;
-  position:fixed; inset:0; display:grid; grid-template-rows:52px 1fr; color:var(--sim-paper);
-  background:radial-gradient(120% 90% at 50% 0%, var(--sim-night) 0%, var(--sim-night-deep) 70%);
+  --sim-night:#182b42; --sim-night-deep:#0b1524; --sim-ink:#15253a; --sim-paper:#f2f6fb; --sim-warn:#a44632;
+  --sim-celadon:#2d607a; --sim-gold:#ff936d; --sim-mist:#e8eff6;
+  --sim-display:"Microsoft YaHei","PingFang SC",sans-serif; --sim-digits:"Bahnschrift",Consolas,monospace;
+  position:fixed; inset:0; display:grid; grid-template-rows:60px minmax(0,1fr); color:var(--sim-paper);
+  background:var(--sim-night-deep);
 }
-.sim-top { display:flex; align-items:center; justify-content:space-between; padding:0 20px; }
-.brand { font-family:var(--sim-display); letter-spacing:0.2em; color:#aab0c9; }
-.settings { width:40px; height:40px; display:grid; place-items:center; border:1px solid #4a5379; border-radius:50%; background:transparent; color:var(--sim-paper); cursor:pointer; }
-.settings svg { width:22px; height:22px; fill:currentColor; }
-.settings:focus-visible, .start:focus-visible { outline:3px solid var(--sim-gold); outline-offset:3px; }
-.sim-body { position:relative; min-height:0; }
-.gate { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px; text-align:center; }
+.sim-top { display:flex; align-items:center; justify-content:space-between; padding:0 max(24px,calc((100vw - 1296px)/2)); border-bottom:1px solid #364d65; background:#111f32; }
+.sim-brand { display:flex; align-items:center; gap:10px; font-size:18px; line-height:1.15; }
+.sim-brand small { display:block; color:#b0c9dd; font-size:10px; font-weight:500; margin-top:2px; }
+.mode { font-size:12px; background:#263e57; color:#f3f9ff; border:1px solid #4d6782; border-radius:3px; padding:5px 7px; }
+.settings { padding:7px 11px; border:1px solid #526e87; border-radius:4px; background:#182b42; color:var(--sim-paper); font-size:14px; }
+.settings:focus-visible,.start:focus-visible { outline:3px solid #a7d9f0; outline-offset:3px; }
+.sim-body { position:relative; min-height:0; overflow:auto; }
+.gate { min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:24px; text-align:center; background:linear-gradient(#0b152470,#0b1524dc),url('../assets/studio-set.jpg') center/cover; }
 .gate-eyebrow { margin:0; color:var(--sim-gold); letter-spacing:0.3em; font-size:13px; }
 .gate h1 { margin:0; font-family:var(--sim-display); font-size:44px; font-weight:400; letter-spacing:0.08em; }
 .gate h1 span { font-size:24px; color:#8e95b3; margin:0 10px; }
 .gate-status { margin:8px 28px 0; font-size:13px; color:var(--sim-warn); }
 .gate-help { margin:0; color:#b7bdd3; }
 .gate-notice { margin:0; color:#ffb4a3; }
-.start { min-width:220px; padding:16px 32px; border:none; border-radius:999px; background:var(--sim-gold); color:var(--sim-ink); font-size:20px;
-  font-family:var(--sim-display); letter-spacing:0.3em; cursor:pointer; text-decoration:none; }
+.start { min-width:220px; padding:16px 32px; border:none; border-radius:5px; background:var(--sim-gold); color:var(--sim-ink); font-size:20px;
+  font-family:var(--sim-display); cursor:pointer; text-decoration:none; }
 .start:disabled { opacity:0.6; cursor:wait; }
 .start.ghost { background:transparent; border:1px solid #59628d; color:var(--sim-paper); font-size:16px; }
-.play { height:100%; display:grid; grid-template-rows:auto 1fr auto; min-height:0; }
-.play-meta { display:flex; gap:14px; justify-content:center; padding-top:4px; font-family:var(--sim-display); font-size:18px; letter-spacing:0.1em; }
-.scenario-name { color:#8e95b3; }
-.play-stage { min-height:0; }
-.waiting { position:absolute; left:50%; top:45%; transform:translateX(-50%); margin:0; padding:8px 18px; border-radius:999px; background:rgb(22 26 46 / 0.8);
-  color:#cfd3e4; font-size:14px; }
-@media (max-width:640px) { .gate h1 { font-size:30px; } }
+.play { width:var(--wrap); margin:0 auto; padding:16px 0 24px; display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto auto auto; align-items:start; gap:10px 14px; }
+.play-meta { grid-column:1/-1; grid-row:1; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.play-meta h1 { color:var(--sim-paper); font-size:clamp(26px,4vw,38px); margin:0; overflow-wrap:anywhere; }
+.play-meta p { color:#bed3e5; font-size:14px; margin:4px 0 0; }
+.review-status { border-radius:3px; color:#70391f; background:#ffe0c7; white-space:nowrap; padding:4px 8px; font-size:14px; font-weight:700; }
+.play-stage { grid-column:1; grid-row:2; }
+.play > :deep(.narration) { grid-column:1/-1; grid-row:3/5; }
+.waiting { grid-column:1; grid-row:2; z-index:2; align-self:center; justify-self:center; margin:0; padding:8px 14px; border-radius:4px; background:#0c1727ed; color:#e1eef8; font-size:14px; }
+@media(min-width:1001px) {
+  .sim-top { padding-inline:max(36px,calc((100% - 1480px)/2)); }
+  .play { width:min(1480px,calc(100% - 72px)); }
+  .play:has(> .orb.expanded) { grid-template-columns:minmax(0,1fr) minmax(300px,31%); }
+  .play > :deep(.orb.expanded) { grid-column:2; grid-row:2/4; align-self:stretch; min-height:0; }
+}
+@media(min-width:1001px) and (min-height:700px) {
+  .play { height:100%; padding:12px 0; grid-template-rows:auto minmax(0,1fr) auto auto; }
+  .play-stage { align-self:stretch; min-height:0; }
+}
+@media(min-width:1001px) and (700px <= height <= 820px) {
+  .sim { grid-template-rows:48px minmax(0,1fr); }
+  .play { padding-block:8px; row-gap:8px; }
+  .play-meta h1 { font-size:30px; }
+  .play-meta p { margin-top:0; }
+}
+@media(max-width:640px) {
+  .sim-top { padding-inline:16px; }
+  .gate h1 { font-size:30px; }
+  .play { padding-top:12px; }
+}
 </style>

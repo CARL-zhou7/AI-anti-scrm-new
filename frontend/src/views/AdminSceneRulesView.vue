@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../api/admin'
 import { ApiError } from '../api/http'
 import type { FieldError, InterventionRecord, SceneRuleTargetRole, SceneRuleView } from '../api/types'
-import AdminNav from '../components/AdminNav.vue'
 import FormFieldError from '../components/FormFieldError.vue'
 import { ruleOverview } from '../utils/ruleOverview'
 import VersionConflictNotice from '../components/VersionConflictNotice.vue'
@@ -115,7 +114,6 @@ onMounted(load)
 
 <template>
   <div class="home-layout admin-layout" data-testid="admin-scene-rules" :aria-busy="loading || saving">
-    <AdminNav />
     <span class="eyebrow">知识库 · 场景规则</span>
     <h1>场景规则</h1>
     <p class="admin-intro">按场景分别指导骗子与受害者。修改仅影响新开的场次，进行中的场次沿用开始时的规则快照；冲突规则请确认后再启用。</p>

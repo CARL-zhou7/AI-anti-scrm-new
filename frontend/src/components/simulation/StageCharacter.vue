@@ -1,14 +1,16 @@
 <script setup lang="ts">
-// Half-length portrait with two stacked, preloaded frames; the mouth flap only swaps opacity, so no re-decode.
-defineProps<{ name: string; closedUrl: string; openUrl: string; side: 'left' | 'right'; speaking: boolean; mouthOpen: boolean; frozen: boolean }>()
+defineProps<{ name: string; closedUrl: string; openUrl: string; spriteUrl?: string; side: 'left' | 'right'; speaking: boolean; mouthOpen: boolean; frozen: boolean }>()
 defineEmits<{ error: [] }>()
 </script>
 
 <template>
-  <figure class="character" :class="[side, { speaking, frozen }]" :data-testid="'stage-character-' + side">
+  <figure class="character" :class="[side, { cinematic: spriteUrl, speaking, frozen }]" :data-testid="'stage-character-' + side">
     <div class="frames">
-      <img class="frame" :src="closedUrl" :alt="name" @error="$emit('error')" />
-      <img class="frame open" :class="{ show: speaking && mouthOpen }" :src="openUrl" alt="" aria-hidden="true" @error="$emit('error')" />
+      <img v-if="spriteUrl" class="sprite" :class="{ 'mouth-open': speaking && mouthOpen }" :src="spriteUrl" :alt="name" @error="$emit('error')" />
+      <template v-else>
+        <img class="frame" :src="closedUrl" :alt="name" @error="$emit('error')" />
+        <img class="frame open" :class="{ show: speaking && mouthOpen }" :src="openUrl" alt="" aria-hidden="true" @error="$emit('error')" />
+      </template>
     </div>
     <figcaption>{{ name }}</figcaption>
   </figure>
@@ -16,13 +18,17 @@ defineEmits<{ error: [] }>()
 
 <style scoped>
 .character { position:relative; margin:0; display:flex; flex-direction:column; align-items:center; animation:idle 3s ease-in-out infinite;
-  filter:saturate(0.75) brightness(0.82); transition:filter .3s, transform .3s; }
+  filter:saturate(.88) brightness(.92); transition:filter .3s, transform .3s; }
 .character.speaking { filter:none; transform:scale(1.04); animation:talk 0.5s ease-in-out infinite; }
-.frames { position:relative; width:min(30vh, 260px); aspect-ratio:1; }
-.frame { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50% 50% 12px 12px; }
+.frames { position:relative; width:min(28vh, 260px, 36vw); aspect-ratio:1; }
+.frame { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:46% 46% 5px 5px; mask-image:linear-gradient(#000 89%,#0009); }
 .frame.open { opacity:0; }
 .frame.open.show { opacity:1; }
-figcaption { margin-top:10px; padding:4px 16px; border-radius:999px; font-family:var(--sim-display); font-size:22px; letter-spacing:0.12em; color:var(--sim-paper); }
+.cinematic,.cinematic.speaking { animation:none; filter:none; transform:none; }
+.cinematic .frames { width:100%; overflow:hidden; mask-image:linear-gradient(#000 84%,transparent); }
+.sprite { position:absolute; inset:0 auto auto 0; width:200%; max-width:none; height:100%; }
+.sprite.mouth-open { left:-100%; }
+figcaption { margin-top:10px; padding:4px 16px; border-radius:4px; font-family:var(--sim-display); font-size:16px; letter-spacing:0.12em; color:var(--sim-paper); }
 .left figcaption { background:var(--sim-warn); }
 .right figcaption { background:var(--sim-celadon); }
 .frozen, .frozen * { animation-play-state:paused !important; }

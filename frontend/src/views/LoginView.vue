@@ -32,8 +32,12 @@ async function submit() {
 
 <template>
   <div class="auth-layout">
-    <section class="auth-story"><span class="eyebrow">看见话术 · 理解风险</span><h1>在情景中学习，<br>让骗局止于识别。</h1><p>AI反诈情景推演平台</p><div class="story-illustration" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><span class="shield">✓</span><span class="story-tag tag-one">识别话术</span><span class="story-tag tag-two">感知风险</span></div><span class="story-footnote">从旁观一次骗局，到多一份防范意识。</span></section>
-    <section class="auth-form-panel" aria-labelledby="login-heading"><div class="form-heading"><span class="eyebrow">欢迎回来</span><h2 id="login-heading">登录你的账号</h2><p>用户与管理员共用此登录入口</p></div>
+    <section class="auth-story">
+      <span class="eyebrow">知诈情景演播室</span>
+      <h2>话术在推进，<br>风险有迹可循</h2>
+      <p>在模拟对话中识别试探、诱导与施压。</p>
+    </section>
+    <section class="auth-form-panel" aria-labelledby="login-heading"><div class="form-heading"><h1 id="login-heading">登录知诈</h1><p>普通用户和管理员共用此入口。</p></div>
       <p v-if="route.query.registered === '1'" class="success-message" role="status">注册成功，请使用新账号登录。</p>
       <p v-if="auth.bootstrapError" class="error-message" role="alert">{{ auth.bootstrapError }} <button class="text-button" @click="reconnect">重新连接</button></p>
       <form @submit.prevent="submit" :aria-busy="busy">
@@ -42,7 +46,12 @@ async function submit() {
         <p v-if="error" class="error-message" role="alert">{{ error }}</p>
         <button class="button button-primary form-submit" type="submit" data-testid="login-submit" :disabled="busy">{{ busy ? '正在登录…' : '登录' }}<span aria-hidden="true"> →</span></button>
       </form>
+      <RouterLink class="button button-light practice-register" to="/register/practice">注册（点我！点我！）</RouterLink>
       <p class="auth-switch">还没有账号？<RouterLink to="/register">注册普通用户账号</RouterLink></p>
     </section>
   </div>
 </template>
+
+<style scoped>
+.practice-register { width:100%; margin-top:10px; }
+</style>

@@ -6,8 +6,8 @@ defineProps<{ items: NewsPayload }>()
 
 <template>
   <section class="news-card" aria-labelledby="news-heading">
-    <div class="section-heading"><h2 id="news-heading">反诈资讯</h2><span class="quiet-label">资讯动态</span></div>
-    <div v-if="!items.length" class="empty-state" data-testid="home-news-empty"><span class="empty-icon" aria-hidden="true">≡</span><h3>暂无资讯</h3><p>当前暂无可展示的资讯内容。</p></div>
+    <div class="section-heading"><h2 id="news-heading">反诈动态</h2></div>
+    <div v-if="!items.length" class="empty-state" data-testid="home-news-empty"><p>暂无资讯。可以先选择一个场景，开始推演。</p></div>
     <ul v-else class="news-list">
       <li v-for="item in items" :key="item.url">
         <a :href="item.url" target="_blank" rel="noopener noreferrer" aria-description="在新标签页打开" class="news-link">

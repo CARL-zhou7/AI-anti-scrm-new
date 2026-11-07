@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../api/admin'
 import { ApiError } from '../api/http'
 import type { AdminVictimProfile, FieldError, TrustPolicy } from '../api/types'
-import AdminNav from '../components/AdminNav.vue'
 import FormFieldError from '../components/FormFieldError.vue'
 import VersionConflictNotice from '../components/VersionConflictNotice.vue'
 
@@ -73,20 +72,25 @@ onMounted(() => { void load(); void loadProfiles() })
 
 <template>
   <div class="home-layout admin-layout" data-testid="admin-trust-policy" :aria-busy="loading || saving">
-    <AdminNav /><h1>信任分机制</h1><p class="admin-intro">维护三项行动阈值，范围0至100且严格递增。更改只影响新场次，人物的初始分和系数在受害者画像中维护。</p>
+    <h1>信任分机制</h1><p class="admin-intro">维护三项行动阈值，范围0至100且严格递增。更改只影响新场次，人物的初始分和系数在受害者画像中维护。</p>
     <p v-if="loading" role="status">正在读取…</p>
     <VersionConflictNotice v-if="conflict" :current-version="currentVersion" :disabled="loading || saving" @reload="load" />
     <p v-else-if="error" class="error-message" role="alert">{{ error }}</p>
     <button v-if="error && !conflict" class="button button-light" :disabled="loading || saving" @click="load">重新读取</button>
     <p v-if="success" class="success-message" role="status">{{ success }}</p>
     <section v-if="policy" class="admin-panel">
+      <h2>行动阈值</h2>
       <p class="quiet-label">版本 {{ policy.version }} · {{ policy.rulesetVersion }}</p>
       <form @submit.prevent="save">
-        <fieldset class="admin-form-fields" :disabled="loading || saving">
+        <fieldset class="admin-form-fields threshold-fields" :disabled="loading || saving">
           <div v-for="field in fields" :key="field.key"><label :for="field.key">{{ field.label }}</label>
             <input :id="field.key" v-model.number="form[field.key]" type="number" min="0" max="100" step="1" required :data-testid="field.key" :aria-describedby="field.key + '-error'" :aria-invalid="errors.some(e => e.field === field.key)" />
             <FormFieldError :field="field.key" :errors="errors" /></div>
         </fieldset>
+        <div class="threshold-scale" :style="{ '--accept': policy.thresholdAccept + '%', '--small': policy.thresholdSmall + '%', '--large': policy.thresholdLarge + '%' }" aria-label="已保存的行动阈值">
+          <div class="threshold-track"></div>
+          <span>0</span><span>100</span>
+        </div>
         <button class="button button-primary" data-testid="policy-save" :disabled="loading || saving || conflict">{{ saving ? '保存中…' : '保存配置' }}</button>
       </form>
     </section>
@@ -110,7 +114,12 @@ onMounted(() => { void load(); void loadProfiles() })
 </template>
 
 <style scoped>
+.threshold-fields { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.threshold-scale { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 14px; margin:16px 0 12px; color:var(--muted); font-size:13px; }
+.threshold-track { flex-basis:100%; height:11px; border-radius:3px; background:linear-gradient(90deg,#bad6e7 0 var(--accept),#8fb7d0 var(--accept) var(--small),#f0c795 var(--small) var(--large),#e99475 var(--large) 100%); }
 .estimate-table { overflow-x:auto; }
 table { width:100%; border-collapse:collapse; }
-th, td { padding:10px; text-align:left; border-bottom:1px solid #d8dcd1; }
+th, td { padding:10px; text-align:left; border-bottom:1px solid var(--border); }
+th { background:#e4eef5; color:#395875; font-size:13px; }
+@media(max-width:640px) { .threshold-fields { grid-template-columns:1fr; } }
 </style>

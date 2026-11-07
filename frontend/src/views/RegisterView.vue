@@ -28,12 +28,19 @@ async function submit() {
 </script>
 
 <template>
-  <section class="register-card" aria-labelledby="register-heading"><RouterLink class="back-link" to="/login">← 返回登录</RouterLink><div class="form-heading"><span class="eyebrow">从这里开始</span><h1 id="register-heading">创建你的账号</h1><p>注册普通用户账号，开启反诈学习之旅</p></div>
+  <div class="auth-layout auth-register">
+    <section class="auth-story">
+      <span class="eyebrow">开始你的第一场推演</span>
+      <h2>从第一次观察，<br>学会停下来核实</h2>
+      <p>在模拟对话中识别试探、诱导与施压。</p>
+    </section>
+    <section class="auth-form-panel" aria-labelledby="register-heading"><RouterLink class="back-link" to="/login">← 返回登录</RouterLink><div class="form-heading"><h1 id="register-heading">注册学习账号</h1><p>创建普通用户账号，保存自己的推演记录。</p></div>
     <form @submit.prevent="submit" :aria-busy="busy">
       <label for="username">用户名</label><input id="username" v-model="username" autocomplete="username" placeholder="为自己取一个用户名" required aria-describedby="username-help username-error" :aria-invalid="fields.some(e => e.field === 'username')" /><p id="username-help" class="field-help">2—24个字符，支持汉字、英文字母、数字、下划线；英文不区分大小写。</p><FormFieldError field="username" :errors="fields" />
       <label for="password">密码</label><input id="password" v-model="password" type="password" autocomplete="new-password" placeholder="请输入6—24个字符" required aria-describedby="password-help password-error" :aria-invalid="fields.some(e => e.field === 'password')" /><p id="password-help" class="field-help">6—24个字符，允许空格，首尾空格会原样保留。</p><FormFieldError field="password" :errors="fields" />
       <label for="confirmPassword">确认密码</label><input id="confirmPassword" v-model="confirmPassword" type="password" autocomplete="new-password" placeholder="请再次输入密码" required aria-describedby="confirmPassword-error" :aria-invalid="fields.some(e => e.field === 'confirmPassword')" /><FormFieldError field="confirmPassword" :errors="fields" />
       <p v-if="error" class="error-message" role="alert">{{ error }}</p><button type="submit" class="button button-primary form-submit" data-testid="register-submit" :disabled="busy">{{ busy ? '正在创建…' : '注册账号' }}<span aria-hidden="true"> →</span></button>
     </form><p class="auth-switch">已有账号？<RouterLink to="/login">直接登录</RouterLink></p>
-  </section>
+    </section>
+  </div>
 </template>

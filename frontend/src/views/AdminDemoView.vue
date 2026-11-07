@@ -34,14 +34,15 @@ function run() {
 </script>
 
 <template>
-  <section class="configuration-section" data-testid="admin-demo">
+  <div class="home-layout admin-layout" data-testid="admin-demo">
     <span class="eyebrow">管理员演示测试</span>
     <h1>演示测试</h1>
     <p class="field-help">仅本人可访问。第一轮自动演绎；从第二轮起，上方保留上一轮双方对话，点击解说框继续。紫色魔法球可修改待确认台词，或按方向重新生成话术和动作。未确认时刷新按主动退出处理。</p>
     <p v-if="loading" role="status">正在加载可选内容…</p>
     <p v-else-if="error" role="alert" data-testid="admin-demo-error">{{ error }}</p>
-    <form v-else class="demo-form" @submit.prevent="run">
-      <label>场景
+    <form v-else class="demo-form admin-panel" @submit.prevent="run">
+      <h2>配置演示场次</h2>
+      <label class="demo-scene">场景
         <select v-model="scenarioId" data-testid="admin-demo-scenario">
           <option v-for="s in scenarios" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
@@ -58,11 +59,14 @@ function run() {
       </label>
       <button class="button button-primary" type="submit" data-testid="admin-demo-run">开始演示测试</button>
     </form>
-  </section>
+  </div>
 </template>
 
 <style scoped>
-.demo-form { display:grid; gap:16px; max-width:520px; margin-top:18px; }
-label { display:grid; gap:6px; font-size:14px; color:#4b5063; }
-select { padding:10px 12px; border-radius:10px; border:1px solid #cfc8b6; font-size:15px; background:#fff; }
+.demo-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px 18px; max-width:840px; margin-top:18px; }
+.demo-form h2,.demo-scene { grid-column:1/-1; }
+.demo-form .button { grid-column:1/-1; justify-self:end; }
+@media(max-width:640px) { .demo-form { grid-template-columns:1fr; } }
+label { display:grid; gap:6px; font-size:14px; color:var(--ink); margin:0; }
+select { padding:10px 12px; border-radius:4px; border:1px solid var(--border); min-width:0; font-size:15px; background:#fff; }
 </style>

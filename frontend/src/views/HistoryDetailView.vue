@@ -10,6 +10,7 @@ import HistoryRounds from '../components/history/HistoryRounds.vue'
 import RiskChart from '../components/report/RiskChart.vue'
 
 const route = useRoute(), detail = ref<HistoryDetail | null>(null), loading = ref(true), error = ref('')
+const profileDetails = ref<HTMLElement | null>(null)
 const statuses = { RUNNING: '进行中', FINISHED: '已结束', INTERRUPTED: '已中断' }
 const riskPoints = computed(() => detail.value?.rounds.flatMap(r => r.analysis ? [{ roundNo: r.roundNo, score: r.analysis.riskScore }] : []) ?? [])
 const purposes: Record<FundFlow['purpose'], string> = { INITIAL_PAYMENT: '首笔付款', ADDITIONAL_PAYMENT: '追加付款', INVESTMENT_PAYMENT: '投资款', EXTRA_FEE_PAYMENT: '额外费用', LOAN_TRANSFER: '借款转账', OTHER_PAYMENT: '其他付款', REFUND: '实际返款', REWARD: '独立报酬', RESERVE_RELEASE: '预留释放' }
@@ -27,6 +28,11 @@ async function load() {
 }
 watch(() => route.params.id, () => { void load() }, { immediate: true })
 onUnmounted(() => { version++ })
+
+function showProfileDetails() {
+  profileDetails.value?.focus({ preventScroll: true })
+  profileDetails.value?.scrollIntoView({ block: 'start' })
+}
 </script>
 
 <template>
@@ -37,7 +43,22 @@ onUnmounted(() => { version++ })
     <template v-else-if="detail">
       <header class="configuration-section"><span class="eyebrow">历史记录 · {{ detail.status === 'INTERRUPTED' && detail.report ? '正常结束' : statuses[detail.status] }}</span><h1>{{ detail.configuration.scenario.name }}</h1><p>开始时间：{{ formatShanghai(detail.startedAt) }}（北京时间）</p><p v-if="detail.endedAt">结束时间：{{ formatShanghai(detail.endedAt) }}</p></header>
       <p v-if="detail.status === 'INTERRUPTED' && detail.report">{{ detail.interruption?.message }}；未形成受骗或识破结论。</p>
-      <HistoryConfiguration :configuration="detail.configuration" />
+      <div class="history-detail-grid">
+        <aside class="configuration-section history-overview" aria-labelledby="history-overview-heading" data-testid="history-profile-summary">
+          <h2 id="history-overview-heading">当时画像</h2>
+          <ul class="profile-summaries">
+            <li v-for="{ role, profile } in [{ role: '骗子', profile: detail.configuration.scammer }, { role: '受害者', profile: detail.configuration.victim }]" :key="role">
+              <img :src="profile.avatar.url" alt="" width="48" height="48" />
+              <div><small>{{ role }}</small><strong>{{ profile.name }}</strong><small>{{ profile.age }} 岁 · {{ profile.gender }}</small></div>
+            </li>
+          </ul>
+          <button type="button" class="button button-light" aria-controls="history-profile-details" @click="showProfileDetails">查看详情 <span aria-hidden="true">↓</span></button>
+        </aside>
+        <div class="history-evidence">
+      <section v-if="detail.status === 'FINISHED' && detail.outcome" class="configuration-section" data-testid="history-detail-outcome"><h2>{{ detail.outcome.displayText }}</h2><p>{{ detail.outcome.reason }}</p><p v-if="detail.outcome.finalTrustScore != null" data-testid="history-final-trust">最终受骗倾向分：{{ detail.outcome.finalTrustScore }}</p></section>
+      <section v-if="detail.status === 'INTERRUPTED' && detail.interruption" class="configuration-section" data-testid="history-detail-interruption"><h2>{{ detail.interruption.code === 'FUNDS_EXHAUSTED' || detail.interruption.code === 'CHARACTER_EXIT' ? '本次演绎提前终止' : '本次演绎已中断' }}</h2><p>{{ detail.interruption.message }}</p></section>
+      <HistoryRounds :rounds="detail.rounds" :ruleset-version="detail.rulesetVersion" />
+      <div data-testid="history-detail-risk"><RiskChart :points="riskPoints" /></div>
       <section class="configuration-section" data-testid="history-funds">
         <h2>本场资金</h2>
         <p v-if="!detail.funds?.fundsRecorded">未记录</p>
@@ -69,10 +90,13 @@ onUnmounted(() => { version++ })
           </ol>
         </template>
       </section>
-      <section v-if="detail.status === 'FINISHED' && detail.outcome" class="configuration-section" data-testid="history-detail-outcome"><h2>{{ detail.outcome.displayText }}</h2><p>{{ detail.outcome.reason }}</p><p v-if="detail.outcome.finalTrustScore != null" data-testid="history-final-trust">最终受骗倾向分：{{ detail.outcome.finalTrustScore }}</p></section>
-      <section v-if="detail.status === 'INTERRUPTED' && detail.interruption" class="configuration-section" data-testid="history-detail-interruption"><h2>{{ detail.interruption.code === 'FUNDS_EXHAUSTED' || detail.interruption.code === 'CHARACTER_EXIT' ? '本次演绎提前终止' : '本次演绎已中断' }}</h2><p>{{ detail.interruption.message }}</p></section>
-      <HistoryRounds :rounds="detail.rounds" :ruleset-version="detail.rulesetVersion" />
-      <div data-testid="history-detail-risk"><RiskChart :points="riskPoints" /></div>
+        </div>
+      </div>
+      <section id="history-profile-details" ref="profileDetails" class="configuration-section profile-details" tabindex="-1"
+        aria-labelledby="history-configuration-heading" data-testid="history-configuration">
+        <h2 id="history-configuration-heading">当时配置 · {{ detail.configuration.scenario.name }}</h2>
+        <HistoryConfiguration :configuration="detail.configuration" />
+      </section>
       <section class="configuration-section" data-testid="history-detail-report">
         <h2>复盘报告</h2>
         <p v-if="!detail.report && detail.status === 'INTERRUPTED'">不生成正式复盘</p>
@@ -87,8 +111,20 @@ onUnmounted(() => { version++ })
 </template>
 
 <style scoped>
-.history-detail :deep(.configuration-section) { padding: 28px; margin-bottom: 24px; background: white; border: 1px solid var(--border); border-radius: 12px; }
+.history-detail :deep(.configuration-section) { padding: 28px; margin-bottom: 24px; background: white; border: 1px solid var(--border); border-radius: 4px; }
 .history-detail { min-width: 0; }
+.history-detail-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(245px,310px); grid-template-areas:'evidence overview'; gap:20px; align-items:start; }
+.history-evidence { grid-area:evidence; min-width:0; }
+.history-detail .history-overview { grid-area:overview; margin-bottom:0; }
+.profile-summaries { display:grid; gap:12px; list-style:none; margin:0 0 16px; padding:0; }
+.profile-summaries li { display:flex; align-items:center; gap:12px; padding:8px; border:1px solid var(--border); border-radius:4px; }
+.profile-summaries img { flex:none; object-fit:cover; border-radius:4px; background:var(--ice); }
+.profile-summaries strong,.profile-summaries small { display:block; overflow-wrap:anywhere; }
+.profile-summaries small { color:var(--muted); font-size:12px; }
+.profile-details { scroll-margin-top:16px; }
+.profile-details:focus-visible { outline:3px solid #3978b8; outline-offset:3px; }
+@media(max-width:880px) { .history-detail-grid { grid-template-columns:minmax(0,1fr); grid-template-areas:'overview' 'evidence'; } }
+.history-detail > header.configuration-section { border-top:3px solid var(--navy); background:var(--ice); }
 .fund-flows { margin: 0; padding-left: 1.5rem; }
 .fund-flows li { padding: .75rem 0; overflow-wrap: anywhere; border-top: 1px solid var(--border); }
 .fund-flows li > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; }

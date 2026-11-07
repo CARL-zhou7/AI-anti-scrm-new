@@ -155,6 +155,23 @@ it('renders frozen profiles, separate action text, a half round and only stored 
   view.unmount()
 })
 
+it('jumps from the portrait summary to full profiles immediately before the report', async () => {
+  vi.spyOn(historyApi, 'detail').mockResolvedValue(detail())
+  const view = mount(HistoryDetailView, { global, attachTo: document.body }); await flushPromises()
+  const preview = view.get('[data-testid=history-profile-summary]')
+  expect(preview.findAll('img')).toHaveLength(2)
+  expect(preview.text()).toContain('当时骗子')
+  expect(preview.text()).not.toContain('当时描述')
+
+  const profiles = view.get<HTMLElement>('[data-testid=history-configuration]').element
+  const scroll = profiles.scrollIntoView = vi.fn()
+  expect(profiles.nextElementSibling).toBe(view.get('[data-testid=history-detail-report]').element)
+  await preview.get('button').trigger('click')
+  expect(document.activeElement).toBe(profiles)
+  expect(scroll).toHaveBeenCalledWith({ block: 'start' })
+  view.unmount()
+})
+
 it('offers report links only for success or failure and uses one safe inaccessible message', async () => {
   const api = vi.spyOn(historyApi, 'detail')
   for (const status of ['SUCCEEDED', 'FAILED', 'PENDING', 'RUNNING', null, 'INTERRUPTED'] as const) {

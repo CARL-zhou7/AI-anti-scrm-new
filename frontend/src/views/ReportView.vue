@@ -13,6 +13,9 @@ const view = ref<ReportView | null>(null), state = ref<SimulationState | null>(n
 const loading = ref(true), error = ref(''), retryError = ref(''), retrying = ref(false), exhausted = ref(false), notApplicable = ref(false)
 const generating = computed(() => view.value?.report?.status === 'PENDING' || view.value?.report?.status === 'RUNNING')
 const reportV2 = computed(() => [2, 3, 4].includes(view.value?.contentSchemaVersion ?? 0) && (view.value?.content?.contentSchemaVersion === 2 || view.value?.content?.contentSchemaVersion === 3 || view.value?.content?.contentSchemaVersion === 4) ? view.value.content : null)
+const trustPoints = computed(() => (view.value?.riskSeries ?? []).flatMap(point =>
+  point.trustChange ? [{ roundNo: point.roundNo, score: point.trustChange.after }] : []))
+const isAdmin = computed(() => route.meta.role === 'ADMIN')
 const reportV1 = computed(() => view.value?.content && 'roundAnalyses' in view.value.content ? view.value.content : null)
 const trustAtRound = (roundNo: number) => {
   const change = view.value?.riskSeries.find(point => point.roundNo === roundNo)?.trustChange
@@ -105,10 +108,11 @@ onUnmounted(() => { version++; clearTimeout(timer) })
     <section v-else-if="error" class="load-error" role="alert" data-testid="report-load-error">
       <h1>{{ error }}</h1>
       <button class="button button-primary" @click="load">重新读取</button>
-      <RouterLink class="button button-light" to="/home">返回首页</RouterLink>
+      <RouterLink class="button button-light" :to="isAdmin ? '/admin' : '/home'">{{ isAdmin ? '返回管理工作台' : '返回首页' }}</RouterLink>
     </section>
-    <template v-else-if="view">
-      <header class="configuration-section">
+    <div v-else-if="view" class="report-grid">
+      <aside class="report-rail">
+      <header class="configuration-section report-cover">
         <span class="eyebrow">分析复盘<span v-if="state"> · {{ state.configuration.scenario.name }} · 共 {{ state.currentRoundNo }} 轮</span></span>
         <p v-if="state" class="field-help">{{ state.configuration.scammer.name }} 与 {{ state.configuration.victim.name }}</p>
         <template v-if="view.outcome">
@@ -127,6 +131,24 @@ onUnmounted(() => { version++; clearTimeout(timer) })
         <h1 v-else>本次演绎</h1>
         <p v-if="view.report">复盘报告：<strong data-testid="report-status">{{ view.report.displayText }}</strong></p>
       </header>
+          <section v-if="view.report?.status === 'SUCCEEDED' && reportV2" class="configuration-section" data-testid="report-funds"><h2>资金变化</h2>
+            <p><span data-testid="funds-sentence">{{ fundsSentence }}</span><span class="loss">最终净损失 <strong>{{ money(reportV2.fundsSummary.actualLossYuan) }} 元</strong>。</span></p>
+            <details><summary>资金明细</summary><dl>
+            <dt>累计支付</dt><dd>{{ reportV2.fundsSummary.totalPaidYuan }} 元</dd>
+            <dt>本金返款</dt><dd>{{ reportV2.fundsSummary.totalRefundedYuan }} 元</dd>
+            <template v-if="reportV2.contentSchemaVersion === 3 || reportV2.contentSchemaVersion === 4">
+              <dt>独立报酬</dt><dd>{{ reportV2.fundsSummary.totalRewardedYuan }} 元</dd>
+              <dt>可用余额</dt><dd>{{ reportV2.fundsSummary.availableBalanceYuan }} 元</dd>
+              <dt>普通预留剩余</dt><dd>{{ reportV2.fundsSummary.generalReserveRemainingYuan }} 元</dd>
+              <dt>应急预留剩余</dt><dd>{{ reportV2.fundsSummary.emergencyReserveRemainingYuan }} 元</dd>
+            </template>
+            <dt>最终净损失</dt><dd>{{ reportV2.fundsSummary.actualLossYuan }} 元</dd>
+          </dl></details></section>
+        <RouterLink v-if="!isAdmin && view.report?.status === 'SUCCEEDED'" class="button button-primary report-history"
+          :to="`/history/${view.sessionId}`">查看历史详情</RouterLink>
+      </aside>
+      <div class="report-body">
+
       <section v-if="view.unavailableReason && view.unavailableReason !== 'SIMULATION_RUNNING'" class="configuration-section" data-testid="report-interrupted">
         <h2>{{ view.unavailableReason === 'LEGACY_NO_REPORT' ? '旧版记录无正式报告' : view.unavailableReason === 'NO_DIALOGUE' ? '尚无完整对话，不生成正式复盘' : '本次演绎已中断，不生成正式复盘' }}</h2>
         <p>{{ state?.interruption?.message }}</p>
@@ -147,22 +169,10 @@ onUnmounted(() => { version++; clearTimeout(timer) })
         <p v-if="retryError">{{ retryError }}</p>
       </section>
       <template v-else-if="view.report?.status === 'SUCCEEDED' && view.content">
+        <RiskChart v-if="trustPoints.length" :points="trustPoints" kind="trust" />
         <template v-if="reportV2">
           <section v-if="!view.outcome && !view.ending" class="configuration-section" data-testid="report-result"><h2>{{ reportV2.result.text }}</h2><p>{{ reportV2.result.reason }}</p></section>
           <section class="configuration-section" data-testid="report-summary"><h2>过程概述</h2><p v-for="(paragraph, index) in reportV2.summary.split(/\n\s*\n/)" :key="index">{{ paragraph }}</p></section>
-          <section class="configuration-section" data-testid="report-funds"><h2>资金变化</h2>
-            <p><span data-testid="funds-sentence">{{ fundsSentence }}</span><span class="loss">最终净损失 <strong>{{ money(reportV2.fundsSummary.actualLossYuan) }} 元</strong>。</span></p>
-            <details><summary>资金明细</summary><dl>
-            <dt>累计支付</dt><dd>{{ reportV2.fundsSummary.totalPaidYuan }} 元</dd>
-            <dt>本金返款</dt><dd>{{ reportV2.fundsSummary.totalRefundedYuan }} 元</dd>
-            <template v-if="reportV2.contentSchemaVersion === 3 || reportV2.contentSchemaVersion === 4">
-              <dt>独立报酬</dt><dd>{{ reportV2.fundsSummary.totalRewardedYuan }} 元</dd>
-              <dt>可用余额</dt><dd>{{ reportV2.fundsSummary.availableBalanceYuan }} 元</dd>
-              <dt>普通预留剩余</dt><dd>{{ reportV2.fundsSummary.generalReserveRemainingYuan }} 元</dd>
-              <dt>应急预留剩余</dt><dd>{{ reportV2.fundsSummary.emergencyReserveRemainingYuan }} 元</dd>
-            </template>
-            <dt>最终净损失</dt><dd>{{ reportV2.fundsSummary.actualLossYuan }} 元</dd>
-          </dl></details></section>
           <section v-if="keyNodes.length" class="configuration-section" data-testid="report-key-nodes">
             <h2>关键节点</h2>
             <article v-for="(node, index) in keyNodes" :key="index" :class="['round-risk', riskClass(riskAtRound(node.roundNo))]" :style="{ '--risk-color': riskColor(riskAtRound(node.roundNo)) }">
@@ -189,16 +199,35 @@ onUnmounted(() => { version++; clearTimeout(timer) })
         <section class="configuration-section" data-testid="report-outcome-analysis"><h2>结局分析</h2><p>{{ reportV1.outcomeAnalysis }}</p></section>
         </template>
       </template>
-      <RiskChart v-if="view.report?.status === 'SUCCEEDED'" :points="view.riskSeries" />
+      <details v-if="view.report?.status === 'SUCCEEDED' && trustPoints.length" class="configuration-section risk-disclosure">
+        <summary>查看各轮受骗风险</summary>
+        <RiskChart :points="view.riskSeries" />
+      </details>
+      <RiskChart v-else-if="view.report?.status === 'SUCCEEDED'" :points="view.riskSeries" />
       <nav class="report-actions" aria-label="复盘导航">
-        <RouterLink class="button button-primary" to="/configuration">{{ view.unavailableReason ? '重新开始体验' : '再体验一次' }}</RouterLink>
-        <RouterLink class="button button-light" to="/home">返回首页</RouterLink>
+        <RouterLink class="button button-primary" :to="isAdmin ? '/admin/demo' : '/configuration'">{{ isAdmin ? '返回演示测试' : view.unavailableReason ? '重新开始体验' : '再体验一次' }}</RouterLink>
+        <RouterLink class="button button-light" :to="isAdmin ? '/admin' : '/home'">{{ isAdmin ? '返回管理工作台' : '返回首页' }}</RouterLink>
       </nav>
-    </template>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.report-grid { display:grid; grid-template-columns:minmax(250px,300px) minmax(0,1fr); gap:20px; align-items:start; }
+.report-rail,.report-body { min-width:0; }
+.report-cover { background:#172a43; color:#f4f8fc; border:0; border-top:4px solid var(--accent); }
+.report-cover .eyebrow,.report-cover .field-help { color:#bfd5e8; }
+.report-cover h1 { font-size:clamp(27px,3vw,37px); }
+.report-cover .verdict { border-block:1px solid #59728b; padding:10px 0; }
+.report-history { width:100%; margin-bottom:16px; background:var(--accent); color:#22181a; }
+.report-history:hover { background:#f9aa8e; }
+.verdict strong { font-size:25px; font-variant-numeric:tabular-nums; }
+.report-page dl { display:grid; grid-template-columns:1fr auto; gap:6px 10px; font-size:14px; }
+.report-page dd { margin:0; text-align:right; }
+.report-body [data-testid="report-advice"] { background:var(--ice); border-left:3px solid #4a7190; }
+.risk-disclosure :deep(.risk-chart) { border:0; padding:0; margin:0; }
+@media(max-width:760px) { .report-grid { grid-template-columns:minmax(0,1fr); } }
 .report-page p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .node-heading { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:.5rem 1.5rem; }
 .node-heading h3, .node-heading .trust-change { margin:0; font-size:1.25rem; font-weight:700; overflow-wrap:anywhere; }
