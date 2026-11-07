@@ -4,12 +4,12 @@ import { useRouter } from 'vue-router'
 defineProps<{ revealed?: boolean }>()
 const router = useRouter()
 const fields = [
-  { id: 'alias', label: '用户名', example: '例如：演示用户' },
-  { id: 'mailbox', label: '邮箱账号', example: '例如：demo@example.test' },
-  { id: 'phone', label: '手机号', example: '例如：DEMO-PHONE' },
-  { id: 'region', label: '地区位置', example: '例如：示例市' },
-  { id: 'identity', label: '身份证号', example: '例如：DEMO-ID' },
-  { id: 'passphrase', label: '密码', example: '请使用虚构的演示密码', type: 'password' },
+  { id: 'alias', label: '用户名', example: '例如：请取一个好听的名字' },
+  { id: 'mailbox', label: '邮箱账号', example: '例如：xxx@example.com' },
+  { id: 'phone', label: '手机号', example: '例如：11位电话号码' },
+  { id: 'region', label: '地区位置', example: '例如：xx省xx市' },
+  { id: 'identity', label: '身份证号', example: '例如：330102********123X' },
+  { id: 'passphrase', label: '密码', example: '请输入密码', type: 'password' },
 ]
 
 function reveal(event: Event) {
@@ -34,7 +34,7 @@ function reveal(event: Event) {
         <p>注意查看那些看似正常的东西，不要太好奇，疏忽和好奇可能就是你被诈骗的第一步……</p>
       </div>
       <p>真正注册时，请点击登录页「还没有账号？」旁的「注册普通用户账号」。</p>
-      <p class="field-help">这次练习的输入已清空，只在填写时显示在当前表单。</p>
+      <p class="field-help">您填写的内容未被记录，请以后小心哦！</p>
       <RouterLink class="button button-primary form-submit" to="/register">注册普通用户账号</RouterLink>
       <p class="auth-switch"><RouterLink to="/login">返回登录</RouterLink></p>
     </section>
@@ -42,10 +42,9 @@ function reveal(event: Event) {
       <RouterLink class="back-link" to="/login">← 返回登录</RouterLink>
       <div class="form-heading">
         <h1 id="practice-register-heading">注册学习账号</h1>
-        <p id="practice-data-note">请填写虚构资料，勿输入真实个人信息或常用密码。</p>
       </div>
       <!-- The exercise checks validity only. Inputs deliberately have no names to serialize. -->
-      <form autocomplete="off" aria-describedby="practice-data-note" @submit.prevent="reveal">
+      <form autocomplete="off" @submit.prevent="reveal">
         <template v-for="field in fields" :key="field.id">
           <label :for="'practice-' + field.id">{{ field.label }}</label>
           <input :id="'practice-' + field.id" :type="field.type ?? 'text'" :placeholder="field.example"
