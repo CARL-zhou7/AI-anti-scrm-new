@@ -1,0 +1,17 @@
+{
+  "pages": [
+    { "path": "pages/auth", "style": { "navigationBarTitleText": "" } },
+    { "path": "pages/home", "style": { "navigationStyle": "custom", "navigationBarTitleText": "知诈" } },
+    { "path": "pages/news", "style": { "navigationBarTitleText": "官方报道" } },
+    { "path": "pages/casting", "style": { "navigationBarTitleText": "选择场景与人物" } },
+    { "path": "pages/simulation", "style": { "navigationBarTitleText": "情景演绎", "disableSwipeBack": true } },
+    { "path": "pages/report", "style": { "navigationBarTitleText": "分析复盘" } },
+    { "path": "pages/history", "style": { "navigationBarTitleText": "个人历史" } },
+    { "path": "pages/detail", "style": { "navigationBarTitleText": "历史详情" } }
+  ],
+  "globalStyle": {
+    "navigationBarBackgroundColor": "#0c2233",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#e8f1f8"
+  }
+}

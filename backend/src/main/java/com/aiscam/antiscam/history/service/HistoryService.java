@@ -47,9 +47,9 @@ public class HistoryService {
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
-    public HistoryDetail detail(long userId, String id) {
+    public HistoryDetail detail(long userId, String id, boolean includeRoundTrust) {
         var session = sessions.findById(PageQuery.id(id)).filter(s -> s.getUserId() == userId)
                 .orElseThrow(ApiException::notFound);
-        return assembler.detail(session);
+        return assembler.detail(session, includeRoundTrust);
     }
 }

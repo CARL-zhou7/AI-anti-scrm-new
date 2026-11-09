@@ -64,7 +64,7 @@ public class HistoryAssembler {
                 f.generalReserveTotalYuan(),f.generalReserveRemainingYuan(),f.emergencyReserveTotalYuan(),f.emergencyReserveRemainingYuan());
     }
 
-    public HistoryDetail detail(SimulationSession s) {
+    public HistoryDetail detail(SimulationSession s, boolean includeRoundTrust) {
         var report = state.reportEligible(s)
                 ? ReportViewMapper.summary(reports.findById(s.getId())
                         .orElseThrow(() -> ApiException.dataInconsistent("记录状态异常，请稍后重试"))) : null;
@@ -87,7 +87,7 @@ public class HistoryAssembler {
                             format(m.getPresentationCompletedAt()), m.getPresentationErrorCode(), format(m.getCreatedAt())))
                     .toList();
             return new HistoryRound(r.getRoundNo(), r.getPhase().name(), list.size() == 2,
-                    r.getPhase() == RoundPhase.COMPLETE, list, historyAnalysis(s, r), format(r.getReadingUntil()),
+                    r.getPhase() == RoundPhase.COMPLETE, list, historyAnalysis(s, r, includeRoundTrust), format(r.getReadingUntil()),
                     s.getSnapshotSchemaVersion() < 2 ? null : new Funds(
                             true, s.getInitialAvailableFundsYuan(), r.getRoundBalanceYuan(), r.getRoundPaidYuan(),
                             r.getRoundRefundedYuan(), r.getRoundActualLossYuan(), r.getAdditionalPaymentCountTotal(),
@@ -103,14 +103,11 @@ public class HistoryAssembler {
                 historyFunds(s, savedRounds));
     }
 
-    /**
-     * V3.5 history keeps the complete analysis but never the per-round score change: that belongs to the live card
-     * only, and history/report show the final score alone. Old runs keep whatever they recorded.
-     */
+    /** V3.5 keeps its final-score-only default. Callers can request the saved round changes. */
     private com.aiscam.antiscam.simulation.web.dto.SimulationViews.Analysis historyAnalysis(SimulationSession s,
-            SimulationRound round) {
+            SimulationRound round, boolean includeRoundTrust) {
         var analysis = state.analysis(s, round);
-        if (analysis == null || analysis.trustChange() == null
+        if (includeRoundTrust || analysis == null || analysis.trustChange() == null
                 || !com.aiscam.antiscam.simulation.rules.SimulationRuleset.isV35(s)) return analysis;
         return new com.aiscam.antiscam.simulation.web.dto.SimulationViews.Analysis(analysis.fraudStage(),
                 analysis.speechAnalysis(), analysis.methodAnalysis(), analysis.victimPsychology(), analysis.riskScore(),

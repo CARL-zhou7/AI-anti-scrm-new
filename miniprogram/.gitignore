@@ -1,0 +1,7 @@
+node_modules/
+dist/
+unpackage/
+.hbuilderx/
+.env.local
+.env.*.local
+project.private.config.json

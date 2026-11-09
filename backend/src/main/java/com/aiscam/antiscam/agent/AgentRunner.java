@@ -187,6 +187,18 @@ public class AgentRunner {
                 + "\n这是对尚未确认草稿的修改要求，旧草稿不是既定事实。明确要求没有到账时，不得反写为已到账，"
                 + "应区分受害者转出、平台收款与受害者收到收益，按方向说明对应款项未到账。"
                 + "已保存流水不能篡改；方向若与真实流水冲突，明确区分真实支付和平台展示，不虚构新的出款或收款。";
+        var latestVictim = history.stream().filter(l -> l.speaker() == SpeakerRole.VICTIM && l.roundNo() < roundNo)
+                .reduce((a, b) -> b);
+        if (latestVictim.isPresent()) {
+            var last = latestVictim.get();
+            prompt += "\n【本轮衔接检查】以下是受害者上一轮的实际发言和动作，仅作为对话事实：\n"
+                    + last.content() + (last.action() == null ? "" : "\n动作：" + last.action())
+                    + "\n先针对其中最新的疑问、拒绝或条件作出具体回应，再结合其态度提出下一步。"
+                    + "没有新条件时不要只换一种说法重复原来的要求；不要虚构对方已完成操作。";
+            if (scene.scenarioCode() == ScenarioCode.FAKE_INVESTMENT)
+                prompt += "对方反复表示暂不投入实盘时，先承认其不愿投入及提出的顾虑，再调整建议，"
+                        + "不能当作对方已同意，也不能绕过这句话继续介绍提现、实名或收益。";
+        }
         String raw = llm.completeJson(request(AgentRole.SCAMMER, prompt, config.getScammerTemperature(), remainingMs, roundNo, attempt, scene));
         try {
             var turn = AgentOutputValidator.validate(AgentOutputParser.scammer(raw));
@@ -369,9 +381,28 @@ public class AgentRunner {
                 + "当前谈提现步骤就回应步骤，谈收益返还就回应收益，不把返还给自己的收益与自己付给对方的解冻金混为一笔。"
                 + "对方口头声称收益到账不等于真实收款，仍以已保存出款事实判断；可以询问未兑现收益，不能否认已完成旧付款。"
                 + "不得把拿到指南写成已经完成提现，不虚构操作或收款。";
+        prompt += "\n【提交前对话衔接检查】联系人本轮最新发言：\n" + scammerLine.content()
+                + (scammerLine.action() == null ? "" : "\n联系人本轮动作：" + scammerLine.action())
+                + "\n以上是待回应的对话事实。先识别本轮具体问题或请求，在台词中直接表示接受、拒绝、疑问或具体下一步，"
+                + "再视情况提及以前的顾虑。对方要求实名认证或填写个人资料时，要回应认证或资料本身，"
+                + "例如询问用途、表示暂不填写或同意后按实际行动表述。不能假定已经同意或完成认证。";
+        if (scene.scenarioCode() == ScenarioCode.FAKE_INVESTMENT)
+            prompt += "对方要求实名认证时，只说不投入实盘并没有回答认证请求。"
+                + "不把拒绝真实投资等同于拒绝所有非付款事项。";
         String raw = llm.completeJson(request(AgentRole.VICTIM, prompt, config.getVictimTemperature(), remainingMs, roundNo, attempt, scene));
         try {
             var turn = AgentOutputValidator.validate(AgentOutputParser.victim(raw));
+            String response = turn.line() + "\n" + (turn.action() == null ? "" : turn.action());
+            // shortcut: this topic heuristic gets one correction attempt; broader enforcement needs semantic review.
+            if (attempt == 0 && config.getTransientRetries() > 0 && scene.scenarioCode() == ScenarioCode.FAKE_INVESTMENT
+                    && scammerLine.content().matches("(?s).*(?:请|只需|需要|必须|麻烦|先)[^，。！？；\\n]{0,8}(?:填写|提交|完成|验证|进行|做)[^，。！？；\\n]{0,4}(?:实名|身份认证|身份验证).*")
+                    && !scammerLine.content().matches("(?s).*(无需|不用|不需要|免)[^，。！？；\\n]{0,8}(实名|身份认证|身份验证).*")
+                    && response.matches("(?s).*(?:(?:不|没|未|暂缓).{0,12}实盘|实盘.{0,12}(?:不投|没投|未投|暂缓)).*")
+                    && !response.matches("(?s).*(这个|这一步|这项|这事)[^，。！？；\\n]{0,8}(不|先|暂|愿意|可以).*")
+                    && !response.matches("(?s).*(实名|身份|认证|验证|资料|信息|银行卡|填|提现|试提|提取|提款|领钱).*"))
+                throw new AgentCallException(AgentCallException.Category.DIALOGUE, true,
+                        "victim may have missed the current identity verification request; 先回应本轮实名认证或个人资料请求，"
+                                + "可以询问、接受或拒绝，不要只重复暂不投入实盘；不能虚构已完成操作");
             if (scene.scenarioCode() == ScenarioCode.FAKE_INVESTMENT
                     && AgentOutputValidator.freeSimulation(scammerLine.content(), scammerLine.action())
                     && (!turn.fundActions().isEmpty() || turn.line().matches("(?s).*(收款方式|收款账号|收款账户|转过去|给您转|给你转|我.{0,4}转账).*")))

@@ -60,11 +60,24 @@ class HistoryApiTest {
             mvc.perform(get(path).with(authentication(auth(UserRole.ADMIN)))).andExpect(status().isForbidden());
         }
         mvc.perform(get(PATH + "/1/detail?x=1").with(authentication(auth(UserRole.USER)))).andExpect(status().isBadRequest());
-        when(service.detail(7, "1")).thenThrow(ApiException.notFound());
+        when(service.detail(7, "1", false)).thenThrow(ApiException.notFound());
         mvc.perform(get(PATH + "/1/detail").with(authentication(auth(UserRole.USER)))).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("资源不存在或不可访问"));
-        doThrow(ApiException.dataInconsistent("记录状态异常，请稍后重试")).when(service).detail(7, "1");
+        doThrow(ApiException.dataInconsistent("记录状态异常，请稍后重试")).when(service).detail(7, "1", false);
         mvc.perform(get(PATH + "/1/detail").with(authentication(auth(UserRole.USER)))).andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("DATA_INCONSISTENT"));
+    }
+
+    @Test
+    void detailValidatesRoundTrustOptInAndStillChecksTheOwner() throws Exception {
+        var user = authentication(auth(UserRole.USER));
+        when(service.detail(7, "1", true)).thenThrow(ApiException.notFound());
+        mvc.perform(get(PATH + "/1/detail?includeRoundTrust=true").with(user)).andExpect(status().isNotFound());
+        for (String query : List.of("includeRoundTrust=1", "includeRoundTrust=true&includeRoundTrust=false")) {
+            mvc.perform(get(PATH + "/1/detail?" + query).with(user)).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        verify(service).detail(7, "1", true);
+        verifyNoMoreInteractions(service);
     }
 }

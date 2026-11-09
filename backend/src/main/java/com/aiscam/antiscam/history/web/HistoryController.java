@@ -2,6 +2,7 @@ package com.aiscam.antiscam.history.web;
 
 import com.aiscam.antiscam.auth.web.dto.Account;
 import com.aiscam.antiscam.common.api.ApiResponse;
+import com.aiscam.antiscam.common.error.ApiException;
 import com.aiscam.antiscam.content.page.PageQuery;
 import com.aiscam.antiscam.history.service.HistoryService;
 import com.aiscam.antiscam.history.web.dto.HistoryViews.*;
@@ -29,8 +30,12 @@ public class HistoryController {
     @GetMapping("/{id}/detail")
     public ResponseEntity<ApiResponse<HistoryDetail>> detail(@PathVariable String id,
             @RequestParam MultiValueMap<String, String> query, Authentication auth) {
-        PageQuery.validate(query, Set.of());
+        PageQuery.validate(query, Set.of("includeRoundTrust"));
+        var includeRoundTrust = query.getFirst("includeRoundTrust");
+        if (includeRoundTrust != null && !Set.of("true", "false").contains(includeRoundTrust)) {
+            throw ApiException.field("includeRoundTrust", "TYPE_INVALID", "是否返回逐轮受骗倾向分须为 true 或 false");
+        }
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(ApiResponse.ok(
-                service.detail(Long.parseLong(((Account) auth.getPrincipal()).id()), id)));
+                service.detail(Long.parseLong(((Account) auth.getPrincipal()).id()), id, "true".equals(includeRoundTrust))));
     }
 }

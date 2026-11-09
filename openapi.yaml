@@ -5715,6 +5715,12 @@ paths:
         description: 所属路径资源标识；必须校验父子关系
         schema:
           $ref: '#/components/schemas/Id'
+      - name: includeRoundTrust
+        in: query
+        description: 设为 true 时返回已保存的逐轮受骗倾向分变化。省略时沿用原规则。
+        schema:
+          type: boolean
+          default: false
   /timing/samples:
     get:
       tags:

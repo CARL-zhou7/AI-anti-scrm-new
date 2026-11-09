@@ -168,6 +168,62 @@ class AgentCorrectionTest {
         assertTrue(prompts.getFirst().contains("历史已有未解决的真实付款要求时仍可回应"));
     }
 
+    @Test void identityRequestRetriesAnOldInvestmentRefusalAndAcceptsAnAnswer() {
+        var prompts = new ArrayList<String>();
+        var output = new java.util.concurrent.atomic.AtomicReference<>("模拟盘收益看着挺快，不过实盘我还没投，等实际到账再操作。");
+        var runner = new AgentRunner(request -> {
+            prompts.add(request.prompt());
+            return "{\"line\":\"" + output.get() + "\",\"action\":null,\"psychology\":\"谨慎\","
+                    + "\"tone\":{\"speed\":\"NORMAL\",\"style\":\"自然\"},\"fundActions\":[]}";
+        }, new SimulationProperties().getLlm());
+        var scene = new AgentScene(ScenarioCode.FAKE_INVESTMENT, "投资", "简介", "联系人", "本人", "test",
+                "", template("v17/victim"), "", "公开背景", true, "", true);
+        var funds = new FundsContext(ScenarioCode.FAKE_INVESTMENT, 3000, 9000, 0, 0, 0, List.of());
+        var history = List.of(new DialogueLine(7, SpeakerRole.VICTIM, "我暂时不投入实盘。", null, null));
+        var current = new DialogueLine(8, SpeakerRole.SCAMMER, "今天开放提现，只需验证实名就能试提。", "发送实名认证指引", null);
+
+        var error = assertThrows(AgentCallException.class, () -> runner.victim(scene, history, current, 8, 10000, false, 0, funds));
+        assertTrue(error.retryable());
+        assertTrue(error.retryFeedback().contains("先回应本轮实名认证"));
+        assertTrue(prompts.getFirst().contains(current.content()));
+        assertTrue(prompts.getFirst().contains("只说不投入实盘并没有回答认证请求"));
+        output.set("实名认证要填哪些资料？我先了解一下。");
+        assertEquals(output.get(), runner.victim(scene, history, current, 8, 10000, false, 1, funds, "", error.retryFeedback()).line());
+        assertTrue(prompts.getLast().contains("先回应本轮实名认证"));
+
+        output.set("实盘我还没投，暂时不考虑。");
+        var noIdentityRequest = new DialogueLine(8, SpeakerRole.SCAMMER, "无需实名认证，您愿意投入实盘吗？", null, null);
+        assertDoesNotThrow(() -> runner.victim(scene, history, noIdentityRequest, 8, 10000, false, 0, funds));
+        var completed = new DialogueLine(8, SpeakerRole.SCAMMER, "请稍等。实名认证已经完成，现在愿意投入实盘吗？", null, null);
+        assertDoesNotThrow(() -> runner.victim(scene, history, completed, 8, 10000, false, 0, funds));
+        output.set("这个我暂时不办，实盘也不投。");
+        assertDoesNotThrow(() -> runner.victim(scene, history, current, 8, 10000, false, 0, funds));
+        output.set("实盘我还没投，暂时不考虑。");
+        assertDoesNotThrow(() -> runner.victim(scene, history, current, 8, 10000, false, 1, funds, "", error.retryFeedback()));
+        var noRetries = new SimulationProperties().getLlm();
+        noRetries.setTransientRetries(0);
+        var noRetryRunner = new AgentRunner(request -> "{\"line\":\"实盘我还没投。\",\"action\":null,\"psychology\":\"谨慎\","
+                + "\"tone\":{\"speed\":\"NORMAL\",\"style\":\"自然\"},\"fundActions\":[]}", noRetries);
+        assertDoesNotThrow(() -> noRetryRunner.victim(scene, history, current, 8, 10000, false, 0, funds));
+    }
+
+    @Test void scammerPromptIncludesLatestRefusalAndRequiresAConcreteResponse() {
+        var prompt = new java.util.concurrent.atomic.AtomicReference<String>();
+        var runner = new AgentRunner(request -> {
+            prompt.set(request.prompt());
+            return "{\"line\":\"明白您暂时不投实盘，我们先看看模拟操作。\",\"action\":null,\"intent\":\"回应顾虑\","
+                    + "\"tone\":{\"speed\":\"NORMAL\",\"style\":\"自然\"},\"claimedRefundYuan\":null,\"fundActions\":[]}";
+        }, new SimulationProperties().getLlm());
+        var scene = new AgentScene(ScenarioCode.FAKE_INVESTMENT, "投资", "简介", "联系人", "本人", "test",
+                template("v19/scammer"), "", "", "公开背景", true, "", true);
+        var history = List.of(new DialogueLine(6, SpeakerRole.VICTIM, "我不投入实盘。", null, null),
+                new DialogueLine(7, SpeakerRole.VICTIM, "收益还没到账，实盘我还是不投。", null, null));
+        runner.scammer(scene, history, 8, 10000, 0,
+                new FundsContext(ScenarioCode.FAKE_INVESTMENT, 3000, 9000, 0, 0, 0, List.of()));
+        assertTrue(prompt.get().contains("收益还没到账，实盘我还是不投。"));
+        assertTrue(prompt.get().contains("先承认其不愿投入及提出的顾虑"));
+    }
+
     @Test void misplacedNullReserveTierIsHarmlessButInstructionsAndOtherExtraFieldsStillFail() {
         String raw="{\"line\":\"先看看说明\",\"action\":null,\"intent\":\"介绍\",\"tone\":{\"speed\":\"NORMAL\",\"style\":\"自然\"},\"claimedRefundYuan\":null,\"fundActions\":[],\"reserveTier\":null}";
         assertTrue(AgentOutputParser.scammer(raw).fundActions().isEmpty());

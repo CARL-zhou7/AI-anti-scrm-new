@@ -52,7 +52,7 @@ class HistoryRulesTest {
         ReflectionTestUtils.setField(msg, "id", 11L);
         when(rounds.findBySessionIdOrderByRoundNoAsc(1)).thenReturn(List.of(round));
         when(messages.findByRoundIdIn(List.of(10L))).thenReturn(List.of(msg));
-        var detail = assembler.detail(s);
+        var detail = assembler.detail(s, false);
         assertFalse(detail.funds().fundsRecorded());
         assertNull(detail.funds().availableBalanceYuan());
         assertEquals("PRD-V3.2", detail.rulesetVersion());
@@ -76,7 +76,7 @@ class HistoryRulesTest {
     void finishedMissingReportDegradesOnlyInListAndSummariesKeepEveryReportState() {
         var s = session(SimulationStatus.FINISHED);
         assertNull(assembler.item(s, null).report());
-        assertEquals("DATA_INCONSISTENT", assertThrows(ApiException.class, () -> assembler.detail(s)).code);
+        assertEquals("DATA_INCONSISTENT", assertThrows(ApiException.class, () -> assembler.detail(s, false)).code);
         for (ReportStatus status : ReportStatus.values()) {
             var row = SimulationReport.pending(1, T);
             ReflectionTestUtils.setField(row, "status", status);
@@ -108,11 +108,11 @@ class HistoryRulesTest {
         assertFalse(last.hasMore()); assertNull(last.nextCursor()); assertEquals("1", last.items().getFirst().sessionId());
         when(sessions.findById(1L)).thenReturn(Optional.of(older));
         when(older.getUserId()).thenReturn(8L);
-        var foreign = assertThrows(ApiException.class, () -> service.detail(7, "1"));
-        var missing = assertThrows(ApiException.class, () -> service.detail(7, "999"));
+        var foreign = assertThrows(ApiException.class, () -> service.detail(7, "1", true));
+        var missing = assertThrows(ApiException.class, () -> service.detail(7, "999", true));
         assertEquals(foreign.status, missing.status); assertEquals(foreign.code, missing.code);
         assertEquals(foreign.getMessage(), missing.getMessage());
-        assertEquals(400, assertThrows(ApiException.class, () -> service.detail(7, "007")).status);
+        assertEquals(400, assertThrows(ApiException.class, () -> service.detail(7, "007", false)).status);
     }
 
     @Test
@@ -124,7 +124,7 @@ class HistoryRulesTest {
         var round = new SimulationRound(1, 1, T, s.getFundsSummary());
         ReflectionTestUtils.setField(round, "id", 10L);
         when(rounds.findBySessionIdOrderByRoundNoAsc(1)).thenReturn(List.of(round));
-        var detail = assembler.detail(s);
+        var detail = assembler.detail(s, false);
         assertTrue(detail.funds().fundsRecorded());
         assertEquals(10000, detail.funds().availableBalanceYuan());
         assertEquals(0, detail.funds().totalPaidYuan());
@@ -156,7 +156,7 @@ class HistoryRulesTest {
         when(rounds.findBySessionIdOrderByRoundNoAsc(1)).thenReturn(List.of(first,second));
         when(funds.findBySessionIdOrderBySequenceNoAsc(1)).thenReturn(List.of(new FundFlow(1,10,11L,payment,T),
                 new FundFlow(1,20,21L,additional,T),new FundFlow(1,20,22L,refund,T),new FundFlow(1,20,23L,reserve,T)));
-        var detail = assembler.detail(session);
+        var detail = assembler.detail(session, false);
         assertEquals("PRD-V3.3",detail.rulesetVersion());
         assertEquals(List.of(1,2,3,4),detail.funds().flows().stream().map(f -> f.sequenceNo()).toList());
         assertEquals(List.of(900,700,750,850),detail.funds().flows().stream().map(f -> f.balanceAfterYuan()).toList());
@@ -172,7 +172,7 @@ class HistoryRulesTest {
     }
 
     @Test
-    void v35HistoryKeepsTheFullAnalysisButNeverThePerRoundScore() throws Exception {
+    void v35HistoryIncludesRoundScoresOnlyWhenRequested() throws Exception {
         var s = session(SimulationStatus.FINISHED);
         when(s.getSnapshotSchemaVersion()).thenReturn(4);
         when(s.getRuntimeSnapshot()).thenReturn("{\"ruleset_version\":\"PRD-V3.5\",\"fund_ruleset_version\":\"funds-v3\"}");
@@ -220,24 +220,26 @@ class HistoryRulesTest {
                 trustEvents);
         var history = new HistoryAssembler(snapshots, live, rounds, messages, reports, funds);
 
-        var detail = history.detail(s);
+        var detail = history.detail(s, false);
 
         var analysis = detail.rounds().getFirst().analysis();
-        assertNull(analysis.trustChange(), "V3.5 history never exposes a per-round score line");
+        assertNull(analysis.trustChange(), "V3.5 history omits the per-round score by default");
         assertEquals("完整话术分析：先建立身份再提出转账", analysis.speechAnalysis());
         assertEquals("完整手段分析：冒充亲友借款", analysis.methodAnalysis());
         assertEquals("冒充亲友", analysis.methodShort(), "history keeps both fields, it does not substitute shorts");
         assertEquals("SCAMMER", detail.outcome().winning());
         assertEquals(62, detail.outcome().finalTrustScore());
-        assertEquals(new com.aiscam.antiscam.simulation.web.dto.SimulationViews.TrustChange(50, 62, 12),
-                live.analysis(s, round).trustChange(), "the live card still shows the real saved change");
-        String json = new ObjectMapper().writeValueAsString(detail);
+        var requested = history.detail(s, true);
+        var change = new com.aiscam.antiscam.simulation.web.dto.SimulationViews.TrustChange(50, 62, 12);
+        assertEquals(change, live.analysis(s, round).trustChange());
+        assertEquals(change, requested.rounds().getFirst().analysis().trustChange());
+        String json = new ObjectMapper().writeValueAsString(requested);
         for (String hidden : List.of("counterevidence", "trust_events", "threshold", "positiveFactor",
                 "negativeFactor", "coefficient")) assertFalse(json.contains(hidden));
 
         // An old PRD-V3.4 run keeps whatever it recorded; the projection is not rewritten for legacy history.
         when(s.getRuntimeSnapshot()).thenReturn("{\"ruleset_version\":\"PRD-V3.4\",\"fund_ruleset_version\":\"funds-v3\"}");
-        var legacy = history.detail(s);
+        var legacy = history.detail(s, false);
         assertEquals(new com.aiscam.antiscam.simulation.web.dto.SimulationViews.TrustChange(50, 62, 12),
                 legacy.rounds().getFirst().analysis().trustChange());
     }
