@@ -4,6 +4,15 @@ export const scenes = {
   IMPERSONATION_LOAN: { art: '/static/impersonation.jpg', opening: '/static/impersonation-opening.jpg', title: '一个熟悉的称呼', caption: '冒充熟人以急用借款为由诈骗' }
 }
 export const sceneArt = code => scenes[code]?.art || '/static/archive.jpg'
+export function isRecommendedVictim(code, age) {
+  if (!Number.isFinite(age)) return false
+  switch (code) {
+    case 'TASK_REBATE': return age < 35
+    case 'FAKE_INVESTMENT': return age >= 35 && age < 60
+    case 'IMPERSONATION_LOAN': return age >= 60
+    default: return false
+  }
+}
 const newsPictures = new Map([
   ['真实案例', '/static/news-cash.jpg'],
   ['反诈新闻', '/static/news-classroom.jpg'],
@@ -33,6 +42,9 @@ export function shanghai(value) {
   return Number.isFinite(time) ? new Date(time + 8 * 3600000).toISOString().slice(0, 16).replace('T', ' ') : '—'
 }
 export const errorText = error => error?.message || '加载失败，请重试'
+export function lightTap() {
+  uni.vibrateShort?.({ type: 'light', fail: () => {} })
+}
 export const toast = error => uni.showToast({ title: errorText(error), icon: 'none' })
 export function go(page) { uni.navigateTo({ url: '/pages/' + page }) }
 export function home() { uni.reLaunch({ url: '/pages/home' }) }

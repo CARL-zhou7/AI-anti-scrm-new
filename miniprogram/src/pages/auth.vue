@@ -1,11 +1,14 @@
 <script setup>
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { onHide, onReady, onUnload } from '@dcloudio/uni-app'
 import { get, login, write } from '../api'
 import { errorText } from '../ui'
 
+const revealing = ref(false)
+let revealTimer
 const mode = ref('login'), username = ref(''), password = ref(''), confirmPassword = ref('')
 const busy = ref(false), visible = ref(false), confirmVisible = ref(false), error = ref(''), registered = ref(false)
+const riskFields = ['地区位置', '身份证号']
 const drill = ref([
   ['用户名', '示例：体验者01'],
   ['邮箱账号', '示例：learner@example.com'],
@@ -19,13 +22,26 @@ function clearDrill() {
   drill.value.forEach(field => { field.value = '' })
 }
 
+function cancelReveal() {
+  clearTimeout(revealTimer)
+  revealing.value = false
+}
+function revealDrill() {
+  if (revealing.value) return
+  revealing.value = true
+  uni.hideKeyboard()
+  revealTimer = setTimeout(() => change('result'), 3000)
+}
+
 function change(next) {
+  cancelReveal()
   clearDrill()
   mode.value = next
   password.value = confirmPassword.value = ''
   visible.value = confirmVisible.value = false
   error.value = ''
   registered.value = false
+  if (next === 'result') void nextTick(() => uni.pageScrollTo({ scrollTop: 0, duration: 0 }))
 }
 
 async function submit() {
@@ -57,16 +73,30 @@ onReady(async () => {
     if (cause.status !== 401) error.value = errorText(cause)
   } finally { busy.value = false }
 })
-onHide(clearDrill)
-onUnload(clearDrill)
+function leaveDrill() {
+  cancelReveal()
+  clearDrill()
+}
+onHide(leaveDrill)
+onUnload(leaveDrill)
 </script>
 
 <template>
   <view class="auth-shell">
-    <image v-if="mode !== 'result'" class="auth-picture" :src="mode === 'login' ? '/static/login.jpg' : '/static/signup.jpg'" mode="widthFix" />
-    <view v-if="mode === 'result'" class="surface auth-card result">
+    <image v-if="mode !== 'result' && !revealing" class="auth-picture" :src="mode === 'login' ? '/static/login.jpg' : '/static/signup.jpg'" mode="widthFix" />
+    <view v-if="revealing" class="drill-reveal">
+      <view class="drill-zoom">
+        <view v-for="field in drill.filter(item => riskFields.includes(item.label))" :key="field.label" class="drill-focus">
+          <text class="block bold">{{ field.label }}</text>
+          <text class="drill-value block">{{ field.value || '未填写' }}</text>
+        </view>
+      </view>
+      <text class="drill-question block" aria-live="polite">正常注册学习账号真需要这些信息吗？</text>
+    </view>
+    <view v-else-if="mode === 'result'" class="surface auth-card result">
       <image class="shield" src="/static/drill-shield.jpg" mode="widthFix" />
       <text class="auth-title center">反诈练习结果</text>
+      <text class="muted block center result-reassurance">演练结束，填写内容已清空</text>
       <text class="result-callout">哈哈哈！你被骗啦！</text>
       <view class="result-copy">
         <text class="block">注意查看那些看似正常的东西，不要太好奇，疏忽和好奇可能就是你被骗的第一步……</text>
@@ -93,7 +123,7 @@ onUnload(clearDrill)
             </view>
           </view>
         </view>
-        <view class="auth-actions"><button @tap="change('result')">注册账号</button><button class="link" @tap="change('login')">返回登录</button></view>
+        <view class="auth-actions"><button :disabled="revealing" @tap="revealDrill">注册账号</button><button class="link" @tap="change('login')">返回登录</button></view>
       </template>
       <template v-else>
         <text v-if="mode === 'register'" class="muted block">恭喜进入真正的注册界面！</text>
@@ -156,4 +186,38 @@ onUnload(clearDrill)
 .result-copy { font-size: 32rpx; line-height: 1.4; }
 .result-copy .block + .block { margin-top: 24rpx; }
 .result-copy .muted { font-size: 29rpx; }
+.drill-reveal {
+  position: fixed; inset: 0; z-index: 6; overflow-y: auto; box-sizing: border-box;
+  display: flex; flex-direction: column; justify-content: safe center;
+  padding: 34rpx 36rpx calc(34rpx + env(safe-area-inset-bottom));
+  background: #241318; color: #fff2ef;
+}
+.drill-zoom { animation: drill-zoom .6s cubic-bezier(.2,.7,.2,1); }
+.drill-focus + .drill-focus { margin-top: 28rpx; }
+.drill-focus { font-size: 34rpx; }
+.drill-value {
+  margin-top: 10rpx; padding: 22rpx 26rpx; min-height: 98rpx;
+  border: 4rpx solid #ff675d; border-radius: 16rpx; background: #531e24;
+  font-size: 40rpx; overflow-wrap: anywhere;
+  animation: drill-red .45s .48s ease-out;
+}
+.drill-question {
+  margin-top: 44rpx; font-size: 52rpx; line-height: 1.25; font-weight: 800; text-align: center;
+  animation: drill-question .35s .72s ease-out both;
+}
+@keyframes drill-zoom { from { opacity: .55; transform: scale(.6); } }
+@keyframes drill-red {
+  35% { background: #a42c32; box-shadow: 0 0 28rpx #ff675d; }
+}
+@keyframes drill-question { from { opacity: 0; transform: scale(.84); } }
+.result-callout { animation: result-stamp .3s ease-out both; }
+.result-reassurance, .result-copy { animation: result-fade .18s ease-out .3s both; }
+@keyframes result-stamp {
+  from { opacity: .5; transform: translateY(-12rpx) scale(1.06); }
+  70% { transform: scale(.99); }
+}
+@keyframes result-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .drill-zoom, .drill-value, .drill-question, .result-callout, .result-reassurance, .result-copy { animation: none; }
+}
 </style>

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { onBackPress, onLoad } from '@dcloudio/uni-app'
 import { get, withCursor } from '../api'
-import { errorText, sceneArt, scenes, toast } from '../ui'
+import { errorText, isRecommendedVictim, lightTap, sceneArt, scenes, toast } from '../ui'
 import { profileDetailRows } from '../profileDetail'
 import Portrait from '../components/Portrait.vue'
 
@@ -40,8 +40,18 @@ function showDetail(group, item) {
   detail.value = { key: group.key, item }
   uni.setNavigationBarTitle({ title: '画像详情' })
 }
+function selectScene(id) {
+  if (sceneId.value === id) return
+  sceneId.value = id
+  lightTap()
+}
+function selectProfile(group, id) {
+  if (group.selected === id) return
+  group.selected = id
+  lightTap()
+}
 function closeDetail(select = false) {
-  if (select) groups.value.find(group => group.key === detail.value.key).selected = detail.value.item.id
+  if (select) selectProfile(groups.value.find(group => group.key === detail.value.key), detail.value.item.id)
   detail.value = null
   uni.setNavigationBarTitle({ title: '选择场景与人物' })
 }
@@ -83,28 +93,29 @@ onBackPress(() => {
     <template v-else-if="step === 1">
       <text class="heading">选择诈骗场景</text>
       <text v-if="!busy && !scenarios.length" class="muted">暂无可用场景</text>
-      <view class="stack">
+      <view class="stack motion-step">
         <view v-for="item in scenarios" :key="item.id" class="scene-card" :class="{ picked: sceneId === item.id }"
-          :aria-label="item.name + '，' + (scenes[item.code]?.caption || item.description) + (sceneId === item.id ? '，已选择' : '')" @tap="sceneId = item.id">
+          :aria-label="item.name + '，' + (scenes[item.code]?.caption || item.description) + (sceneId === item.id ? '，已选择' : '')" hover-class="tap-press" :hover-start-time="0" @tap="selectScene(item.id)">
           <image class="hero-art" :src="sceneArt(item.code)" mode="aspectFill" />
           <view class="hero-copy"><text class="block bold">{{ item.name }}</text><text class="small">{{ scenes[item.code]?.caption || item.description }}</text></view>
-          <text class="indicator scene-indicator">{{ sceneId === item.id ? '✓' : '' }}</text>
+          <text class="indicator scene-indicator"><text v-if="sceneId === item.id" class="pick-mark">✓</text></text>
         </view>
       </view>
       <view class="actions selection-action"><button :disabled="!scene || busy" @tap="step = 2">下一步：选人物</button></view>
     </template>
     <template v-else>
-      <view v-for="group in groups" :key="group.key">
+      <view v-for="group in groups" :key="group.key" class="motion-step">
         <view class="row between profile-heading">
           <text class="heading">{{ group.label }}</text>
           <button v-if="group.items.length" class="link" @tap="showDetail(group, group.items.find(item => item.id === group.selected) || group.items[0])">查看画像 ›</button>
         </view>
         <text v-if="!group.items.length" class="muted">暂无可选画像</text>
         <view class="profiles" :class="group.key">
-          <view v-for="item in group.items" :key="item.id" class="profile" :class="{ picked: group.selected === item.id }" @tap="group.selected = item.id">
+          <view v-for="item in group.items" :key="item.id" class="profile" :class="{ picked: group.selected === item.id }" hover-class="tap-press" :hover-start-time="0" @tap="selectProfile(group, item.id)">
             <Portrait class="photo" :person="item" />
             <text class="block bold center profile-name">{{ item.name }}</text>
-            <text v-if="group.selected === item.id" class="indicator">✓</text>
+            <text v-if="group.key === 'victim' && isRecommendedVictim(scene?.code, item.age)" class="recommended">推荐</text>
+            <text v-if="group.selected === item.id" class="indicator pick-mark">✓</text>
           </view>
         </view>
         <button v-if="group.cursor" class="link" :disabled="busy" @tap="more(group)">加载更多</button>
@@ -136,7 +147,15 @@ onBackPress(() => {
 .profiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14rpx; }
 .profiles.victim { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .profile { position: relative; overflow: hidden; border: 3rpx solid transparent; border-radius: 15rpx; background: #d9e7f0; }
+.recommended { position: absolute; left: 12rpx; top: 12rpx; padding: 4rpx 10rpx; border-radius: 8rpx; background: #e7efc5; color: #34522b; font-size: 23rpx; font-weight: 700; }
 .picked { border-color: #d56831; }
+.scene-card, .profile { transition: border-color .14s ease-out, transform .12s ease-out; }
+.pick-mark { display: inline-block; animation: pick-in .16s ease-out both; }
+@keyframes pick-in { from { opacity: .5; transform: scale(.8); } }
+@media (prefers-reduced-motion: reduce) {
+  .scene-card, .profile { transition: none; }
+  .pick-mark { animation: none; }
+}
 .photo { width: 100%; height: 230rpx; }
 .victim .photo { height: 220rpx; }
 .profile-heading .link { color: #4e6576; }

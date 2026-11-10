@@ -4,7 +4,16 @@ import { test } from 'node:test'
 import { get, login, logout, write } from '../src/api.js'
 import { nextPresentation, panelTextSize, playedRounds, reveal, stageAction, startId, trendPlot, trendY } from '../src/presentation.js'
 import { profileDetailRows } from '../src/profileDetail.js'
-import { isOfficialNewsUrl, newsArt, portraitArt, riskColor } from '../src/ui.js'
+import { isOfficialNewsUrl, isRecommendedVictim, newsArt, portraitArt, riskColor } from '../src/ui.js'
+
+test('casting recommends the same age groups as web for the selected scenario', () => {
+  const ages = [34, 35, 59, 60]
+  assert.deepEqual(ages.filter(age => isRecommendedVictim('TASK_REBATE', age)), [34])
+  assert.deepEqual(ages.filter(age => isRecommendedVictim('FAKE_INVESTMENT', age)), [35, 59])
+  assert.deepEqual(ages.filter(age => isRecommendedVictim('IMPERSONATION_LOAN', age)), [60])
+  assert.equal(isRecommendedVictim(undefined, 41), false)
+  assert.equal(isRecommendedVictim('TASK_REBATE', null), false)
+})
 
 test('session rotation, CSRF refresh and logout use the shared backend contract', async () => {
   const storage = new Map()

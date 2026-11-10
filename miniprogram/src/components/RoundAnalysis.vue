@@ -1,10 +1,26 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { panelTextSize } from '../presentation'
 import { riskColor } from '../ui'
 
-const props = defineProps({ analysis: Object, full: Boolean, showDelta: Boolean })
+const props = defineProps({ analysis: Object, full: Boolean, showDelta: Boolean, roundNo: Number })
 const trust = computed(() => props.analysis?.trustChange)
+const pulse = ref(0), showingDelta = ref(false)
+let deltaTimer
+function replayDelta() {
+  if (!trust.value || props.full) return
+  clearTimeout(deltaTimer)
+  pulse.value++
+  showingDelta.value = true
+  deltaTimer = setTimeout(() => { showingDelta.value = false }, 850)
+}
+watch(() => props.showDelta, value => { if (value) replayDelta() }, { immediate: true })
+watch(() => props.roundNo, () => {
+  clearTimeout(deltaTimer)
+  showingDelta.value = false
+  if (props.showDelta) replayDelta()
+})
+onBeforeUnmount(() => clearTimeout(deltaTimer))
 const method = computed(() => props.full ? props.analysis.methodAnalysis : props.analysis.methodShort || props.analysis.methodAnalysis)
 const intent = computed(() => props.full ? props.analysis.victimPsychology : props.analysis.intentShort || props.analysis.victimPsychology)
 const size = computed(() => props.full ? undefined
@@ -14,12 +30,22 @@ const size = computed(() => props.full ? undefined
 <template>
   <view v-if="analysis" :class="{ 'live-analysis': !full }">
     <view class="row scores">
-      <view class="tile grow center"><text class="block small bold">受骗倾向分</text>
-        <text v-if="showDelta && trust?.delta" class="number score-pulse" :class="trust.delta > 0 ? 'rise' : 'fall'">{{ trust.delta > 0 ? '+' : '−' }}{{ Math.abs(trust.delta) }}</text>
+      <view class="tile grow center" :role="!full && trust ? 'button' : undefined"
+        :aria-label="!full && trust ? '受骗倾向分，点击重播本轮变化' : undefined" @tap="replayDelta">
+        <text class="block small bold">受骗倾向分</text>
+        <template v-if="showingDelta && trust">
+          <text v-for="key in [pulse]" :key="key" class="number score-pulse"
+            :class="trust.delta > 0 ? 'rise' : trust.delta < 0 ? 'fall' : ''">{{ trust.delta < 0 ? '−' : '+' }}{{ Math.abs(trust.delta ?? 0) }}</text>
+        </template>
         <text v-else-if="trust" class="number">{{ trust.before }} <text :class="trust.delta > 0 ? 'rise' : trust.delta < 0 ? 'fall' : ''">→ {{ trust.after }}</text></text>
         <text v-else class="number">—</text>
       </view>
-      <view class="tile grow center"><text class="block small bold">本轮风险</text><text class="number" :style="{ color: riskColor(analysis.riskScore) }">{{ analysis.riskScore ?? '—' }}</text><text class="muted"> / 100</text></view>
+      <view class="tile grow center">
+        <text class="block small bold">本轮风险</text>
+        <text v-for="score in [analysis.riskScore]" :key="roundNo + ':' + score" class="number"
+          :class="{ 'risk-pulse': !full && score != null }" :style="{ color: riskColor(score) }">{{ score ?? '—' }}</text>
+        <text class="muted"> / 100</text>
+      </view>
     </view>
     <view :class="{ 'analysis-section method': !full }">
       <text class="label">{{ full ? '诈骗手段' : '骗子手段' }}</text>
@@ -49,7 +75,12 @@ const size = computed(() => props.full ? undefined
   55% { opacity: 1; transform: translateY(-4rpx) scale(1.13); }
   100% { transform: translateY(0) scale(1); }
 }
-@media (prefers-reduced-motion: reduce) { .score-pulse { animation: none; } }
+.risk-pulse { display: inline-block; animation: risk-arrive .36s ease-out; }
+@keyframes risk-arrive {
+  from { opacity: .35; transform: translateY(8rpx); }
+  65% { transform: translateY(-2rpx); }
+}
+@media (prefers-reduced-motion: reduce) { .score-pulse, .risk-pulse { animation: none; } }
 .label { display: block; font-size: 24rpx; font-weight: 750; margin-top: 10rpx; }
 .live-analysis { flex: 1; display: flex; flex-direction: column; gap: 12rpx; }
 .live-analysis .scores { margin-bottom: 0; }

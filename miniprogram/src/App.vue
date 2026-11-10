@@ -6,6 +6,16 @@ export default {}
 page { background: #e8f1f8; color: #102638; font: 28rpx/1.55 system-ui, sans-serif; }
 view, text, image, input, textarea, button { box-sizing: border-box; }
 button { margin: 0; padding: 18rpx 24rpx; border-radius: 14rpx; background: #102b3d; color: #fff; font-size: 28rpx; line-height: 1.4; }
+button:not([disabled]) { transition: transform .12s ease-out, opacity .12s ease-out; }
+button:not([disabled]):active, .tap-press { transform: scale(.98); opacity: .86; }
+.motion-fade { animation: ui-fade .16s ease-out both; }
+.motion-step { animation: ui-step .18s ease-out both; }
+@keyframes ui-fade { from { opacity: .55; } }
+@keyframes ui-step { from { opacity: .65; transform: translateY(8rpx); } }
+@media (prefers-reduced-motion: reduce) {
+  button:not([disabled]), .tap-press { transition: none; transform: none; }
+  .motion-fade, .motion-step { animation: none; }
+}
 button::after { border: 0; }
 button[disabled] { opacity: .5; }
 input, textarea { width: 100%; padding: 16rpx 20rpx; border: 1px solid #b9cbd8; border-radius: 12rpx; color: #102638; }

@@ -2,8 +2,8 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { asset, get, pageUrl, runPath, write } from '../api'
-import { nextPresentation, reveal, stageAction, startId } from '../presentation'
-import { errorText, home, scenes } from '../ui'
+import { nextPresentation, revealCount, stageAction, startId } from '../presentation'
+import { errorText, home, lightTap, scenes } from '../ui'
 import Portrait from '../components/Portrait.vue'
 import Dialogue from '../components/Dialogue.vue'
 import RoundAnalysis from '../components/RoundAnalysis.vue'
@@ -11,8 +11,11 @@ import RoundAnalysis from '../components/RoundAnalysis.vue'
 const state = ref(null), preview = ref(null), stage = ref('loading'), error = ref('')
 const settings = ref(''), busy = ref(false), muted = ref(false), tab = ref('dialogue')
 const orb = ref(''), orbText = ref(''), lastRound = ref(null), previous = ref(false)
-const playing = ref(null), visibleText = ref(''), mouthOpen = ref(false), conflict = ref('')
+const playing = ref(null), revealedCount = ref(0), mouthOpen = ref(false), conflict = ref('')
 const scorePulseRound = ref(0)
+const draftAction = ref(''), orbClosing = ref(false), orbSnapping = ref(false)
+const hintedDraft = ref('')
+let orbCloseTimer
 const cast = computed(() => state.value?.configuration || preview.value)
 const art = computed(() => scenes[cast.value?.scenario.code])
 const round = computed(() => state.value?.currentRound)
@@ -30,7 +33,7 @@ const orbPosition = ref({ x: Math.max(0, uni.getWindowInfo().windowWidth - 34), 
 let orbDrag = null, swipeStart = null
 let selection, requestId, session = '', timer, tickBusy = false, shown = false, disposed = false
 let openingMs = 0, phaseStarted = 0, analysisSince = 0, analysisRound = 0, receipt = null, audio = null
-let playbackVersion = 0, mouthTimer
+let playbackVersion = 0, mouthTimer, subtitleTimer
 let animatedRound = 0, scoreTimer, controlVersion = 0
 const POLL_MS = 900
 
@@ -121,12 +124,13 @@ function accept(next, exited = false) {
 
 function stopAudio() {
   playbackVersion++
-  closeMouth()
+  stopSpeaking()
   if (audio) { audio.destroy(); audio = null }
   playing.value = null
 }
 
-function closeMouth() {
+function stopSpeaking() {
+  clearInterval(subtitleTimer)
   clearInterval(mouthTimer)
   mouthOpen.value = false
 }
@@ -140,7 +144,16 @@ async function play(next) {
   const line = next.message
   const version = ++playbackVersion
   playing.value = line
-  visibleText.value = line.segments?.length ? '' : line.content
+  revealedCount.value = 0
+  const characterCount = Array.from(line.content).length
+  const durationMs = line.audioDurationMs || characterCount * 100
+  const segments = line.segments?.length ? line.segments
+    : [{ startMs: 0, endMs: durationMs, charStart: 0, charEnd: characterCount }]
+  let audioMs = 0, sampleTime = 0
+  function sampleAudio() {
+    audioMs = audio.currentTime * 1000 || 0
+    sampleTime = Date.now()
+  }
   try {
     const path = await asset(line.audioUrl)
     if (disposed || playbackVersion !== version) return
@@ -149,15 +162,19 @@ async function play(next) {
     audio.volume = muted.value ? 0 : 1
     audio.onPlay(() => {
       if (playbackVersion !== version) return
-      closeMouth()
+      stopSpeaking()
+      sampleAudio()
       mouthOpen.value = true
       mouthTimer = setInterval(() => { mouthOpen.value = !mouthOpen.value }, 125)
+      subtitleTimer = setInterval(() => {
+        if (playbackVersion !== version || !shown || settings.value || revealedCount.value >= characterCount) return
+        if (revealedCount.value < revealCount(segments, audioMs + Date.now() - sampleTime)) {
+          revealedCount.value++
+        }
+      }, 24)
     })
-    audio.onPause(() => { if (playbackVersion === version) closeMouth() })
-    audio.onTimeUpdate(() => {
-      if (playbackVersion !== version) return
-      visibleText.value = reveal(line.content, line.segments, audio.currentTime * 1000)
-    })
+    audio.onPause(() => { if (playbackVersion === version) stopSpeaking() })
+    audio.onTimeUpdate(() => { if (playbackVersion === version) sampleAudio() })
     audio.onEnded(() => { if (playbackVersion === version) finishLine(next) })
     audio.onError(() => { if (playbackVersion === version) finishLine(next, 'AUDIO_PLAYBACK_FAILED') })
     audio.src = path
@@ -252,15 +269,25 @@ function openReport() {
   uni.redirectTo({ url: pageUrl('report', session) })
 }
 function backToCasting() { uni.navigateBack() }
-function closeOrb() { orb.value = ''; orbText.value = ''; error.value = '' }
+function resetOrb() {
+  clearTimeout(orbCloseTimer)
+  orbClosing.value = false
+  orb.value = ''; orbText.value = ''; error.value = ''
+}
+function closeOrb() {
+  if (orbClosing.value) return
+  orbClosing.value = true
+  orbCloseTimer = setTimeout(resetOrb, 160)
+}
 function edit() { orbText.value = draft.value.draftContent; orb.value = 'edit' }
 function regenerate() { orbText.value = ''; orb.value = 'regenerate' }
 function submitDraft(mode) {
-  if (!draft.value || settings.value) return
+  if (!draft.value || settings.value || orbClosing.value) return
   const data = { draftId: draft.value.draftId, expectedRevisionNo: draft.value.revisionNo }
   const content = orbText.value.trim()
   if (mode === 'save' && !content) { error.value = '请输入台词'; return }
   return control(async () => {
+    draftAction.value = mode
     try {
       if (mode === 'save') {
         if (content !== draft.value.draftContent) {
@@ -270,28 +297,37 @@ function submitDraft(mode) {
         }
         orbText.value = ''
         orb.value = 'preview'
-        uni.showToast({ title: '台词已保存', icon: 'success' })
+        uni.showToast({ title: '已保存，等待继续', icon: 'none' })
+        lightTap()
         return
       }
       if (mode === 'regenerate') {
         await write(runPath(session, '/intervention/regenerate'), { ...data, guidance: content || null })
-        accept(await get(runPath(session)))
+        const next = await get(runPath(session))
+        if (disposed) return
+        accept(next)
+        if (next.status === 'RUNNING') {
+          orbText.value = ''
+          orb.value = 'preview'
+        }
+        return
       } else {
         accept(await write(runPath(session, '/intervention/adopt'), { ...data, continue: true }))
       }
-      closeOrb()
+      resetOrb()
     } catch (cause) {
       if (['STALE_DRAFT', 'DRAFT_REVISION_CONFLICT'].includes(cause.code)) {
         accept(await get(runPath(session)))
-        closeOrb()
+        resetOrb()
       }
       throw cause
-    }
+    } finally { draftAction.value = '' }
   })
 }
 
 function beginDrag(event) {
   const touch = event.touches[0]
+  orbSnapping.value = false
   if (touch) orbDrag = { x: touch.clientX, y: touch.clientY, initial: { ...orbPosition.value }, moved: false }
 }
 function moveDrag(event) {
@@ -308,12 +344,18 @@ function endDrag() {
   if (!orbDrag) return
   if (orbDrag.moved) {
     const width = uni.getWindowInfo().windowWidth
+    orbSnapping.value = true
     orbPosition.value.x = orbPosition.value.x < width / 2 ? -12 : width - 34
-  } else if (draft.value) { orb.value = 'preview'; error.value = '' }
+  } else if (draft.value) {
+    hintedDraft.value = draft.value.draftId
+    orb.value = 'preview'
+    error.value = ''
+  }
   orbDrag = null
 }
 function startSwipe(event) { swipeStart = event.touches[0]?.clientX ?? null }
 function endSwipe(event) {
+  if (orbClosing.value) return
   const end = event.changedTouches[0]?.clientX
   if (end == null || swipeStart == null || Math.abs(end - swipeStart) < 55) return
   if (orb.value === 'preview' || orb.value === 'previous') orb.value = end < swipeStart ? 'previous' : 'preview'
@@ -331,10 +373,11 @@ onShow(() => {
   timer = setInterval(tick, POLL_MS)
   void tick()
 })
-onHide(() => { shown = false; clearInterval(timer); clearScorePulse(); audio?.pause() })
+onHide(() => { shown = false; clearInterval(timer); clearScorePulse(); stopSpeaking(); audio?.pause() })
 function dispose() {
   if (disposed) return
   disposed = true
+  clearTimeout(orbCloseTimer)
   clearInterval(timer)
   clearScorePulse()
   stopAudio()
@@ -404,7 +447,7 @@ onBeforeUnmount(dispose)
         <view class="progress-track"><view v-for="segment in 5" :key="segment" class="progress-segment" :style="{ animationDelay: (segment - 1) * 1.3 + 's' }" /></view>
       </view>
       <view v-else-if="stage === 'characters' && !settings && !error" class="stage-actions center">第一轮即将开始</view>
-      <view v-else class="surface play-panel" :class="{ 'settings-panel': settings }" @touchstart="startSwipe" @touchend="endSwipe">
+      <view v-else class="surface play-panel" :class="{ 'settings-panel': settings, 'orb-panel': orb, 'orb-closing': orbClosing }" @touchstart="startSwipe" @touchend="endSwipe">
         <template v-if="settings">
           <text class="panel-title">{{ settings === 'exit' ? '确定退出演绎？' : '演绎已暂停' }}</text>
           <text v-if="error" class="error">{{ error }}</text>
@@ -434,10 +477,10 @@ onBeforeUnmount(dispose)
               :placeholder="orb === 'regenerate' ? '例如：先回应对方的疑问，再发送一条说明。语气礼貌，避免催促。' : '输入下一轮台词'" />
             <view v-if="orb === 'edit'" class="actions">
               <button class="link" :disabled="busy" @tap="orb = 'preview'; error = ''">取消修改</button>
-              <button :loading="busy" :disabled="busy || !draft || !review.canAdopt" @tap="submitDraft('save')">保存台词</button>
+              <button :loading="busy" :disabled="busy || !draft || !review.canAdopt" @tap="submitDraft('save')">{{ draftAction === 'save' ? '保存中…' : '保存台词' }}</button>
             </view>
             <view v-else class="actions">
-              <button :loading="busy" :disabled="busy" @tap="submitDraft('regenerate')">重新生成</button>
+              <button :loading="busy" :disabled="busy" @tap="submitDraft('regenerate')">{{ draftAction === 'regenerate' ? '正在重新生成…' : '重新生成' }}</button>
               <button class="ghost" :disabled="busy" @tap="orb = 'preview'; error = ''">取消</button>
             </view>
           </template>
@@ -445,36 +488,38 @@ onBeforeUnmount(dispose)
             <view class="tabs"><text class="tab" :class="{ active: orb === 'preview' }" @tap="orb = 'preview'">下一轮台词</text><text class="tab" :class="{ active: orb === 'previous' }" @tap="orb = 'previous'">上一轮对白</text></view>
             <template v-if="orb === 'preview' && draft">
               <text class="draft-label">第 {{ draft.roundNo }} 轮 · {{ cast.scammer.name }}</text>
-              <view class="tile draft-line"><text>{{ draft.draftContent }}</text><text v-if="draft.draftAction" class="muted block">{{ draft.draftAction }}</text></view>
+              <view :key="draft.draftId" class="tile draft-line"><text>{{ draft.draftContent }}</text><text v-if="draft.draftAction" class="muted block">{{ draft.draftAction }}</text></view>
               <view class="row settings-row"><button class="ghost grow" :disabled="busy || !review.canAdopt" @tap="edit">✎ 编辑台词</button><button class="ghost grow" :disabled="busy || !review.canRegenerate" @tap="regenerate">⟳ 重新生成</button></view>
               <button :loading="busy" :disabled="busy || !review.canAdopt" @tap="submitDraft('continue')">继续演绎</button>
             </template>
-            <text v-else-if="orb === 'preview'" class="muted block">正在生成下一轮台词…</text>
+            <text v-else-if="orb === 'preview'" class="muted block">正在重新生成台词…</text>
             <Dialogue v-else-if="priorRound?.messages.length" :messages="priorRound.messages" :cast="cast" />
             <text v-else class="muted">暂无上一轮对白</text>
-            <button class="link" :disabled="busy" @tap="closeOrb">收起魔法球</button>
+            <button class="link" :disabled="busy" @tap="closeOrb()">收起魔法球</button>
           </template>
         </template>
         <template v-else>
           <view v-if="error"><text class="error">{{ error }}</text><button class="ghost" @tap="error = ''; tick()">重新加载</button></view>
           <view v-if="stage === 'live'" class="tabs"><text class="tab" :class="{ active: tab === 'dialogue' }" @tap="tab = 'dialogue'">{{ previous ? '上一轮对白' : '本轮对白' }}</text><text class="tab" :class="{ active: tab === 'analysis' }" @tap="tab = 'analysis'">{{ previous ? '上一轮解说' : '本轮解说' }}</text></view>
           <template v-if="stage === 'live' && tab === 'dialogue'">
-            <Dialogue v-if="lines.length" class="live-text" live :messages="lines" :cast="cast" :playing="playing?.id" :revealed="visibleText" />
+            <Dialogue v-if="lines.length" class="live-text" live :messages="lines" :cast="cast" :playing="playing?.id" :revealed-count="revealedCount" />
             <text v-else class="muted block waiting">正在准备对白…</text>
             <button v-if="lastRound && priorRound?.roundNo !== lastRound.roundNo" class="link recall" @tap="previous = !previous">{{ previous ? '返回本轮' : '右滑回看 →' }}</button>
           </template>
           <template v-if="stage === 'live' && tab === 'analysis'">
-            <RoundAnalysis v-if="shownRound?.analysis" class="live-text" :analysis="shownRound.analysis" :show-delta="scorePulseRound === shownRound.roundNo" />
+            <RoundAnalysis v-if="shownRound?.analysis" class="live-text motion-fade" :analysis="shownRound.analysis" :round-no="shownRound.roundNo" :show-delta="scorePulseRound === shownRound.roundNo" />
             <view v-else class="waiting center">
               <text class="spinner" /><text class="bold block">正在生成本轮解说…</text>
               <view class="skeleton"><view /><view /><view /></view>
             </view>
           </template>
-          <view v-if="draft && stage === 'live'" class="actions continue-action"><button :disabled="busy || !review.canAdopt" @tap="submitDraft('continue')">继续演绎</button></view>
+          <view v-if="draft && stage === 'live'" class="actions continue-action"><button :loading="draftAction === 'continue'" :disabled="busy || !review.canAdopt" @tap="submitDraft('continue')">继续演绎</button></view>
           <text v-else-if="round?.analysis?.presentedAt && stage === 'live' && !error" class="muted small block center next-hint">正在准备下一轮…</text>
         </template>
       </view>
-      <view v-if="draft && stage === 'live' && !settings && !orb" class="orb" aria-label="打开魔法球" :style="{ left: orbPosition.x + 'px', bottom: orbPosition.y + 20 + 'px' }"
+      <view v-if="draft && stage === 'live' && !settings && !orb" class="orb" aria-label="打开魔法球"
+        :class="{ 'orb-snapping': orbSnapping, 'orb-hint': hintedDraft !== draft.draftId }"
+        @animationend="hintedDraft = draft.draftId" :style="{ left: orbPosition.x + 'px', bottom: orbPosition.y + 20 + 'px' }"
         @touchstart.stop="beginDrag" @touchmove.stop.prevent="moveDrag" @touchend.stop="endDrag" @touchcancel="orbDrag = null" />
     </template>
   </view>
@@ -532,7 +577,8 @@ onBeforeUnmount(dispose)
 .voice-setting { padding: 10rpx 3rpx; border-bottom: 1px solid #cedfe9; }
 .sheet-handle { height: 8rpx; width: 86rpx; margin: 0 auto 10rpx; background: #92adbf; border-radius: 20rpx; }
 .draft-label { display: inline-block; background: #f7e3cf; color: #4c3024; border-radius: 10rpx; padding: 4rpx 16rpx; font-weight: 750; }
-.draft-line { margin-top: 9rpx; }
+.draft-line { margin-top: 9rpx; color: #102638; line-height: 1.6; }
+.draft-line .muted { margin-top: 6rpx; color: #3c5263; }
 .waiting { padding: 32rpx 6rpx; }
 .waiting .bold { margin: 12rpx 0 20rpx; font-size: 34rpx; }
 .skeleton { width: 82%; margin: 0 auto; }
@@ -556,6 +602,17 @@ onBeforeUnmount(dispose)
 .progress-segment { position: relative; flex: 1; height: 8rpx; border-radius: 12rpx; background: #546674; overflow: hidden; }
 .progress-segment::before { content: ''; position: absolute; inset: 0; background: #f1874d; transform: scaleX(0); transform-origin: left; animation: fill 1.3s linear forwards; animation-delay: inherit; }
 .orb { position: fixed; z-index: 5; width: 50px; height: 50px; border: 3px solid #ffd294; border-radius: 50%; background: radial-gradient(circle at 32% 30%, #ffcc60, #f87520 70%); box-shadow: 0 0 16px #e58b49; }
+.orb-snapping { transition: left .18s ease-out; }
+.orb-hint { animation: orb-hint .42s ease-out; }
+.orb-panel { animation: orb-in .18s ease-out; }
+.orb-panel.orb-closing { animation: orb-out .16s ease-in both; pointer-events: none; }
+@keyframes orb-in { from { opacity: .55; transform: translateY(16rpx); } }
+@keyframes orb-out { to { opacity: .55; transform: translateY(16rpx); } }
+@keyframes orb-hint { 50% { box-shadow: 0 0 22px #e58b49; } }
+@media (prefers-reduced-motion: reduce) {
+  .orb-snapping { transition: none; }
+  .orb-hint, .orb-panel, .orb-panel.orb-closing { animation: none; }
+}
 .spinner { display: inline-block; width: 40rpx; height: 40rpx; border: 6rpx solid #bdcedb; border-top-color: #bd552b; border-radius: 50%; animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fill { to { transform: scaleX(1); } }

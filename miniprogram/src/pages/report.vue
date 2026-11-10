@@ -113,7 +113,7 @@ onUnload(hide)
         </view>
         <Trend label="受骗倾向分走势" :series="trustSeries" />
         <button class="ghost actions" @tap="riskOpen = !riskOpen">本轮风险走势 {{ riskOpen ? '⌃' : '⌄' }}</button>
-        <Trend v-if="riskOpen" label="风险走势" :series="view.riskSeries" selectable @select="detail" />
+        <view v-if="riskOpen" class="motion-fade"><Trend label="风险走势" :series="view.riskSeries" selectable @select="detail" /></view>
         <view class="actions"><button @tap="panel = 'details'">查看复盘详情</button></view>
       </template>
       <template v-else>

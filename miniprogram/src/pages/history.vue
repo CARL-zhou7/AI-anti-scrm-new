@@ -47,7 +47,7 @@ onReachBottom(() => { void load(true) })
     </view>
     <view v-for="group in groups" :key="group.day">
       <text class="date-heading">{{ group.day === '—' ? group.day : Number(group.day.slice(5, 7)) + '月' + Number(group.day.slice(8, 10)) + '日' }}</text>
-      <view v-for="item in group.items" :key="item.sessionId" class="row history-item divider" @tap="open(item.sessionId)">
+      <view v-for="item in group.items" :key="item.sessionId" class="row history-item divider" hover-class="tap-press" :hover-start-time="0" @tap="open(item.sessionId)">
         <image class="avatar" :src="cover(item.scenarioName)" mode="aspectFill" />
         <view class="grow"><text class="bold block">{{ item.scenarioName }}</text><text class="muted small">{{ item.scammerName }}、{{ item.victimName }}</text></view>
         <view><text class="badge">{{ statusLabel(item.status) }}</text><text class="muted block small">{{ reportLabel(item.report) }}</text></view><text>›</text>

@@ -1,8 +1,8 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onPageScroll } from '@dcloudio/uni-app'
 import { get, pageUrl, runPath } from '../api'
-import { errorText, shanghai, yuan } from '../ui'
+import { errorText, riskColor, shanghai, yuan } from '../ui'
 import { outcomeReason, outcomeVerdict } from '../outcome'
 import { playedRounds } from '../presentation'
 import Portrait from '../components/Portrait.vue'
@@ -12,7 +12,7 @@ import RoundAnalysis from '../components/RoundAnalysis.vue'
 
 const view = ref(null), error = ref(''), busy = ref(false), currentRound = ref(0), panel = ref('history')
 const openFunds = ref({ reserves: false, flows: false })
-let id, initialRound
+let id, initialRound, scrollTop = 0, historyScrollTop = 0
 const rounds = computed(() => playedRounds(view.value?.rounds || []))
 const risk = computed(() => rounds.value.map(round => ({ roundNo: round.roundNo, score: round.analysis?.riskScore })))
 const verdict = computed(() => {
@@ -38,10 +38,12 @@ async function openRound(roundNo) {
 }
 function report() { uni.redirectTo({ url: pageUrl('report', id) }) }
 function selectPanel(value) {
+  if (value === 'funds') historyScrollTop = scrollTop
   panel.value = value
-  uni.pageScrollTo({ scrollTop: 0, duration: 0 })
+  void nextTick(() => uni.pageScrollTo({ scrollTop: value === 'history' ? historyScrollTop : 0, duration: 0 }))
   uni.setNavigationBarTitle({ title: value === 'funds' ? '个人历史' : view.value.configuration.scenario.name })
 }
+onPageScroll(event => { scrollTop = event.scrollTop })
 onLoad(query => { id = query.id || ''; initialRound = Number(query.round); void load() })
 </script>
 
@@ -70,8 +72,12 @@ onLoad(query => { id = query.id || ''; initialRound = Number(query.round); void 
         <view class="row section-rule"><text>演绎过程</text><view /></view>
         <text v-if="!rounds.length" class="muted">暂无已保存的对话</text>
         <view v-for="round in rounds" :id="'round-' + round.roundNo" :key="round.roundNo" class="round">
-          <button class="round-head" @tap="currentRound = currentRound === round.roundNo ? 0 : round.roundNo">第 {{ round.roundNo }} 轮 {{ currentRound === round.roundNo ? '⌃' : '⌄' }}</button>
-          <view v-if="currentRound === round.roundNo" class="round-body">
+          <button class="round-head" :style="{ backgroundColor: riskColor(round.analysis?.riskScore) + '60' }"
+            :aria-label="'第 ' + round.roundNo + ' 轮，' + (round.analysis?.riskScore == null ? '未评分' : '风险 ' + round.analysis.riskScore + ' 分')"
+            @tap="currentRound = currentRound === round.roundNo ? 0 : round.roundNo">
+            第 {{ round.roundNo }} 轮 {{ currentRound === round.roundNo ? '⌃' : '⌄' }}
+          </button>
+          <view v-if="currentRound === round.roundNo" class="round-body motion-fade">
             <Dialogue v-if="round.messages.length" :messages="round.messages" :cast="view.configuration" />
             <text v-else class="muted">暂无本轮对白</text>
             <RoundAnalysis v-if="round.analysis" class="saved-analysis" :analysis="round.analysis" full />
@@ -90,13 +96,13 @@ onLoad(query => { id = query.id || ''; initialRound = Number(query.round); void 
           <text class="muted block result">累计报酬 {{ yuan(view.funds.totalRewardedYuan) }} · 可用余额 {{ yuan(view.funds.availableBalanceYuan) }}</text>
           <view class="actions">
             <button class="ghost" @tap="openFunds.reserves = !openFunds.reserves">预留资金 {{ openFunds.reserves ? '⌃' : '⌄' }}</button>
-            <view v-if="openFunds.reserves" class="tile">
+            <view v-if="openFunds.reserves" class="tile motion-fade">
               <text class="block">一般预留余额 {{ yuan(view.funds.generalReserveRemainingYuan) }}</text>
               <text class="block">应急预留余额 {{ yuan(view.funds.emergencyReserveRemainingYuan) }}</text>
             </view>
             <button class="ghost" @tap="openFunds.flows = !openFunds.flows">逐笔资金流水 {{ openFunds.flows ? '⌃' : '⌄' }}</button>
           </view>
-          <view v-if="openFunds.flows" class="stack">
+          <view v-if="openFunds.flows" class="stack motion-fade">
             <view v-for="flow in view.funds.flows || []" :key="flow.sequenceNo" class="tile">
               <view class="row between"><text class="bold">{{ flows[flow.type] || flow.type }} {{ yuan(flow.amountYuan) }}</text><text class="muted">第 {{ flow.roundNo }} 轮</text></view>
               <text class="muted block">余额 {{ yuan(flow.balanceAfterYuan) }} · {{ shanghai(flow.occurredAt) }}</text><text v-if="flow.reason">{{ flow.reason }}</text>
@@ -125,7 +131,7 @@ onLoad(query => { id = query.id || ''; initialRound = Number(query.round); void 
 .detail-links button { background: #dce9f2; color: #102638; text-align: left; font-weight: 700; padding: 11rpx 16rpx; }
 .detail-links button + button { margin-top: 9rpx; }
 .round { margin-bottom: 10rpx; }
-.round-head { background: #dce9f2; color: #102638; text-align: left; font-weight: 750; }
+.round-head { color: #102638; text-align: left; font-weight: 750; }
 .round-body { padding: 12rpx 8rpx; }
 .saved-analysis { display: block; margin-top: 16rpx; }
 .funds .tile { padding: 14rpx 6rpx; }

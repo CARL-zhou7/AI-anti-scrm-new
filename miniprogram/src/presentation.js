@@ -8,6 +8,10 @@ export function startId() {
 
 export function reveal(content, segments, currentMs) {
   if (!segments?.length) return content
+  return Array.from(content).slice(0, revealCount(segments, currentMs)).join('')
+}
+
+export function revealCount(segments, currentMs) {
   let end = 0
   for (const segment of segments) {
     if (currentMs >= segment.endMs) { end = segment.charEnd; continue }
@@ -17,7 +21,7 @@ export function reveal(content, segments, currentMs) {
     }
     break
   }
-  return Array.from(content).slice(0, end).join('')
+  return end
 }
 
 export function nextPresentation(round) {

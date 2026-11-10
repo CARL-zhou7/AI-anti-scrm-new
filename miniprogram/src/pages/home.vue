@@ -65,7 +65,7 @@ onShow(load)
     <button class="accent cast-action" @tap="cast()"><text>开始体验</text><text class="arrow">›</text></button>
     <text v-if="busy && !homeInfo" class="muted block">正在读取场景…</text>
     <view v-if="error"><text class="error">{{ error }}</text><button class="ghost" @tap="load">重新加载</button></view>
-    <view v-for="scene in scenarios" :key="scene.id" class="row scene" @tap="cast(scene.id)">
+    <view v-for="scene in scenarios" :key="scene.id" class="row scene" hover-class="tap-press" :hover-start-time="0" @tap="cast(scene.id)">
       <image class="thumb" :src="sceneArt(scene.code)" mode="aspectFill" />
       <view class="grow"><text class="block bold">{{ scene.name }}</text><text class="muted small">{{ scenes[scene.code]?.caption || scene.description }}</text></view>
       <text>›</text>
