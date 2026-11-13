@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 // Interrupted runs end here: no resume, replay or download. Content already shown stays on the stage behind.
 defineProps<{ message: string; code?: string; reportSessionId?: string; winner?: 'SCAMMER' | 'VICTIM' | null; finalTrustScore?: number | null }>()
+const panel = ref<HTMLElement>()
+onMounted(() => panel.value?.focus({ preventScroll: true }))
 </script>
 
 <template>
-  <div class="terminal" role="alertdialog" aria-labelledby="terminal-title" data-testid="terminal-notice">
-    <div class="panel">
+  <div class="terminal" role="alertdialog" aria-modal="true" aria-labelledby="terminal-title" data-testid="terminal-notice">
+    <div ref="panel" class="panel" tabindex="-1">
       <h2 id="terminal-title">{{ finalTrustScore !== null && finalTrustScore !== undefined
         ? (winner === 'SCAMMER' ? '本场判定：骗子胜' : winner === 'VICTIM' ? '本场判定：受害者胜' : '本次演绎已结束')
         : reportSessionId ? '本次演绎已结束' : code === 'FUNDS_EXHAUSTED' || code === 'CHARACTER_EXIT' ? '演绎提前终止' : '演绎已中断' }}</h2>

@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 // Opening settings pauses the run. Sound only toggles muting locally; it is never a failure and sends no request.
 defineProps<{ muted: boolean; finished: boolean; busy: boolean; error: string }>()
 const emit = defineEmits<{ toggleMute: []; resume: []; exit: [] }>()
 const confirming = ref(false)
+const panel = ref<HTMLElement>()
+const exitButton = ref<HTMLButtonElement>(), confirmation = ref<HTMLElement>()
+onMounted(() => panel.value?.focus({ preventScroll: true }))
+watch(confirming, open => (open ? confirmation.value : exitButton.value)?.focus({ preventScroll: true }), { flush: 'post' })
 </script>
 
 <template>
   <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title" data-testid="settings-overlay">
-    <div class="panel">
+    <div ref="panel" class="panel" tabindex="-1">
       <h2 id="settings-title">演绎已暂停</h2>
       <label class="row">
         <span>角色语音</span>
@@ -16,12 +20,12 @@ const confirming = ref(false)
       </label>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <template v-if="!confirming">
-        <button type="button" class="primary" data-testid="settings-resume" :disabled="busy" @click="emit('resume')">继续演绎</button>
-        <button type="button" class="ghost" data-testid="settings-exit" :disabled="busy" @click="confirming = true">退出演绎</button>
+        <button type="button" class="primary" data-testid="settings-resume" :disabled="busy" :aria-busy="busy" @click="emit('resume')">{{ busy ? '正在继续…' : '继续演绎' }}</button>
+        <button type="button" ref="exitButton" class="ghost" data-testid="settings-exit" :disabled="busy" @click="confirming = true">退出演绎</button>
       </template>
-      <div v-else class="confirm" data-testid="settings-exit-confirm">
+      <div v-else ref="confirmation" class="confirm motion-spotlight" tabindex="-1" data-testid="settings-exit-confirm">
         <p>{{ finished ? '本次演绎已正式结束，退出后将直接进入复盘。' : '退出后本次演绎将中断，且不生成正式复盘。确定退出吗？' }}</p>
-        <button type="button" class="danger" data-testid="settings-exit-yes" :disabled="busy" @click="emit('exit')">确定退出</button>
+        <button type="button" class="danger" data-testid="settings-exit-yes" :disabled="busy" :aria-busy="busy" @click="emit('exit')">{{ busy ? '正在退出…' : '确定退出' }}</button>
         <button type="button" class="ghost" :disabled="busy" @click="confirming = false">返回设置</button>
       </div>
     </div>

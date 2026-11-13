@@ -95,9 +95,9 @@ async function start() {
     if (failure?.status === 'rejected') notice.value = message(failure.reason)
     else {
       // Entering the stage creates nothing and starts no clock; the run begins with the click on that page.
-      checking.value = false
-      await router.push({ path: '/simulation', query: { scenarioId: selectedScenarioId.value!, scammerProfileId: selectedScammerId.value!, victimProfileId: selectedVictimId.value! } })
-      return
+      try {
+        await router.push({ path: '/simulation', query: { scenarioId: selectedScenarioId.value!, scammerProfileId: selectedScammerId.value!, victimProfileId: selectedVictimId.value! } })
+      } catch (e) { notice.value = message(e) }
     }
   }
   checking.value = false
@@ -113,7 +113,7 @@ onMounted(load)
         <button class="button button-light" data-testid="configuration-reset" :disabled="busy || checking || !(selectedScenarioId || selectedScammerId || selectedVictimId)" @click="clearSelections">重新选择</button>
       </div>
     </header>
-    <div v-if="busy" class="loading-state" data-testid="configuration-loading" role="status">正在加载场景与画像…</div>
+    <div v-if="busy" class="loading-state motion-pending" data-testid="configuration-loading" role="status">正在加载场景与画像…</div>
     <section v-else-if="error" class="load-error" data-testid="configuration-error" role="alert"><h2>配置加载失败</h2><p>{{ error }}</p>
       <button class="button button-primary" data-testid="configuration-retry" @click="load">重新加载</button></section>
     <div v-else class="configuration-grid">
@@ -125,22 +125,22 @@ onMounted(load)
             <p v-if="!scammers.length" data-testid="profiles-empty">暂无可用骗子画像</p>
             <ProfileCard v-for="p in scammers" :key="p.id" :profile="p" :selected="p.id === selectedScammerId" :disabled="checking"
               :failed="failedAvatars.has(p.avatar.key)" @select="select('scammer', p.id)" @avatar-error="avatarError" @avatar-loaded="avatarLoaded" />
-            <button v-if="scammerCursor" class="text-button" :disabled="!!loadingMore || checking" @click="more('scammer')">{{ loadingMore === 'scammer' ? '加载中…' : '加载更多骗子画像' }}</button>
+            <button v-if="scammerCursor" class="text-button" :disabled="!!loadingMore || checking" :aria-busy="loadingMore === 'scammer'" @click="more('scammer')">{{ loadingMore === 'scammer' ? '加载中…' : '加载更多骗子画像' }}</button>
           </section>
           <section data-testid="profile-list-victim"><h3>受害者画像</h3>
             <p v-if="!victims.length" data-testid="profiles-empty">暂无可用受害者画像</p>
             <ProfileCard v-for="p in victims" :key="p.id" :profile="p" :selected="p.id === selectedVictimId" :disabled="checking"
               :recommended="isRecommended(p)" :failed="failedAvatars.has(p.avatar.key)" @select="select('victim', p.id)" @avatar-error="avatarError" @avatar-loaded="avatarLoaded" />
-            <button v-if="victimCursor" class="text-button" :disabled="!!loadingMore || checking" @click="more('victim')">{{ loadingMore === 'victim' ? '加载中…' : '加载更多受害者画像' }}</button>
+            <button v-if="victimCursor" class="text-button" :disabled="!!loadingMore || checking" :aria-busy="loadingMore === 'victim'" @click="more('victim')">{{ loadingMore === 'victim' ? '加载中…' : '加载更多受害者画像' }}</button>
           </section>
         </div>
       </section>
       <ConfigurationSummary class="configuration-summary" :scenario="scenario" :scammer="scammer" :victim="victim" @avatar-error="avatarError" />
       <div class="configuration-actions">
         <p v-if="reselect" class="error-message" data-testid="configuration-reselect-hint" role="alert">所选画像已不可用，请重新选择</p>
-        <p v-if="notice" class="success-message" role="status">{{ notice }}</p>
+        <p v-if="notice" class="error-message" role="alert">{{ notice }}</p>
         <p id="configuration-start-help" class="field-help">{{ ready ? '进入演绎页后，资源加载完成即可点击开始演绎。' : '请选择一个场景和双方画像，并等待所选头像加载成功。' }}</p>
-        <button class="button button-primary" data-testid="configuration-start" :disabled="!ready || checking" aria-describedby="configuration-start-help" @click="start">{{ checking ? '正在核验…' : '进入演绎' }}</button>
+        <button class="button button-primary" data-testid="configuration-start" :disabled="!ready || checking" :aria-busy="checking" aria-describedby="configuration-start-help" @click="start">{{ checking ? '正在核验…' : '进入演绎' }}</button>
       </div>
     </div>
   </div>

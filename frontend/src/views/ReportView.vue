@@ -103,8 +103,8 @@ onUnmounted(() => { version++; clearTimeout(timer) })
 </script>
 
 <template>
-  <div class="home-layout report-page" data-testid="report">
-    <p v-if="loading" role="status">正在读取复盘报告…</p>
+  <div class="home-layout report-page" data-testid="report" :aria-busy="loading">
+    <p v-if="loading" class="loading-state motion-pending" role="status">正在读取复盘报告…</p>
     <section v-else-if="error" class="load-error" role="alert" data-testid="report-load-error">
       <h1>{{ error }}</h1>
       <button class="button button-primary" @click="load">重新读取</button>
@@ -112,8 +112,8 @@ onUnmounted(() => { version++; clearTimeout(timer) })
     </section>
     <div v-else-if="view" class="report-grid">
       <aside class="report-rail">
-      <header class="configuration-section report-cover">
-        <span class="eyebrow">分析复盘<span v-if="state"> · {{ state.configuration.scenario.name }} · 共 {{ state.currentRoundNo }} 轮</span></span>
+      <header class="configuration-section report-cover motion-spotlight">
+        <span class="eyebrow motion-scene">分析复盘<span v-if="state"> · {{ state.configuration.scenario.name }} · 共 {{ state.currentRoundNo }} 轮</span></span>
         <p v-if="state" class="field-help">{{ state.configuration.scammer.name }} 与 {{ state.configuration.victim.name }}</p>
         <template v-if="view.outcome">
           <h1 data-testid="report-outcome">{{ view.outcome.displayText }}</h1>
@@ -157,13 +157,13 @@ onUnmounted(() => { version++; clearTimeout(timer) })
         <h2>演绎仍在进行中</h2><p>正式结束后可查看复盘报告。</p>
       </section>
       <section v-else-if="generating" class="configuration-section" data-testid="report-generating" role="status">
-        <h2>生成中</h2><p>报告正在后台生成，离开页面不影响生成进度。</p>
+        <h2 :class="{ 'motion-pending': !exhausted }">生成中</h2><p>报告正在后台生成，离开页面不影响生成进度。</p>
         <p v-if="exhausted">报告仍在生成，可稍后刷新。</p>
         <button v-if="exhausted" class="button button-light" @click="load">刷新状态</button>
       </section>
       <section v-else-if="view.report?.status === 'FAILED'" class="load-error" data-testid="report-error" role="alert">
         <h2>生成失败</h2><p>{{ view.report.error?.message }}</p>
-        <button v-if="view.report.canRetry && !notApplicable" class="button button-primary" data-testid="report-retry" :disabled="retrying" @click="retry">
+        <button v-if="view.report.canRetry && !notApplicable" class="button button-primary" data-testid="report-retry" :disabled="retrying" :aria-busy="retrying" @click="retry">
           {{ retrying ? '正在提交…' : '重新生成' }}
         </button>
         <p v-if="retryError">{{ retryError }}</p>

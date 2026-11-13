@@ -1,0 +1,74 @@
+:root {
+  --motion-press:90ms;
+  --motion-feedback:160ms;
+  --motion-page:220ms;
+  --motion-stage:320ms;
+  --motion-ease:cubic-bezier(.2,.75,.25,1);
+}
+
+.route-fade-enter-active,.route-deeper-enter-active,.route-back-enter-active,.route-from-stage-enter-active {
+  transition:opacity var(--motion-page) var(--motion-ease), translate var(--motion-page) var(--motion-ease);
+}
+.route-fade-enter-from { opacity:.55; }
+.route-deeper-enter-from { opacity:.45; translate:0 10px; }
+.route-back-enter-from { opacity:.45; translate:0 -8px; }
+.route-from-stage-enter-from { opacity:.7; }
+.route-discard { display:none; }
+:root:has(.route-stage-enter-active) { background:#0b1524; }
+.route-stage-enter-active,.route-stage-leave-active { z-index:40; }
+.route-stage-enter-active { transition:opacity var(--motion-stage) var(--motion-ease); }
+.route-stage-leave-active { pointer-events:none; transition:opacity var(--motion-page) ease-in; }
+.route-stage-enter-from,.route-stage-leave-to { opacity:0; }
+
+:where(button,.button,.start,.terminal a,summary,.narration,.history-item,.admin-group > a,.news-link,.site-header nav a,.admin-nav a,.admin-record) {
+  transition:background-color var(--motion-feedback), border-color var(--motion-feedback), color var(--motion-feedback),
+    box-shadow var(--motion-feedback), opacity var(--motion-feedback), scale var(--motion-press) var(--motion-ease),
+    translate var(--motion-feedback) var(--motion-ease);
+}
+@media (hover:hover) and (pointer:fine) {
+  :is(.button,.start,.scenario-option,.profile-card):not(:disabled,[aria-disabled=true]):hover { translate:0 -1px; }
+  :where(.scenario-option,.profile-card):not(:disabled):hover { box-shadow:0 2px 7px #101c2e26; }
+  .site-header nav a:hover { color:#fff; border-bottom-color:#b6ccde; }
+  .site-header nav a.router-link-active:hover { border-bottom-color:var(--accent); }
+  :where(.text-button,.back-link,summary):not(:disabled):hover { text-decoration:underline; }
+}
+:where(button,.button,.start,.terminal a,summary,.history-item,.admin-group > a,.news-link,.narration.continuable):not(:disabled,[aria-disabled=true]):active { scale:.985; }
+:where(.site-header nav,.admin-nav) a:active { background-color:#395471; }
+:where(input,textarea,select):not([type=checkbox],[type=radio]) { transition:border-color var(--motion-feedback), box-shadow var(--motion-feedback); }
+:where(input,textarea,select):not([type=checkbox],[type=radio]):focus-visible { box-shadow:0 0 0 2px #3978b840; }
+
+.motion-pending::before,button[aria-busy=true]::before {
+  content:''; display:inline-block; flex:none; width:.68em; height:.68em; margin-inline-end:.55em;
+  vertical-align:.04em; border:2px solid currentColor; border-inline-end-color:transparent; border-radius:50%; opacity:0;
+  animation:motion-spin 700ms linear 160ms 4 forwards;
+}
+button[aria-busy=true] { cursor:wait; }
+@keyframes motion-spin {
+  from { opacity:1; rotate:0turn; }
+  to { opacity:1; rotate:1turn; }
+}
+
+:where(.success-message,.error-message,.field-error,.load-error,.admin-panel:has(.admin-form-fields),.admin-inspector,details[open] > :not(summary)) {
+  animation:motion-feedback var(--motion-page) var(--motion-ease);
+}
+@keyframes motion-feedback { from { opacity:.58; translate:0 4px; } }
+
+.motion-scene { border-inline-start:3px solid var(--accent); padding-inline-start:.7em; }
+.motion-spotlight { animation:motion-spotlight var(--motion-stage) var(--motion-ease); }
+@keyframes motion-spotlight { from { opacity:.62; translate:0 8px; } }
+
+.stage-dialog-enter-active,.stage-dialog-leave-active { transition:opacity var(--motion-page) var(--motion-ease); }
+.stage-dialog-enter-active > .panel,.stage-dialog-leave-active > .panel {
+  transition:translate var(--motion-page) var(--motion-ease), scale var(--motion-page) var(--motion-ease);
+}
+.stage-dialog-enter-from,.stage-dialog-leave-to { opacity:0; }
+.stage-dialog-enter-from > .panel,.stage-dialog-leave-to > .panel { translate:0 8px; scale:.985; }
+.stage-dialog-leave-active { pointer-events:none; }
+
+@media (prefers-reduced-motion:reduce) {
+  :is(.route-fade-enter-from,.route-deeper-enter-from,.route-back-enter-from,.route-from-stage-enter-from,
+    .route-stage-enter-from,.route-stage-leave-to,.stage-dialog-enter-from,.stage-dialog-leave-to) { opacity:1; translate:none; }
+  :where(button,a,summary,.narration,.stage-dialog-enter-from > .panel,.stage-dialog-leave-to > .panel) { translate:none!important; scale:none!important; }
+  .motion-spotlight,:where(.success-message,.error-message,.field-error,.load-error,.admin-panel,.admin-inspector,details > :not(summary)) { animation:none; }
+  .motion-pending::before,button[aria-busy=true]::before { animation:none; opacity:1; border-color:currentColor; }
+}

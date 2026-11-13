@@ -161,7 +161,7 @@ onMounted(() => load())
   <div class="home-layout admin-layout" :data-testid="'admin-' + kind + 's'" :aria-busy="busy">
     <div class="admin-row-heading"><h1>{{ title }}管理</h1><button class="button button-primary" :data-testid="kind + '-new'" :disabled="busy || formOpen" @click="create">新增{{ title }}</button></div>
     <p class="admin-intro">维护完整人物信息。画像不提供永久删除；每类至少保留一个可用画像，停用的画像可重新启用。</p>
-    <p v-if="loading" role="status">正在加载…</p>
+    <p v-if="loading" class="motion-pending" role="status">正在加载…</p>
     <VersionConflictNotice v-if="conflict" :current-version="currentVersion" :disabled="busy" @reload="reloadConflict" />
     <p v-else-if="error" class="error-message" role="alert" :data-testid="kind + '-error'">{{ error }}</p>
     <button v-if="error && !formOpen && !conflict" class="button button-light" :disabled="busy" @click="load()">重新加载</button>
@@ -178,7 +178,7 @@ onMounted(() => load())
         <FormFieldError field="speakingAvatarKey" :errors="fields" />
         <ProfileFormFields v-model="form" :kind="kind" :errors="fields" :disabled="saving || loading" />
         <p v-if="!portraitsReady" class="field-help">请上传闭嘴、张嘴两张同尺寸半身立绘，并等待两张预览都加载成功后保存。</p>
-        <div class="admin-actions"><button class="button button-primary" :data-testid="kind + '-save'" :disabled="busy || !portraitsReady || conflict">{{ saving ? '保存中…' : '保存画像' }}</button><button type="button" class="button button-light" :disabled="busy" @click="cancel">取消</button></div>
+        <div class="admin-actions"><button class="button button-primary" :data-testid="kind + '-save'" :aria-busy="saving" :disabled="busy || !portraitsReady || conflict">{{ saving ? '保存中…' : '保存画像' }}</button><button type="button" class="button button-light" :disabled="busy" @click="cancel">取消</button></div>
       </form>
       </template>
       <template v-else-if="row">

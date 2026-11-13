@@ -73,7 +73,7 @@ onMounted(() => { void load(); void loadProfiles() })
 <template>
   <div class="home-layout admin-layout" data-testid="admin-trust-policy" :aria-busy="loading || saving">
     <h1>信任分机制</h1><p class="admin-intro">维护三项行动阈值，范围0至100且严格递增。更改只影响新场次，人物的初始分和系数在受害者画像中维护。</p>
-    <p v-if="loading" role="status">正在读取…</p>
+    <p v-if="loading" class="motion-pending" role="status">正在读取…</p>
     <VersionConflictNotice v-if="conflict" :current-version="currentVersion" :disabled="loading || saving" @reload="load" />
     <p v-else-if="error" class="error-message" role="alert">{{ error }}</p>
     <button v-if="error && !conflict" class="button button-light" :disabled="loading || saving" @click="load">重新读取</button>
@@ -91,7 +91,7 @@ onMounted(() => { void load(); void loadProfiles() })
           <div class="threshold-track"></div>
           <span>0</span><span>100</span>
         </div>
-        <button class="button button-primary" data-testid="policy-save" :disabled="loading || saving || conflict">{{ saving ? '保存中…' : '保存配置' }}</button>
+        <button class="button button-primary" data-testid="policy-save" :aria-busy="saving" :disabled="loading || saving || conflict">{{ saving ? '保存中…' : '保存配置' }}</button>
       </form>
     </section>
     <section v-if="policy" class="admin-panel" aria-labelledby="progress-estimate-title">

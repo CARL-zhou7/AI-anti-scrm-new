@@ -32,6 +32,7 @@ const configuration = shallowRef<Configuration | null>(null)
 const view = reactive(PerformanceDirector.initialView())
 const status = ref<SimulationState['status'] | null>(null)
 const settingsOpen = ref(false), settingsBusy = ref(false), settingsError = ref('')
+const stageMain = ref<HTMLElement>(), settingsButton = ref<HTMLButtonElement>()
 const nowTick = ref(performance.now())
 const inbox = new EventInbox()
 const intervention = ref<InterventionState | null>(null)
@@ -58,9 +59,13 @@ const ids = computed(() => {
   return { scenario: pick('scenarioId'), scammer: pick('scammerProfileId'), victim: pick('victimProfileId') }
 })
 const live = computed(() => phase.value === 'running' && status.value === 'RUNNING' && view.stage !== 'TERMINAL')
+const interrupted = computed(() => view.stage === 'TERMINAL' && view.terminal?.status === 'INTERRUPTED')
 const showWaiting = computed(() => phase.value === 'running' && (view.stage === 'WAITING' || view.stage === 'DEADLINE')
   && view.waitingSince !== null && nowTick.value - view.waitingSince > 600)
 const message = (e: unknown) => e instanceof Error ? e.message : '加载失败，请重试'
+watch(settingsOpen, open => {
+  if (!open && !leaving && !interrupted.value) settingsButton.value?.focus({ preventScroll: true })
+}, { flush: 'post' })
 /** Administrators finish into the demo report route; ordinary users keep their personal report route. */
 function reportPath(id: string) {
   return auth.account?.role === 'ADMIN' ? `/admin/demo/report/${id}` : `/simulations/${id}/report`
@@ -292,6 +297,7 @@ onBeforeRouteLeave(async () => {
 })
 
 onMounted(async () => {
+  stageMain.value?.focus({ preventScroll: true })
   window.addEventListener('pagehide', onPageHide)
   ticker = setInterval(() => { nowTick.value = performance.now() }, 200)
   if (await handleRefresh()) return
@@ -308,26 +314,26 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="sim" :aria-busy="phase === 'loading'">
-    <header class="sim-top">
+    <header class="sim-top" :inert="settingsOpen">
       <div class="sim-brand">
         <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s7-3 7-9V5l-7-3-7 3v8c0 6 7 9 7 9Z"/><path d="m9 12 2 2 4-4"/></svg></span>
         <strong>知诈<small>AI 反诈情景推演</small></strong>
         <span class="mode">{{ auth.account?.role === 'ADMIN' ? '管理员演示' : '情景演绎' }}</span>
       </div>
-      <button v-if="phase === 'running' && view.stage !== 'TERMINAL'" class="settings" data-testid="settings-button" aria-label="设置（暂停演绎）" @click="openSettings">
+      <button v-if="phase === 'running' && view.stage !== 'TERMINAL'" ref="settingsButton" class="settings" data-testid="settings-button" aria-label="设置（暂停演绎）" @click="openSettings">
         暂停与设置
       </button>
     </header>
 
-    <main class="sim-body">
+    <main ref="stageMain" class="sim-body" tabindex="-1">
       <section v-if="phase === 'loading' || phase === 'ready' || phase === 'starting' || phase === 'blocked'" class="gate" data-testid="simulation-gate">
         <template v-if="preview">
-          <p class="gate-eyebrow">{{ preview.scenario.name }}</p>
-          <h1>{{ preview.scammer.name }} <span>对</span> {{ preview.victim.name }}</h1>
+          <p class="gate-eyebrow motion-scene motion-spotlight">{{ preview.scenario.name }}</p>
+          <h1 class="motion-spotlight">{{ preview.scammer.name }} <span>对</span> {{ preview.victim.name }}</h1>
         </template>
-        <p v-if="phase === 'loading'" class="gate-status" role="status" data-testid="simulation-loading">正在准备场景动画与人物形象…</p>
+        <p v-if="phase === 'loading'" class="gate-status motion-pending" role="status" data-testid="simulation-loading">正在准备场景动画与人物形象…</p>
         <p v-if="notice" class="gate-notice" role="alert" data-testid="simulation-notice">{{ notice }}</p>
-        <button v-if="phase === 'ready' || phase === 'starting'" class="start" data-testid="simulation-start" :disabled="phase === 'starting'" @click="start">
+        <button v-if="phase === 'ready' || phase === 'starting'" class="start" data-testid="simulation-start" :disabled="phase === 'starting'" :aria-busy="phase === 'starting'" @click="start">
           {{ phase === 'starting' ? '正在开始…' : '开始演绎' }}
         </button>
         <p v-if="phase === 'ready'" class="gate-help">先介绍情景与人物，第一轮自动演绎。从第二轮起，点击解说框任意位置继续；点击紫色魔法球可修改待确认台词，或按方向重新生成话术和动作。</p>
@@ -337,19 +343,19 @@ onBeforeUnmount(() => {
       </section>
 
       <template v-else-if="configuration">
-        <OpeningScene v-if="view.stage === 'OPENING_SCENE'" :scenario="configuration.scenario" :frozen="view.frozen" @done="sceneDone" />
+        <OpeningScene v-if="view.stage === 'OPENING_SCENE'" :scenario="configuration.scenario" :frozen="view.frozen" :inert="settingsOpen" @done="sceneDone" />
         <CharacterCards v-else-if="view.stage === 'OPENING_CARDS'" :scammer="configuration.scammer" :victim="configuration.victim" :frozen="view.frozen"
-          @avatar-error="avatarFailed" />
-        <div v-else class="play">
+          :inert="settingsOpen" @avatar-error="avatarFailed" />
+        <div v-else class="play" :inert="settingsOpen || interrupted">
           <header class="play-meta">
             <div>
-              <h1>{{ configuration.scenario.name }}</h1>
+              <h1 class="motion-scene motion-spotlight">{{ configuration.scenario.name }}</h1>
               <p v-if="view.roundNo">第 {{ view.roundNo }} 轮<span v-if="view.stage === 'REVIEW' && intervention?.currentDraft"> · 等待确认第 {{ intervention.currentDraft.roundNo }} 轮草稿</span></p>
             </div>
             <span v-if="view.stage === 'REVIEW' && intervention?.currentDraft" class="review-status">{{ regeneratingDraft ? '生成中' : orbEditing ? '编辑中' : '待确认' }}</span>
           </header>
           <SimulationStage class="play-stage" :configuration="configuration" :view="view" @media-error="avatarFailed" />
-          <p v-if="showWaiting" class="waiting" role="status" data-testid="waiting-hint">{{ view.stage === 'DEADLINE' ? '已达到时长上限，正在确认结果…' : view.bubbles.VICTIM?.done ? (view.narration?.roundNo === view.roundNo ? '正在准备下一轮对话…' : '正在生成本轮解说…') : '对方正在组织语言…' }}</p>
+          <p v-if="showWaiting" class="waiting motion-pending motion-spotlight" role="status" data-testid="waiting-hint">{{ view.stage === 'DEADLINE' ? '已达到时长上限，正在确认结果…' : view.bubbles.VICTIM?.done ? (view.narration?.roundNo === view.roundNo ? '正在准备下一轮对话…' : '正在生成本轮解说…') : '对方正在组织语言…' }}</p>
           <NarrationPanel :narration="view.narration" :risk="view.risk" :awaiting-continue="view.stage === 'REVIEW' && !!intervention?.currentDraft"
             :disabled="orbBusy || !!regeneratingDraft || orbEditing || view.frozen"
             :disabled-hint="regeneratingDraft ? '请等待新草稿生成' : orbEditing ? '请先保存或取消修改' : undefined"
@@ -360,9 +366,13 @@ onBeforeUnmount(() => {
         </div>
       </template>
 
-      <SettingsOverlay v-if="settingsOpen" :muted="view.muted" :finished="status === 'FINISHED'" :busy="settingsBusy" :error="settingsError"
-        @toggle-mute="toggleMute" @resume="resume" @exit="exitRun" />
-      <TerminalNotice v-if="view.stage === 'TERMINAL' && view.terminal?.status === 'INTERRUPTED'" :code="view.terminal.interruption?.code" :message="view.terminal.interruption?.message ?? '本次演绎已中断'" :report-session-id="view.terminal.report ? view.terminal.sessionId : undefined" :winner="view.terminal.winner ?? null" :final-trust-score="view.terminal.finalTrustScore ?? null" />
+      <Transition name="stage-dialog" @before-leave="el => el.setAttribute('inert', '')">
+        <SettingsOverlay v-if="settingsOpen" :muted="view.muted" :finished="status === 'FINISHED'" :busy="settingsBusy" :error="settingsError"
+          @toggle-mute="toggleMute" @resume="resume" @exit="exitRun" />
+      </Transition>
+      <Transition name="stage-dialog">
+        <TerminalNotice v-if="view.stage === 'TERMINAL' && view.terminal?.status === 'INTERRUPTED'" :code="view.terminal.interruption?.code" :message="view.terminal.interruption?.message ?? '本次演绎已中断'" :report-session-id="view.terminal.report ? view.terminal.sessionId : undefined" :winner="view.terminal.winner ?? null" :final-trust-score="view.terminal.finalTrustScore ?? null" />
+      </Transition>
     </main>
   </div>
 </template>
@@ -386,7 +396,7 @@ onBeforeUnmount(() => {
 .gate-eyebrow { margin:0; color:var(--sim-gold); letter-spacing:0.3em; font-size:13px; }
 .gate h1 { margin:0; font-family:var(--sim-display); font-size:44px; font-weight:400; letter-spacing:0.08em; }
 .gate h1 span { font-size:24px; color:#8e95b3; margin:0 10px; }
-.gate-status { margin:8px 28px 0; font-size:13px; color:var(--sim-warn); }
+.gate-status { margin:8px 28px 0; font-size:13px; color:#bed3e5; }
 .gate-help { margin:0; color:#b7bdd3; }
 .gate-notice { margin:0; color:#ffb4a3; }
 .start { min-width:220px; padding:16px 32px; border:none; border-radius:5px; background:var(--sim-gold); color:var(--sim-ink); font-size:20px;

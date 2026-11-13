@@ -39,7 +39,7 @@ function ended(event: AnimationEvent) { if (event.animationName.startsWith('scen
     </svg>
     <div class="scene-copy">
       <span class="scene-eyebrow">情景介绍</span>
-      <h1>{{ scenario.name }}</h1>
+      <h1 class="motion-scene">{{ scenario.name }}</h1>
       <p>{{ scenario.description }}</p>
     </div>
     <div class="scene-timeline" @animationend="ended" />
@@ -73,10 +73,16 @@ text { fill:#f3efe5; font-size:11px; }
 /* Master timeline: 10 s, its animationend hands over to the character cards. */
 .scene-timeline { position:absolute; left:0; bottom:0; height:3px; width:100%; transform-origin:left; background:var(--sim-gold); animation:scene-timeline 10s linear forwards; }
 .frozen *, .frozen { animation-play-state:paused !important; }
-@keyframes scene-timeline { from { transform:scaleX(0) } to { transform:scaleX(1) } }
+@keyframes scene-timeline { from { transform:scaleX(var(--scene-timeline-start, 0)) } to { transform:scaleX(1) } }
 @keyframes pop { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
 @keyframes float { 50% { transform:translateY(-10px) } }
 @keyframes draw { to { stroke-dashoffset:0 } }
 @keyframes ring { from { opacity:0.8; transform:scale(0.8); transform-origin:320px 140px } to { opacity:0; transform:scale(1.3); transform-origin:320px 140px } }
-@media (prefers-reduced-motion: reduce) { .coin, .ring { animation:none; } }
+@media (prefers-reduced-motion: reduce) {
+  .coin,.ring,.notice,.chat,.alert,.call,.scene-copy,.trend { animation:none; }
+  .notice,.chat,.alert,.call,.scene-copy { opacity:1; }
+  .trend { stroke-dashoffset:0; }
+  /* Keep the completion event and timing with a stationary progress line. */
+  .scene-timeline { --scene-timeline-start:1; }
+}
 </style>

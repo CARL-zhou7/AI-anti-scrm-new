@@ -37,4 +37,5 @@ dd { margin:2px 0 0; font-size:14px; overflow-wrap:anywhere; }
 .frozen .card { animation-play-state:paused; }
 @keyframes deal { from { opacity:0; transform:translateY(24px) rotate(-2deg) } to { opacity:1; transform:none } }
 @media (max-width:640px) { .cards { flex-direction:column; gap:16px; } .card img { width:110px; height:110px; } }
+@media (prefers-reduced-motion: reduce) { .card { opacity:1; animation:none; } }
 </style>

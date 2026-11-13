@@ -123,7 +123,7 @@ onMounted(load)
       <option v-for="scene in scenes" :key="scene" :value="scene">{{ sceneName(scene) }}</option>
     </select>
 
-    <p v-if="loading" role="status">正在加载规则…</p>
+    <p v-if="loading" class="motion-pending" role="status">正在加载规则…</p>
     <VersionConflictNotice v-if="conflict" :current-version="currentVersion" :disabled="loading || saving" @reload="load" />
     <p v-else-if="error" class="error-message" role="alert" data-testid="scene-rule-error">{{ error }}</p>
     <p v-if="success" class="success-message" role="status" data-testid="scene-rule-success">{{ success }}</p>
@@ -150,7 +150,7 @@ onMounted(load)
         <FormFieldError field="ruleText" :errors="fields" />
         <p class="field-help">无需干预来源。保留必要条件，不写具体人物、固定金额或本场临时事实。</p>
         <div class="admin-actions">
-          <button class="button button-primary" :disabled="saving || !canCreate" :data-testid="column.role.toLowerCase() + '-rule-save'">{{ saving ? '保存中…' : '保存规则' }}</button>
+          <button class="button button-primary" :disabled="saving || !canCreate" :aria-busy="saving" :data-testid="column.role.toLowerCase() + '-rule-save'">{{ saving ? '保存中…' : '保存规则' }}</button>
           <button type="button" class="button button-light" :disabled="saving" @click="creating = null; fields = []; error = ''">取消</button>
         </div>
       </form>
@@ -171,7 +171,7 @@ onMounted(load)
         <FormFieldError field="ruleText" :errors="fields" />
         <label class="intervention-check"><input v-model="enabled" type="checkbox" data-testid="rule-enabled" :disabled="saving" /> 启用该规则</label>
         <div class="admin-actions">
-          <button class="button button-primary" data-testid="rule-save" :disabled="saving || loading || conflict">{{ saving ? '保存中…' : '保存' }}</button>
+          <button class="button button-primary" data-testid="rule-save" :aria-busy="saving" :disabled="saving || loading || conflict">{{ saving ? '保存中…' : '保存' }}</button>
           <button type="button" class="button button-light" data-testid="rule-edit-cancel" :disabled="saving" @click="cancel">取消</button>
         </div>
       </form>
@@ -190,7 +190,7 @@ onMounted(load)
           </button>
         </div>
         <div v-if="expanded === row.ruleId" data-testid="rule-source-list">
-          <p v-if="sourcesLoading" role="status">正在加载来源…</p>
+          <p v-if="sourcesLoading" class="motion-pending" role="status">正在加载来源…</p>
           <p v-else-if="sourcesError" class="error-message" role="alert">{{ sourcesError }}</p>
           <p v-else-if="sourcesOfRule.length === 0" class="field-help" data-testid="rule-source-empty">该规则暂无本人来源记录。</p>
           <article v-for="record in sourcesOfRule" :key="record.interventionId" class="admin-panel" data-testid="rule-source-row">

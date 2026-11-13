@@ -20,7 +20,7 @@ onMounted(load)
 
 <template>
   <div class="home-landing" :aria-busy="busy">
-    <div v-if="busy" class="home-layout loading-state" role="status">正在加载首页…</div>
+    <div v-if="busy" class="home-layout loading-state motion-pending" role="status">正在加载首页…</div>
     <section v-else-if="error" class="home-layout load-error" data-testid="home-error" role="alert"><h1>首页加载失败</h1><p>{{ error }}</p><button class="button button-primary" @click="load">重新加载</button></section>
     <template v-else-if="home">
       <section class="home-hero">

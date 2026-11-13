@@ -44,7 +44,7 @@ async function submit() {
         <label for="username">用户名</label><input id="username" v-model="username" name="username" autocomplete="username" placeholder="请输入用户名" required :aria-invalid="fields.some(e => e.field === 'username')" aria-describedby="username-error" /><FormFieldError field="username" :errors="fields" />
         <label for="password">密码</label><input id="password" v-model="password" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" required :aria-invalid="fields.some(e => e.field === 'password')" aria-describedby="password-error" /><FormFieldError field="password" :errors="fields" />
         <p v-if="error" class="error-message" role="alert">{{ error }}</p>
-        <button class="button button-primary form-submit" type="submit" data-testid="login-submit" :disabled="busy">{{ busy ? '正在登录…' : '登录' }}<span aria-hidden="true"> →</span></button>
+        <button class="button button-primary form-submit" type="submit" data-testid="login-submit" :disabled="busy" :aria-busy="busy">{{ busy ? '正在登录…' : '登录' }}<span v-if="!busy" aria-hidden="true"> →</span></button>
       </form>
       <RouterLink class="button button-light practice-register" to="/register/practice">注册（点我！点我！）</RouterLink>
       <p class="auth-switch">还没有账号？<RouterLink to="/register">注册普通用户账号</RouterLink></p>

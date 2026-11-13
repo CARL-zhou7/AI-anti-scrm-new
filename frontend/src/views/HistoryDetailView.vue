@@ -38,7 +38,7 @@ function showProfileDetails() {
 <template>
   <div class="home-layout history-detail" data-testid="history-detail" :aria-busy="loading">
     <RouterLink class="button button-light" to="/history" data-testid="history-back">返回个人历史</RouterLink>
-    <p v-if="loading" class="loading-state" role="status" data-testid="history-detail-loading">正在读取历史详情…</p>
+    <p v-if="loading" class="loading-state motion-pending" role="status" data-testid="history-detail-loading">正在读取历史详情…</p>
     <section v-else-if="error" class="load-error" role="alert" data-testid="history-detail-error"><h1>{{ error }}</h1><button class="button button-primary" @click="load">重新读取</button></section>
     <template v-else-if="detail">
       <header class="configuration-section"><span class="eyebrow">历史记录 · {{ detail.status === 'INTERRUPTED' && detail.report ? '正常结束' : statuses[detail.status] }}</span><h1>{{ detail.configuration.scenario.name }}</h1><p>开始时间：{{ formatShanghai(detail.startedAt) }}（北京时间）</p><p v-if="detail.endedAt">结束时间：{{ formatShanghai(detail.endedAt) }}</p></header>

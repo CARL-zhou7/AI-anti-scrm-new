@@ -33,6 +33,26 @@ async function select() {
   return wrapper
 }
 
+it('keeps entry busy during navigation and allows retry if navigation fails', async () => {
+  let rejectNavigation!: (error: Error) => void
+  push.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectNavigation = reject }))
+  const wrapper = await select()
+  const start = wrapper.get('[data-testid=configuration-start]')
+  await start.trigger('click'); await flushPromises()
+
+  expect(start.attributes('aria-busy')).toBe('true')
+  expect(start.attributes('disabled')).toBeDefined()
+  await start.trigger('click')
+  expect(push).toHaveBeenCalledOnce()
+
+  rejectNavigation(new Error('暂时无法进入演绎'))
+  await flushPromises()
+  expect(wrapper.get('[role=alert]').text()).toBe('暂时无法进入演绎')
+  expect(start.attributes('aria-busy')).toBe('false')
+  expect(start.attributes('disabled')).toBeUndefined()
+  wrapper.unmount()
+})
+
 it('shows complete server content, requires all selections and only rechecks via reads', async () => {
   const wrapper = mount(ConfigurationView)
   await flushPromises()

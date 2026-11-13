@@ -95,12 +95,12 @@ function restoreOriginal() {
 <template>
   <aside class="orb" :class="{ expanded }" data-testid="magic-orb" aria-live="polite"
     :style="{ '--orb-x': position.x * 100 + 'vw', '--orb-y': position.y * 100 + 'dvh' }">
-    <section v-if="expanded" id="magic-orb-panel" class="panel" :class="{ 'panel-pending': pendingView }" aria-label="魔法球控制面板">
+    <section v-if="expanded" id="magic-orb-panel" class="panel motion-spotlight" :class="{ 'panel-pending': pendingView }" aria-label="魔法球控制面板">
     <button class="close" type="button" aria-label="收起魔法球面板" @click="expanded = false">×</button>
     <template v-if="pendingView">
       <header><button class="ghost" data-testid="magic-orb-back" aria-label="返回魔法球控制面板" @click="pendingView = false">←</button><span class="title">本场待入库</span></header>
       <div class="pending-scroll" tabindex="0" aria-label="待入库记录列表">
-      <p v-if="pendingLoading" class="hint" role="status">正在加载…</p>
+      <p v-if="pendingLoading" class="hint motion-pending" role="status">正在加载…</p>
       <p v-else-if="!pendingRecords?.length" class="hint">暂无记录。修改或重新生成后，确认用于演绎的话术会显示在这里。</p>
       <article v-for="record in pendingRecords" :key="record.interventionId" class="pending-record" data-testid="magic-orb-pending-record">
         <strong>第 {{ record.roundNo }} 轮</strong>
@@ -110,7 +110,7 @@ function restoreOriginal() {
       </article>
       </div>
     </template>
-    <p v-else-if="regenerating" class="generation" role="status" data-testid="magic-orb-regenerating">正在重新生成话术与动作…</p>
+    <p v-else-if="regenerating" class="generation motion-pending motion-spotlight" role="status" data-testid="magic-orb-regenerating">正在重新生成话术与动作…</p>
     <template v-else-if="draft">
     <header>
       <span class="title">魔法球<small>第 {{ draft.roundNo }} 轮待确认</small></span>
@@ -126,7 +126,7 @@ function restoreOriginal() {
     <p v-if="draft.draftAction" class="action" data-testid="magic-orb-action">动作：{{ draft.draftAction }}</p>
 
     <div class="row">
-      <button class="ghost" data-testid="magic-orb-edit" :disabled="busy || (editing && !canSave)" @click="toggleEdit">
+      <button class="ghost" data-testid="magic-orb-edit" :disabled="busy || (editing && !canSave)" :aria-busy="editing && busy" @click="toggleEdit">
         {{ editing ? (busy ? '保存中…' : '保存修改') : '直接修改' }}
       </button>
       <button v-if="editing" class="ghost" data-testid="magic-orb-cancel" :disabled="busy" @click="cancelEdit">取消</button>

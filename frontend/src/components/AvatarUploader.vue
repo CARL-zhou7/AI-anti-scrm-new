@@ -53,7 +53,7 @@ onBeforeUnmount(release)
     <div class="admin-avatar-preview">
       <img v-if="source" :key="source + previewRevision" :src="source" :alt="label + '预览'" :data-testid="testPrefix + '-preview'" @load="loaded" @error="imageError" />
       <p v-else class="field-help">请先选择并上传{{ label }}。</p>
-      <button type="button" class="button button-light" :data-testid="testPrefix + '-upload'" :disabled="disabled || uploading || (file !== null && file.size > 5 * 1024 * 1024)" @click="chooseOrUpload">{{ uploading ? '上传中…' : file ? '确认上传' : '上传' + label }}</button>
+      <button type="button" class="button button-light" :data-testid="testPrefix + '-upload'" :aria-busy="uploading" :disabled="disabled || uploading || (file !== null && file.size > 5 * 1024 * 1024)" @click="chooseOrUpload">{{ uploading ? '上传中…' : file ? '确认上传' : '上传' + label }}</button>
       <button type="button" class="button button-light" :data-testid="testPrefix + '-cancel'" :disabled="!file || disabled || uploading" @click="cancel">取消</button>
     </div>
     <p v-if="file && !error" class="field-help">当前为本地预览，点击确认上传，或取消恢复原头像。</p>

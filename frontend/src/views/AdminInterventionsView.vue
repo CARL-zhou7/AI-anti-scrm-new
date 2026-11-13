@@ -80,7 +80,7 @@ onMounted(load)
     <h1>待入库记录</h1>
     <p class="admin-intro">只显示本人演示测试场次中已采用、尚未归入规则的干预记录。勾选同一场景的多条记录后可归纳为一条场景规则；系统只合并，不拆分，一条来源只能归入一条规则。</p>
 
-    <p v-if="loading" role="status">正在加载待入库记录…</p>
+    <p v-if="loading" class="motion-pending" role="status">正在加载待入库记录…</p>
     <p v-if="error" class="error-message" role="alert" data-testid="rule-error">{{ error }}</p>
     <p v-if="success" class="success-message" role="status" data-testid="rule-success">{{ success }}</p>
 
@@ -92,7 +92,7 @@ onMounted(load)
       <label for="rule-text">规则正文</label>
       <textarea id="rule-text" v-model="ruleText" data-testid="draft-rule-text" rows="6" required :disabled="busy" />
       <div class="admin-actions">
-        <button class="button button-primary" data-testid="rule-submit" :disabled="busy || !title.trim() || !ruleText.trim()">{{ busy ? '提交中…' : '提交规则' }}</button>
+        <button class="button button-primary" data-testid="rule-submit" :aria-busy="busy" :disabled="busy || !title.trim() || !ruleText.trim()">{{ busy ? '提交中…' : '提交规则' }}</button>
         <button type="button" class="button button-light" data-testid="rule-cancel" :disabled="busy" @click="cancel">取消</button>
       </div>
     </form>
@@ -121,7 +121,7 @@ onMounted(load)
     </section>
 
     <div v-if="!draft && records.length > 0" class="admin-actions">
-      <button class="button button-primary" data-testid="intervention-induce" :disabled="busy || loading || selectedScene === null" @click="induce">
+      <button class="button button-primary" data-testid="intervention-induce" :aria-busy="busy" :disabled="busy || loading || selectedScene === null" @click="induce">
         {{ busy ? '归纳中…' : `归纳选中的 ${selected.length} 条记录` }}
       </button>
       <span v-if="selected.length > 0 && selectedScene === null" class="field-help">只能归纳同一场景的来源。</span>

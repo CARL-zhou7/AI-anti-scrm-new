@@ -38,7 +38,7 @@ function run() {
     <span class="eyebrow">管理员演示测试</span>
     <h1>演示测试</h1>
     <p class="field-help">仅本人可访问。第一轮自动演绎；从第二轮起，上方保留上一轮双方对话，点击解说框继续。紫色魔法球可修改待确认台词，或按方向重新生成话术和动作。未确认时刷新按主动退出处理。</p>
-    <p v-if="loading" role="status">正在加载可选内容…</p>
+    <p v-if="loading" class="motion-pending" role="status">正在加载可选内容…</p>
     <p v-else-if="error" role="alert" data-testid="admin-demo-error">{{ error }}</p>
     <form v-else class="demo-form admin-panel" @submit.prevent="run">
       <h2>配置演示场次</h2>

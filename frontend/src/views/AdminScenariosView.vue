@@ -38,7 +38,7 @@ onMounted(load)
 <template>
   <div class="home-layout admin-layout" data-testid="admin-scenarios" :aria-busy="loading || saving">
     <h1>场景管理</h1><p class="admin-intro">维护三个固定场景的名称与简介。</p>
-    <p v-if="loading" role="status">正在加载场景…</p>
+    <p v-if="loading" class="motion-pending" role="status">正在加载场景…</p>
     <VersionConflictNotice v-if="conflict" :current-version="currentVersion" :disabled="loading || saving" @reload="load" />
     <p v-else-if="error" class="error-message" role="alert">{{ error }}</p>
     <button v-if="error && !editing" class="button button-light" :disabled="loading" @click="load">重新加载</button>
@@ -62,7 +62,7 @@ onMounted(load)
         <FormFieldError field="name" :errors="fields" />
         <label for="scenario-description">场景简介</label><textarea id="scenario-description" v-model="description" rows="4" required :disabled="saving" aria-describedby="description-error" :aria-invalid="fields.some(e => e.field === 'description')" />
         <FormFieldError field="description" :errors="fields" />
-        <div class="admin-actions"><button class="button button-primary" data-testid="scenario-save" :disabled="saving || loading || conflict">{{ saving ? '保存中…' : '保存' }}</button><button type="button" class="button button-light" :disabled="saving" @click="cancel">取消</button></div>
+        <div class="admin-actions"><button class="button button-primary" data-testid="scenario-save" :aria-busy="saving" :disabled="saving || loading || conflict">{{ saving ? '保存中…' : '保存' }}</button><button type="button" class="button button-light" :disabled="saving" @click="cancel">取消</button></div>
       </form>
     </div>
   </div>

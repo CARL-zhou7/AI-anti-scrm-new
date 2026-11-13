@@ -4,5 +4,6 @@ import App from './App.vue'
 import router from './router'
 import './style.css'
 import './admin.css'
+import './motion.css'
 
 createApp(App).use(createPinia()).use(router).mount('#app')

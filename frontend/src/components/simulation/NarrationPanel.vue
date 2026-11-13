@@ -84,9 +84,10 @@ const deltaText = computed(() => {
 .narration { display:grid; grid-template-columns:subgrid; grid-template-rows:subgrid; min-width:0; }
 .narration-main,.risk-col { border:1px solid #506981; border-radius:5px; background:#182b42; color:#f0f6fc; min-width:0; }
 .narration-main { grid-column:1; }
-.risk-col { grid-column:1/-1; padding:10px 14px; }
+.risk-col { grid-column:1/-1; padding:10px 14px; transition:background-color var(--motion-feedback),border-color var(--motion-feedback); }
 .continuable { cursor:pointer; }
-.continuable:hover .risk-col { border-color:#a4c6e3; background:#20364e; }
+.continuable .risk-col { border-color:#7494ae; }
+.continuable:is(:hover,:focus-visible,:active) .risk-col { border-color:#a4c6e3; background:#20364e; }
 .narration:focus-visible { outline:3px solid #a4d8ff; outline-offset:3px; border-radius:5px; }
 .head { display:flex; flex-wrap:wrap; gap:4px 12px; align-items:baseline; padding:9px 12px; border-bottom:1px solid #465d75; }
 .round { font-size:17px; font-weight:750; }

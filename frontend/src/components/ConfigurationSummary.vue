@@ -8,7 +8,7 @@ defineEmits<{ avatarError: [key: string] }>()
 <template>
   <section class="configuration-section" data-testid="configuration-summary">
     <h2>03 确认完整配置</h2>
-    <template v-if="scenario"><h3>{{ scenario.name }}</h3><p>{{ scenario.description }}</p><p>内容侧重：{{ scenario.focus }}</p></template>
+    <template v-if="scenario"><h3 :key="scenario.id" class="motion-scene motion-spotlight">{{ scenario.name }}</h3><p>{{ scenario.description }}</p><p>内容侧重：{{ scenario.focus }}</p></template>
     <p v-else class="field-help">尚未选择场景</p>
     <div class="profile-columns">
       <div><h3>骗子画像</h3><ProfileDetail v-if="scammer" :profile="scammer" @avatar-error="$emit('avatarError', $event)" /><p v-else>尚未选择</p></div>

@@ -31,7 +31,7 @@ onMounted(() => load())
 <template>
   <div class="home-layout history-page" data-testid="history" :aria-busy="busy">
     <header class="configuration-section history-heading"><span class="eyebrow">回顾与学习</span><h1>个人历史</h1><p>回顾本人已保存的演绎过程与复盘报告。时间均为北京时间。</p></header>
-    <p v-if="busy" class="loading-state" data-testid="history-loading" role="status">正在读取历史记录…</p>
+    <p v-if="busy" class="loading-state motion-pending" data-testid="history-loading" role="status">正在读取历史记录…</p>
     <section v-if="error" class="load-error" data-testid="history-error" role="alert">
       <p>{{ error }}</p><button class="button button-primary" data-testid="history-retry" :disabled="busy" @click="load(items.length > 0)">重新读取</button>
     </section>
@@ -51,7 +51,7 @@ onMounted(() => load())
       </li>
       </ul>
     </div>
-    <button v-if="hasMore && !error" class="button button-light" data-testid="history-more" :disabled="busy" @click="load(true)">{{ busy ? '正在读取…' : '加载更多' }}</button>
+    <button v-if="hasMore && !error" class="button button-light" data-testid="history-more" :disabled="busy" :aria-busy="busy" @click="load(true)">{{ busy ? '正在读取…' : '加载更多' }}</button>
   </div>
 </template>
 
